@@ -45,20 +45,40 @@
       // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
       // ★ ここに、部屋リストを取得するための新しいGASのウェブアプリURLが必要になるよ！ ★
       // ★ (まだ作ってないから、今は仮のURLを入れておくか、コメントアウトしておく)       ★
+      // ★ ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ ★
+      // ★ さっきGASをデプロイして取得した「部屋リスト取得用の新しいウェブアプリURL」をここに設定！ ★
       // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-      // const gasWebAppUrlForRooms = 'YOUR_NEW_GAS_WEB_APP_URL_FOR_ROOMS_HERE?propertyId=' + propertyId;
+      const gasWebAppUrlForRoomsBase = 'https://script.google.com/macros/s/AKfycbx4SK0PCQxoZnS_tkJiQyEmcZsQw6HWVY_9Qqcnh-6QMA4E75DrD-wFdqxIjgewcoQnXg/exec'; // 例: 'https://script.google.com/macros/s/yyyyyyyyyyyyyyyyy/exec'
+      const gasWebAppUrlForRooms = `${gasWebAppUrlForRoomsBase}?propertyId=${propertyId}`;
 
       try {
-        // const response = await fetch(gasWebAppUrlForRooms);
-        // if (!response.ok) { throw new Error('ネットワーク応答エラー'); }
-        // const rooms = await response.json();
+        const response = await fetch(gasWebAppUrlForRooms);
+        if (!response.ok) {
+          throw new Error('ネットワークの応答が正しくありませんでした。');
+        }
+        const rooms = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
 
-        // roomListDiv.innerHTML = ''; // 「読み込み中です」を消す
-        // rooms.forEach(room => { /* ... 部屋ボタンを作成して追加 ... */ });
+        roomListDiv.innerHTML = ''; // 「読み込み中です」やダミー表示を消す
 
-        // 今はまだGASの準備ができていないので、ダミー表示
-        roomListDiv.innerHTML = `<p>部屋リスト表示の準備中です (物件ID: ${propertyId})</p><button>101号室 (仮)</button><button>102号室 (仮)</button>`;
+        if (rooms.error) { // GAS側でエラーがあった場合 (例: 物件IDが指定されていない)
+          roomListDiv.innerHTML = `<p>エラー: ${rooms.error}</p>`;
+          return;
+        }
 
+        if (rooms.length === 0) {
+          roomListDiv.innerHTML = `<p>この物件には登録されている部屋がありません。</p>`;
+          return;
+        }
+
+        rooms.forEach(room => {
+          const button = document.createElement('button');
+          button.textContent = room.number; // 部屋番号を表示
+          button.onclick = function() {
+            // ここに部屋が選択された時の処理を書く (例: 指示数入力画面へ遷移)
+            alert(`「${room.number}」が選択されました！ (部屋ID: ${room.id}, 物件ID: ${propertyId})`);
+          };
+          roomListDiv.appendChild(button);
+        });
       } catch (error) {
         console.error('部屋情報の取得に失敗しました:', error);
         roomListDiv.innerHTML = '<p>部屋情報の取得に失敗しました。</p>';
