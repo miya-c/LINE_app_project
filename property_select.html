@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>物件選択</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ここにWOFF特有の初期設定やCSSのリンクなどが入るかもしれないね -->
+  <style>
+    /* 簡単な見た目のためのCSS（後でちゃんと作る） */
+    body { font-family: sans-serif; margin: 10px; }
+    #search-box { margin-bottom: 10px; padding: 8px; width: calc(100% - 20px); }
+    #property-list button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>物件選択</h1>
+
+  <input type="text" id="search-box" placeholder="物件IDまたは物件名で検索...">
+
+  <div id="property-list">
+    <!-- ここにJavaScriptで物件ボタンが追加される -->
+    <p>物件情報を読み込み中です...</p>
+  </div>
+
+  <script>
+    // WOFFアプリが初期化されたら実行される関数 (WOFFの作法に合わせる必要があるかも)
+    window.onload = function() {
+      fetchProperties();
+      setupSearch(); // 検索機能のセットアップ関数を呼び出す
+    };
+
+    // GASから物件リストを取得して表示する関数
+    async function fetchProperties() {
+      const propertyListDiv = document.getElementById('property-list');
+      propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; // いったん表示をリセット
+
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      // ★ ここに、さっきGASをデプロイした時に取得した「ウェブアプリのURL」を貼り付けてね！ ★
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      const gasWebAppUrl = 'YOUR_GAS_WEB_APP_URL_HERE'; // 例: 'https://script.google.com/macros/s/xxxxxxxxxxxxxxxxx/exec'
+
+      try {
+        const response = await fetch(gasWebAppUrl);
+        if (!response.ok) {
+          throw new Error('ネットワークの応答が正しくありませんでした。');
+        }
+        const properties = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
+
+        propertyListDiv.innerHTML = ''; // 「読み込み中です」を消す
+
+        if (properties.length === 0) {
+          propertyListDiv.innerHTML = '<p>登録されている物件がありません。</p>';
+          return;
+        }
+
+        properties.forEach(property => {
+          const button = document.createElement('button');
+          button.textContent = `${property.id}：${property.name}`;
+          button.onclick = function() {
+            // room_select.html に物件IDと物件名を渡して画面遷移する
+            const params = new URLSearchParams();
+            params.append('propertyId', property.id);
+            params.append('propertyName', property.name);
+            window.location.href = `room_select.html?${params.toString()}`;
+          };
+          propertyListDiv.appendChild(button);
+        });
+      } catch (error) {
+        console.error('物件情報の取得に失敗しました:', error);
+        propertyListDiv.innerHTML = '<p>物件情報の取得に失敗しました。時間をおいて再度お試しください。</p>';
+      }
+    }
+
+    // 検索機能のセットアップ関数
+    function setupSearch() {
+      const searchBox = document.getElementById('search-box');
+      const propertyListDiv = document.getElementById('property-list');
+
+      searchBox.addEventListener('input', function() {
+        const searchTerm = searchBox.value.toLowerCase(); // 入力された文字を小文字に変換
+        const buttons = propertyListDiv.getElementsByTagName('button'); // 物件ボタンのリストを取得
+
+        for (let i = 0; i < buttons.length; i++) {
+          const button = buttons[i];
+          const buttonText = button.textContent.toLowerCase(); // ボタンのテキストも小文字に変換
+
+          // ボタンのテキストに検索キーワードが含まれていれば表示、そうでなければ非表示
+          if (buttonText.includes(searchTerm)) {
+            button.style.display = 'block';
+          } else {
+            button.style.display = 'none';
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
