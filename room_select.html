@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>部屋選択</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; margin: 10px; }
+    #room-list button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; }
+    .back-button { margin-bottom: 10px; padding: 8px 15px; }
+  </style>
+</head>
+<body>
+  <button class="back-button" onclick="history.back()">&lt; 物件選択に戻る</button>
+  <h1 id="property-name-display">物件名 Loading...</h1>
+
+  <div id="room-list">
+    <p>部屋情報を読み込み中です...</p>
+  </div>
+
+  <script>
+    // ページが読み込まれたら実行
+    window.onload = function() {
+      // URLから物件IDと物件名を取得
+      const urlParams = new URLSearchParams(window.location.search);
+      const propertyId = urlParams.get('propertyId');
+      const propertyName = urlParams.get('propertyName');
+
+      if (propertyName) {
+        document.getElementById('property-name-display').textContent = propertyName;
+      }
+
+      if (propertyId) {
+        fetchRooms(propertyId);
+      } else {
+        document.getElementById('room-list').innerHTML = '<p>物件が指定されていません。</p>';
+      }
+    };
+
+    // GASから部屋リストを取得して表示する関数 (まだ中身は空)
+    async function fetchRooms(propertyId) {
+      const roomListDiv = document.getElementById('room-list');
+      roomListDiv.innerHTML = `<p>${propertyId} の部屋情報を読み込み中です...</p>`;
+
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      // ★ ここに、部屋リストを取得するための新しいGASのウェブアプリURLが必要になるよ！ ★
+      // ★ (まだ作ってないから、今は仮のURLを入れておくか、コメントアウトしておく)       ★
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      // const gasWebAppUrlForRooms = 'YOUR_NEW_GAS_WEB_APP_URL_FOR_ROOMS_HERE?propertyId=' + propertyId;
+
+      try {
+        // const response = await fetch(gasWebAppUrlForRooms);
+        // if (!response.ok) { throw new Error('ネットワーク応答エラー'); }
+        // const rooms = await response.json();
+
+        // roomListDiv.innerHTML = ''; // 「読み込み中です」を消す
+        // rooms.forEach(room => { /* ... 部屋ボタンを作成して追加 ... */ });
+
+        // 今はまだGASの準備ができていないので、ダミー表示
+        roomListDiv.innerHTML = `<p>部屋リスト表示の準備中です (物件ID: ${propertyId})</p><button>101号室 (仮)</button><button>102号室 (仮)</button>`;
+
+      } catch (error) {
+        console.error('部屋情報の取得に失敗しました:', error);
+        roomListDiv.innerHTML = '<p>部屋情報の取得に失敗しました。</p>';
+      }
+    }
+  </script>
+</body>
+</html>
