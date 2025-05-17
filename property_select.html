@@ -48,7 +48,7 @@
       } catch (error) {
         console.error('LIFFの初期化に失敗しました:', error);
         // ユーザーにエラーを通知する処理（例: アラート表示など）
-        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。LIFF IDが正しく設定されているかああああああああああああああ確認してください。</p>';
+        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。LIFF IDが正しく設定されているか確認してください。</p>';
       }
     }
 
@@ -60,7 +60,7 @@
       // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
       // ★ ここに、さっきGASをデプロイした時に取得した「ウェブアプリのURL」を貼り付けてね！ ★
       // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxNpmAydEOsQaDgkwf7R4Qk4A1c-h5yEq6z62GLZE3dMGxYR-6_aB7OzZUMO_ncU8D1Lg/exec';
+      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxlUjH3_cTauAeu_QF2uHCTqmPnJt-T-qGWpDVYxjIvkKwLyYvmRGA2NFlhVme1m4G4Zg/exec';
 
       try {
         const response = await fetch(gasWebAppUrl);
