@@ -54,7 +54,7 @@
         console.error('[property_select] WOFFの初期化に失敗しました:', initError); // エラーメッセージを WOFF に変更
         console.error('[property_select] WOFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError))); // エラーメッセージを WOFF に変更
         // ユーザーにエラーを通知する処理（例: アラート表示など）
-        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。開発者コンソールaaaaaaaでエラーを確認してください。</p>';
+        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。開発者コンソールでエラーを確認してください。</p>';
       }
     }
 
@@ -117,7 +117,7 @@
         } else {
           // propertiesが配列でない場合の処理
           console.error('[property_select] GASから返されたデータが配列ではありません。', properties);
-          propertyListDiv.innerHTML = '<p>物件データの形式が正しくありません。開発者コンソールを確認してください。</p>';
+          propertyListDiv.innerHTML = '<p>物件データの形式が正しくありません。開発者コンソールaaaaaを確認してください。</p>';
         }
       } catch (error) {
         console.error('物件情報の取得に失敗しました:', error);
