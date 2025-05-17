@@ -69,38 +69,56 @@
       try {
         const response = await fetch(gasWebAppUrl);
         if (!response.ok) {
-          throw new Error('ネットワークの応答が正しくありませんでした。');
+          throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
         const properties = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
 
+        // ★★★ デバッグ用に追加: GASからのレスポンス内容と型を確認 ★★★
+        console.log('[property_select] GAS Response (properties):', properties);
+        console.log('[property_select] Type of properties:', typeof properties);
+        console.log('[property_select] Is properties an array?', Array.isArray(properties));
+
         propertyListDiv.innerHTML = ''; // 「読み込み中です」を消す
 
-        if (properties.length === 0) {
-          propertyListDiv.innerHTML = '<p>登録されている物件がありません。</p>';
-          return;
-        }
+        // propertiesが配列であることを確認してからforEachを実行
+        if (Array.isArray(properties)) {
+          if (properties.length === 0) {
+            propertyListDiv.innerHTML = '<p>登録されている物件がありません。</p>';
+            return;
+          }
 
-        properties.forEach(property => {
-          const button = document.createElement('button');
-          button.textContent = `${property.id}：${property.name}`;
-          button.onclick = function() {
-            // room_select.html に物件IDと物件名を渡して画面遷移する
-            const params = new URLSearchParams();
-            params.append('propertyId', property.id);
-            params.append('propertyName', property.name);
-            // liff.openWindow() を使って画面遷移
-            if (woff.isInClient()) {
-              woff.openWindow({
-                url: `room_select.html?${params.toString()}`,
-                external: false // WOFF内部での遷移
-              });
+          properties.forEach(property => {
+            const button = document.createElement('button');
+            // propertyオブジェクトに必要なidとnameがあるか確認
+            if (property && typeof property.id !== 'undefined' && typeof property.name !== 'undefined') {
+                button.textContent = `${property.id}：${property.name}`;
             } else {
-              // WOFFクライアント外の場合のフォールバック（通常のブラウザ遷移）
-              window.location.href = `room_select.html?${params.toString()}`;
+                button.textContent = '物件情報エラー';
+                console.error('[property_select] Invalid property data:', property);
             }
-          };
-          propertyListDiv.appendChild(button);
-        });
+            button.onclick = function() {
+              // room_select.html に物件IDと物件名を渡して画面遷移する
+              const params = new URLSearchParams();
+              params.append('propertyId', property.id);
+              params.append('propertyName', property.name);
+              // liff.openWindow() を使って画面遷移
+              if (woff.isInClient()) {
+                woff.openWindow({
+                  url: `room_select.html?${params.toString()}`,
+                  external: false // WOFF内部での遷移
+                });
+              } else {
+                // WOFFクライアント外の場合のフォールバック（通常のブラウザ遷移）
+                window.location.href = `room_select.html?${params.toString()}`;
+              }
+            };
+            propertyListDiv.appendChild(button);
+          });
+        } else {
+          // propertiesが配列でない場合の処理
+          console.error('[property_select] GASから返されたデータが配列ではありません。', properties);
+          propertyListDiv.innerHTML = '<p>物件データの形式が正しくありません。開発者コンソールを確認してください。</p>';
+        }
       } catch (error) {
         console.error('物件情報の取得に失敗しました:', error);
         propertyListDiv.innerHTML = '<p>物件情報の取得に失敗しました。時間をおいて再度お試しください。</p>';
