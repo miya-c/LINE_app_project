@@ -33,7 +33,7 @@
     async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
       try {
         // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
-        const woffIdForWorks = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFF ID (エンドポイントURL)
+        const woffIdForWorks = "https://line-app-project.vercel.app/property_select.html"; // WOFF ID (エンドポイントURL)
         console.log('[property_select] woff.init with woffId:', woffIdForWorks);
         await woff.init({ woffId: woffIdForWorks }); // SDKのエラーメッセージに従い、キーを woffId に戻す
         console.log('[property_select] woff.init successful.');
