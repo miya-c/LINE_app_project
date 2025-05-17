@@ -38,11 +38,12 @@
       try {
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         // ★ ここに、LINE Developersコンソールで取得したLIFF IDを設定してください！ ★
+        // ★ (これはLINE WORKSのWOFFアプリのエンドポイントURLです) ★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         const liffIdForInit = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFFのエンドポイントURL？
-        console.log('[initializeLiff] liff.init with liffId:', liffIdForInit);
+        console.log('[room_select] liff.init with liffId:', liffIdForInit);
         await liff.init({ liffId: liffIdForInit });
-        console.log('[initializeLiff] liff.init successful.');
+        console.log('[room_select] liff.init successful.');
 
         if (!liff.isLoggedIn()) {
           console.log("[initializeLiff] Not logged in.");
@@ -66,9 +67,9 @@
         } else {
           document.getElementById('room-list').innerHTML = '<p>物件IDが指定されていません。</p>';
         }
-      } catch (error) {
-        console.error('[initializeLiff] Error during initialization or fetching room info:', error);
-        console.error('[initializeLiff] Error details:', JSON.stringify(error)); // エラーオブジェクトの詳細を出力
+      } catch (initError) {
+        console.error('[room_select] Error during initialization or fetching room info:', initError);
+        console.error('[room_select] Error details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError))); // エラーオブジェクトの詳細を出力
         document.getElementById('room-list').innerHTML = '<p>アプリの起動または部屋情報の取得に失敗しました。</p>';
       }
     }
