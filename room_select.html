@@ -4,85 +4,138 @@
   <title>部屋選択</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- LIFF SDKの読み込み -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body { font-family: sans-serif; margin: 10px; }
+    h1, h2 { margin-top: 0; }
     #room-list button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; }
-    .back-button { margin-bottom: 10px; padding: 8px 15px; }
+    .property-name { font-size: 1.2em; margin-bottom: 15px; }
   </style>
 </head>
 <body>
-  <button class="back-button" onclick="history.back()">&lt; 物件選択に戻る</button>
-  <h1 id="property-name-display">物件名 Loading...</h1>
+  <h1>部屋選択</h1>
+  <div id="property-info">
+    <p class="property-name">物件名：<span id="property-name-display">読み込み中...</span></p>
+  </div>
 
   <div id="room-list">
+    <!-- ここにJavaScriptで部屋ボタンが追加される -->
     <p>部屋情報を読み込み中です...</p>
   </div>
 
   <script>
-    // ページが読み込まれたら実行
-    window.onload = function() {
-      // URLから物件IDと物件名を取得
-      const urlParams = new URLSearchParams(window.location.search);
-      const propertyId = urlParams.get('propertyId');
-      const propertyName = urlParams.get('propertyName');
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    // ★ ここに、GASをデプロイした時に取得した「ウェブアプリのURL」を設定してください！ ★
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    let gasWebAppUrl = 'https://script.google.com/macros/s/AKfycby41U0yjUwd4TA17FjtIrTtpPb6RRwv4U5HYNubTaWylRySkFqBpbun3YTJwPW4rPhx9g/exec'; 
 
-      if (propertyName) {
-        document.getElementById('property-name-display').textContent = propertyName;
-      }
+    window.addEventListener('DOMContentLoaded', (event) => {
+      initializeLiff();
+    });
 
-      if (propertyId) {
-        fetchRooms(propertyId);
-      } else {
-        document.getElementById('room-list').innerHTML = '<p>物件が指定されていません。</p>';
-      }
-    };
-
-    // GASから部屋リストを取得して表示する関数 (まだ中身は空)
-    async function fetchRooms(propertyId) {
-      const roomListDiv = document.getElementById('room-list');
-      roomListDiv.innerHTML = `<p>${propertyId} の部屋情報を読み込み中です...</p>`;
-
-      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-      // ★ ここに、部屋リストを取得するための新しいGASのウェブアプリURLが必要になるよ！ ★
-      // ★ (まだ作ってないから、今は仮のURLを入れておくか、コメントアウトしておく)       ★
-      // ★ ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ ★
-      // ★ さっきGASをデプロイして取得した「部屋リスト取得用の新しいウェブアプリURL」をここに設定！ ★
-      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-      const gasWebAppUrlForRoomsBase = 'https://script.google.com/macros/s/AKfycbyBmTvwjGDPGuoQcs4IYry1tqyZg7kbombCl_kSVoNZ4IO1W3iR_5ezNr5_Jp2G241PhQ/exec';
-      const gasWebAppUrlForRooms = `${gasWebAppUrlForRoomsBase}?propertyId=${propertyId}`;
-
+    async function initializeLiff() {
       try {
-        const response = await fetch(gasWebAppUrlForRooms);
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★ ここに、LINE Developersコンソールで取得したLIFF IDを設定してください！ ★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        const liffIdForInit = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFFのエンドポイントURL？
+        console.log('[initializeLiff] liff.init with liffId:', liffIdForInit);
+        await liff.init({ liffId: liffIdForInit });
+        console.log('[initializeLiff] liff.init successful.');
+
+        if (!liff.isLoggedIn()) {
+          console.log("[initializeLiff] Not logged in.");
+          // liff.login(); // 必要に応じてログイン処理
+        } else {
+          console.log("[initializeLiff] Logged in. OS:", liff.getOS(), "Language:", liff.getLanguage(), "Version:", liff.getVersion(), "isInClient:", liff.isInClient());
+        }
+        // URLパラメータから物件情報を取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const propertyId = urlParams.get('propertyId');
+        const propertyName = urlParams.get('propertyName');
+
+        if (propertyName) {
+          document.getElementById('property-name-display').textContent = propertyName;
+        } else {
+          document.getElementById('property-name-display').textContent = '物件情報なし';
+        }
+
+        if (propertyId) {
+          fetchRooms(propertyId, propertyName);
+        } else {
+          document.getElementById('room-list').innerHTML = '<p>物件IDが指定されていません。</p>';
+        }
+      } catch (error) {
+        console.error('[initializeLiff] Error during initialization or fetching room info:', error);
+        console.error('[initializeLiff] Error details:', JSON.stringify(error)); // エラーオブジェクトの詳細を出力
+        document.getElementById('room-list').innerHTML = '<p>アプリの起動または部屋情報の取得に失敗しました。</p>';
+      }
+    }
+
+    // GASから部屋リストを取得して表示する関数
+    async function fetchRooms(propertyId, propertyName) {
+      const roomListDiv = document.getElementById('room-list');
+      roomListDiv.innerHTML = '<p>部屋情報を読み込み中です...</p>';
+
+      // GASから実際に部屋データを取得する処理
+      // actionパラメータなどを適宜変更してください。
+      try {
+        // GASに物件IDを渡して部屋リストを要求
+        const response = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${propertyId}`);
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。');
         }
         const rooms = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
-
-        roomListDiv.innerHTML = ''; // 「読み込み中です」やダミー表示を消す
-
-        if (rooms.error) { // GAS側でエラーがあった場合 (例: 物件IDが指定されていない)
-          roomListDiv.innerHTML = `<p>エラー: ${rooms.error}</p>`;
-          return;
-        }
-
-        if (rooms.length === 0) {
-          roomListDiv.innerHTML = `<p>この物件には登録されている部屋がありません。</p>`;
-          return;
-        }
-
-        rooms.forEach(room => {
-          const button = document.createElement('button');
-          button.textContent = room.number; // 部屋番号を表示
-          button.onclick = function() {
-            // ここに部屋が選択された時の処理を書く (例: 指示数入力画面へ遷移)
-            alert(`「${room.number}」が選択されました！ (部屋ID: ${room.id}, 物件ID: ${propertyId})`);
-          };
-          roomListDiv.appendChild(button);
-        });
+        displayRooms(rooms, propertyId, propertyName);
       } catch (error) {
         console.error('部屋情報の取得に失敗しました:', error);
-        roomListDiv.innerHTML = '<p>部屋情報の取得に失敗しました。</p>';
+        roomListDiv.innerHTML = '<p>部屋情報の取得に失敗しました。時間をおいて再度お試しください。</p>';
+        return;
       }
+
+      // // 現時点ではダミーデータで表示します (上記GAS連携を有効にしたためコメントアウト)
+      // const dummyRooms = [
+      //   { id: "R101", name: "101号室" },
+      //   { id: "R102", name: "102号室" },
+      //   { id: "R201", name: "201号室" },
+      //   { id: "R202", name: "202号室" }
+      // ];
+      // displayRooms(dummyRooms, propertyId, propertyName);
+    }
+
+    function displayRooms(rooms, propertyId, propertyName) {
+      const roomListDiv = document.getElementById('room-list');
+      roomListDiv.innerHTML = ''; // 「読み込み中です」を消す
+
+      if (!rooms || rooms.length === 0) {
+        roomListDiv.innerHTML = '<p>この物件に登録されている部屋はありません。</p>';
+        return;
+      }
+
+      rooms.forEach(room => {
+        const button = document.createElement('button');
+        button.textContent = room.name; // GASから取得する部屋名に応じて調整
+        button.onclick = function() {
+          // meter_reading.html に物件ID、物件名、部屋ID、部屋名を渡して画面遷移
+          const params = new URLSearchParams();
+          params.append('propertyId', propertyId);
+          params.append('propertyName', propertyName);
+          params.append('roomId', room.id); // GASから取得する部屋IDに応じて調整
+          params.append('roomName', room.name); // GASから取得する部屋名に応じて調整
+          
+          if (liff.isInClient()) {
+            liff.openWindow({
+              url: `meter_reading.html?${params.toString()}`, // 次の画面名を meter_reading.html と仮定
+              external: false
+            });
+          } else {
+            // LIFFブラウザ外の場合のフォールバック
+            window.location.href = `meter_reading.html?${params.toString()}`;
+          }
+        };
+        roomListDiv.appendChild(button);
+      });
     }
   </script>
 </body>
