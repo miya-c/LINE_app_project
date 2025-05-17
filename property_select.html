@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- WOFF SDKの読み込み (LINE WORKS用) -->
   <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
-  <!-- ここにWOFF特有の初期設定やCSSのリンクなどが入るかもしれないね -->
+  <link rel="stylesheet" href="style.css">
   <style>
     /* 簡単な見た目のためのCSS（後でちゃんと作る） */
     body { font-family: sans-serif; margin: 10px; }
@@ -27,14 +27,12 @@
   <script>
     // WOFFアプリが初期化されたら実行される関数
     window.addEventListener('DOMContentLoaded', (event) => {
-      initializeLiff();
+      initializeWoff(); // 関数名を initializeLiff から initializeWoff に変更
     });
 
-    async function initializeLiff() {
+    async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
       try {
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★ ここはLINE WORKSのWOFFアプリのエンドポイントURLです ★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
         const woffIdForWorks = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFF ID (エンドポイントURL)
         console.log('[property_select] woff.init with woffId:', woffIdForWorks);
         await woff.init({ woffId: woffIdForWorks }); // SDKのエラーメッセージに従い、キーを woffId に戻す
@@ -49,8 +47,8 @@
         fetchProperties();
         setupSearch();
       } catch (initError) {
-        console.error('[property_select] LIFFの初期化に失敗しました:', initError);
-        console.error('[property_select] LIFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError)));
+        console.error('[property_select] WOFFの初期化に失敗しました:', initError); // エラーメッセージを WOFF に変更
+        console.error('[property_select] WOFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError))); // エラーメッセージを WOFF に変更
         // ユーザーにエラーを通知する処理（例: アラート表示など）
         document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。開発者コンソールでエラーを確認してください。</p>';
       }
@@ -61,9 +59,7 @@
       const propertyListDiv = document.getElementById('property-list');
       propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; // いったん表示をリセット
 
-      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-      // ★ ここに、さっきGASをデプロイした時に取得した「ウェブアプリのURL」を貼り付けてね！ ★
-      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxlUjH3_cTauAeu_QF2uHCTqmPnJt-T-qGWpDVYxjIvkKwLyYvmRGA2NFlhVme1m4G4Zg/exec';
 
       try {
@@ -95,7 +91,7 @@
                 external: false // WOFF内部での遷移
               });
             } else {
-              // LIFFブラウザ外の場合のフォールバック（通常のブラウザ遷移）
+              // WOFFクライアント外の場合のフォールバック（通常のブラウザ遷移）
               window.location.href = `room_select.html?${params.toString()}`;
             }
           };
