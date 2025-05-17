@@ -37,7 +37,7 @@
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         const woffIdForWorks = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFF ID (エンドポイントURL)
         console.log('[property_select] woff.init with woffId:', woffIdForWorks);
-        await woff.init({ liffId: woffIdForWorks }); // キーを liffId にして試してみる
+        await woff.init({ woffId: woffIdForWorks }); // SDKのエラーメッセージに従い、キーを woffId に戻す
         console.log('[property_select] woff.init successful.');
         if (!woff.isLoggedIn()) {
           // ログインしていなければログインを促す（WOFFでは通常自動ログインされることが多い）
