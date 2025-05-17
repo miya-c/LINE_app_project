@@ -67,7 +67,7 @@
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxlUjH3_cTauAeu_QF2uHCTqmPnJt-T-qGWpDVYxjIvkKwLyYvmRGA2NFlhVme1m4G4Zg/exec';
 
       try {
-        const response = await fetch(gasWebAppUrl);
+        const response = await fetch(`${gasWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
