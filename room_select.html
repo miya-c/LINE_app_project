@@ -40,16 +40,16 @@
         // ★ ここに、LINE Developersコンソールで取得したLIFF IDを設定してください！ ★
         // ★ (これはLINE WORKSのWOFFアプリのエンドポイントURLです) ★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        const liffIdForInit = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFFのエンドポイントURL？
-        console.log('[room_select] liff.init with liffId:', liffIdForInit);
-        await liff.init({ liffId: liffIdForInit });
-        console.log('[room_select] liff.init successful.');
+        const woffIdForInit = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFF ID (エンドポイントURL)
+        console.log('[room_select] woff.init with woffId:', woffIdForInit);
+        await woff.init({ woffId: woffIdForInit }); // liffId ではなく woffId かもしれません。
+        console.log('[room_select] woff.init successful.');
 
-        if (!liff.isLoggedIn()) {
+        if (!woff.isLoggedIn()) {
           console.log("[initializeLiff] Not logged in.");
-          // liff.login(); // 必要に応じてログイン処理
+          // woff.login(); // 必要に応じてログイン処理
         } else {
-          console.log("[initializeLiff] Logged in. OS:", liff.getOS(), "Language:", liff.getLanguage(), "Version:", liff.getVersion(), "isInClient:", liff.isInClient());
+          console.log("[initializeLiff] Logged in. OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
         }
         // URLパラメータから物件情報を取得
         const urlParams = new URLSearchParams(window.location.search);
@@ -125,8 +125,8 @@
           params.append('roomId', room.id); // GASから取得する部屋IDに応じて調整
           params.append('roomName', room.name); // GASから取得する部屋名に応じて調整
           
-          if (liff.isInClient()) {
-            liff.openWindow({
+          if (woff.isInClient()) {
+            woff.openWindow({
               url: `meter_reading.html?${params.toString()}`, // 次の画面名を meter_reading.html と仮定
               external: false
             });
