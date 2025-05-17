@@ -35,15 +35,15 @@
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         // ★ ここはLINE WORKSのWOFFアプリのエンドポイントURLです ★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        const liffIdForWorks = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A";
-        console.log('[property_select] liff.init with liffId:', liffIdForWorks);
-        await liff.init({ liffId: liffIdForWorks });
-        console.log('[property_select] liff.init successful.');
-        if (!liff.isLoggedIn()) {
+        const woffIdForWorks = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFF ID (エンドポイントURL)
+        console.log('[property_select] woff.init with woffId:', woffIdForWorks);
+        await woff.init({ woffId: woffIdForWorks }); // liffId ではなく woffId かもしれません。ドキュメントを確認してください。
+        console.log('[property_select] woff.init successful.');
+        if (!woff.isLoggedIn()) {
           // ログインしていなければログインを促す（WOFFでは通常自動ログインされることが多い）
           // 必要に応じてログイン処理を実装してください
           console.log("ログインしていません。");
-          // liff.login();
+          // woff.login();
         }
         // LIFFの初期化が成功したら、アプリのメイン処理を開始
         fetchProperties();
@@ -89,8 +89,8 @@
             params.append('propertyId', property.id);
             params.append('propertyName', property.name);
             // liff.openWindow() を使って画面遷移
-            if (liff.isInClient()) {
-              liff.openWindow({
+            if (woff.isInClient()) {
+              woff.openWindow({
                 url: `room_select.html?${params.toString()}`,
                 external: false // WOFF内部での遷移
               });
