@@ -33,10 +33,10 @@
     async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
       try {
         // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
-        const woffIdForWorks = "https://line-app-project.vercel.app/property_select.html"; // WOFF ID (エンドポイントURL)
+        const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // WOFF アプリIDに変更
         
         // ★★★ デバッグ用に追加: woffIdForWorks の値をアラートで表示 ★★★
-        alert("WOFF ID (エンドポイントURL) の確認:\\n" + woffIdForWorks + "\\n\\nこの値がLINE WORKS Developer Consoleの登録内容と完全に一致しているか確認してください。");
+        alert("WOFF アプリID の確認:\\n" + woffIdForWorks + "\\n\\nこの値がLINE WORKS Developer Consoleで発行されたWOFFアプリIDと一致しているか確認してください。");
 
         console.log('[property_select] woff.init with woffId:', woffIdForWorks);
         await woff.init({ woffId: woffIdForWorks }); // SDKのエラーメッセージに従い、キーを woffId に戻す
