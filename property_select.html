@@ -33,9 +33,12 @@
     async function initializeLiff() {
       try {
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★ ここに、LINE Developersコンソールで取得したLIFF IDを設定してください！ ★
+        // ★ ここはLINE WORKSのWOFFアプリのエンドポイントURLです ★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        await liff.init({ liffId: "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A" }); // YOUR_LIFF_IDを実際のLIFF IDに置き換えてください
+        const liffIdForWorks = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A";
+        console.log('[property_select] liff.init with liffId:', liffIdForWorks);
+        await liff.init({ liffId: liffIdForWorks });
+        console.log('[property_select] liff.init successful.');
         if (!liff.isLoggedIn()) {
           // ログインしていなければログインを促す（WOFFでは通常自動ログインされることが多い）
           // 必要に応じてログイン処理を実装してください
@@ -45,10 +48,11 @@
         // LIFFの初期化が成功したら、アプリのメイン処理を開始
         fetchProperties();
         setupSearch();
-      } catch (error) {
-        console.error('LIFFの初期化に失敗しました:', error);
+      } catch (initError) {
+        console.error('[property_select] LIFFの初期化に失敗しました:', initError);
+        console.error('[property_select] LIFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError)));
         // ユーザーにエラーを通知する処理（例: アラート表示など）
-        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。LIFF IDが正しく設定されているか確認してください。</p>';
+        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。開発者コンソールでエラーを確認してください。</p>';
       }
     }
 
