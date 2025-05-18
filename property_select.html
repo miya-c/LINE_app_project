@@ -64,7 +64,7 @@
       propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; // いったん表示をリセット
 
       // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbw1cQ0xPggFarfIT0hpXtMi1-dFlBblQdVYl6iqfxDbb7gQuP-NlHGQ2Jk6_k5iJgBOiw/exec';
+      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbzzJSFvDIewfYUY6XUDo0BSFc1_CMec6zdwY8_WzbNF54ximf1AT5yf7rSmIJuzeDX8Qg/exec';
 
       try {
         const response = await fetch(`${gasWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
