@@ -28,21 +28,21 @@
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
     // ★ ここに、GASをデプロイした時に取得した「ウェブアプリのURL」を設定してください！ ★
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    let gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxlUjH3_cTauAeu_QF2uHCTqmPnJt-T-qGWpDVYxjIvkKwLyYvmRGA2NFlhVme1m4G4Zg/exec'; 
+    let gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyv2UPEN5ysH1RLMTgYAZJMMphy_Q3aVt-ZEvbkLgmIQs0yuII1Tlu9z4LgezJeZeY8/exec'; 
 
     window.addEventListener('DOMContentLoaded', (event) => {
-      initializeLiff();
+      initializeWoff(); // 関数名を initializeLiff から initializeWoff に変更
     });
 
-    async function initializeLiff() {
+    async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
       try {
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         // ★ ここに、LINE Developersコンソールで取得したLIFF IDを設定してください！ ★
         // ★ (これはLINE WORKSのWOFFアプリのエンドポイントURLです) ★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        const woffIdForInit = "https://woff.worksmobile.com/woff/Mtmj4rddmxBddYCPD0G81A"; // WOFF ID (エンドポイントURL)
-        console.log('[room_select] woff.init with woffId:', woffIdForInit);
-        await woff.init({ woffId: woffIdForInit }); // SDKのエラーメッセージに従い、キーを woffId に戻す
+        const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // WOFF アプリIDに変更 (property_select.html と同様の値)
+        console.log('[room_select] woff.init with woffId:', woffIdForWorks);
+        await woff.init({ woffId: woffIdForWorks }); // woffId を使用
         console.log('[room_select] woff.init successful.');
 
         if (!woff.isLoggedIn()) {
