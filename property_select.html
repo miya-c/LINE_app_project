@@ -64,20 +64,18 @@
       propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; // いったん表示をリセット
 
       // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbwc76RN2_3cBg3qC4NXpWcBrf__op2oUxmSlkj6IyHTf9OCO-tvUz8-4arsm6wKqIFHjA/exec'; // ← ★★★ 更新 ★★★
+      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyBLMi-X4pEP9Et1IWGUUvCJvu3u51e8kOTaz2OCDyp0zQpxWFBrU3m1rAFMGGKQzvYag/exec'; // ← ★★★ 更新 ★★★
 
       try {
         const response = await fetch(`${gasWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
-        const responseObject = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
+        // ★★★ 物件.gs から直接配列が返されるように変更したため、responseObject.data を参照しない ★★★
+        const properties = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
 
         // ★★★ デバッグ用に追加: GASからのレスポンス内容と型を確認 ★★★
-        console.log('[property_select] GAS Response (raw object):', responseObject);
-        // ★★★ 実際の物件データ配列は responseObject.data に入る ★★★
-        const properties = responseObject.data; 
-        console.log('[property_select] Extracted properties from responseObject.data:', properties);
+        console.log('[property_select] GAS Response (raw array):', properties);
         console.log('[property_select] Type of properties:', typeof properties);
         console.log('[property_select] Is properties an array?', Array.isArray(properties));
 
