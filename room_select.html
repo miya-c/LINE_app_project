@@ -81,6 +81,9 @@
     }
 
     function displayRooms(rooms, propertyId, propertyName) {
+      // ★★★ 追加: displayRooms 関数に入った直後の rooms の状態を確認 ★★★
+      console.log('[displayRooms] Entry - Type of rooms:', typeof rooms, 'Is Array:', Array.isArray(rooms), 'Content:', JSON.stringify(rooms));
+
       const roomListDiv = document.getElementById('room-list');
       roomListDiv.innerHTML = ''; 
 
