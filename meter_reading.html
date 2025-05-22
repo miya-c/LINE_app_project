@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>検針情報</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: sans-serif; margin: 10px; }
+    .info-section { margin-bottom: 20px; }
+    .info-section h2 { margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    .info-item { margin-bottom: 8px; }
+    .info-label { font-weight: bold; }
+    #meter-readings-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    #meter-readings-table th, #meter-readings-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    #meter-readings-table th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>検針情報</h1>
+
+  <div class="info-section">
+    <h2>物件・部屋情報</h2>
+    <div class="info-item"><span class="info-label">物件名:</span> <span id="property-name"></span></div>
+    <div class="info-item"><span class="info-label">部屋名:</span> <span id="room-name"></span></div>
+    <div class="info-item"><span class="info-label">物件ID:</span> <span id="property-id"></span></div>
+    <div class="info-item"><span class="info-label">部屋ID:</span> <span id="room-id"></span></div>
+  </div>
+
+  <div class="info-section">
+    <h2>検針履歴</h2>
+    <div id="meter-readings-list">
+      <p>検針データを読み込み中です...</p>
+      <table id="meter-readings-table" style="display:none;">
+        <thead>
+          <tr>
+            <th>検針日時</th>
+            <th>今回の指示数</th>
+            <th>前回指示数</th>
+            <th>今回使用量</th>
+            <th>状態</th>
+            <th>写真</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ここに検針データが挿入されます -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
+    const gasWebAppUrl = '''https://script.google.com/macros/s/AKfycbwS-sTvx9Jte1wB6fUK-_irBkxi4h9wj9EX6XylaGo6m9WSVivpZgD_MgrQccSaVesKeQ/exec'''; // 物件.gs のURL
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        console.log('[meter_reading] woff.init with woffId:', woffIdForWorks);
+        await woff.init({ woffId: woffIdForWorks });
+        console.log('[meter_reading] woff.init successful.');
+
+        if (!woff.isLoggedIn()) {
+          console.log("[meter_reading] Not logged in.");
+          // 必要に応じてログイン処理をここに
+        } else {
+          console.log("[meter_reading] Logged in.");
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const propertyId = params.get('propertyId');
+        const propertyName = params.get('propertyName');
+        const roomId = params.get('roomId');
+        const roomName = params.get('roomName');
+
+        document.getElementById('property-id').textContent = propertyId || 'N/A';
+        document.getElementById('property-name').textContent = propertyName || 'N/A';
+        document.getElementById('room-id').textContent = roomId || 'N/A';
+        document.getElementById('room-name').textContent = roomName || 'N/A';
+
+        if (roomId) {
+          fetchMeterReadings(roomId);
+        } else {
+          document.getElementById('meter-readings-list').innerHTML = '<p>部屋IDが指定されていないため、検針データを取得できません。</p>';
+        }
+
+      } catch (initError) {
+        console.error('[meter_reading] WOFFの初期化またはデータ表示に失敗しました:', initError);
+        document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に失敗しました。</p>';
+      }
+    });
+
+    async function fetchMeterReadings(roomId) {
+      const listDiv = document.getElementById('meter-readings-list');
+      const table = document.getElementById('meter-readings-table');
+      const tbody = table.querySelector('tbody');
+      listDiv.querySelector('p').textContent = '検針データを読み込み中です...';
+      tbody.innerHTML = ''; // 古いデータをクリア
+
+      try {
+        const response = await fetch(`${gasWebAppUrl}?action=getMeterReadings&roomId=${roomId}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`検針データの取得に失敗しました。ステータス: ${response.status}, 詳細: ${errorText}`);
+        }
+        const readings = await response.json();
+
+        if (readings.error) {
+          throw new Error(readings.error);
+        }
+        
+        console.log('[meter_reading] Fetched meter readings:', readings);
+
+        if (Array.isArray(readings) && readings.length > 0) {
+          listDiv.querySelector('p').style.display = 'none';
+          table.style.display = '';
+
+          readings.forEach(reading => {
+            const row = tbody.insertRow();
+            row.insertCell().textContent = reading.date || 'N/A';
+            row.insertCell().textContent = reading.currentReading || 'N/A';
+            row.insertCell().textContent = reading.previousReading || 'N/A';
+            row.insertCell().textContent = reading.usage || 'N/A';
+            row.insertCell().textContent = reading.status || 'N/A';
+            const photoCell = row.insertCell();
+            if (reading.photoUrl) {
+              const img = document.createElement('img');
+              img.src = reading.photoUrl;
+              img.alt = '検針写真';
+              img.style.maxWidth = '100px'; // 簡単なスタイル
+              img.style.maxHeight = '100px';
+              photoCell.appendChild(img);
+            } else {
+              photoCell.textContent = 'なし';
+            }
+          });
+        } else {
+          listDiv.querySelector('p').textContent = 'この部屋の検針データはありません。';
+          table.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('[meter_reading] fetchMeterReadings error:', error);
+        listDiv.querySelector('p').textContent = `検針データの取得に失敗しました: ${error.message}`;
+        table.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>
