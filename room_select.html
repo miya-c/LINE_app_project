@@ -25,36 +25,30 @@
   </div>
 
   <script>
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    // ★ ここに、GASをデプロイした時に取得した「ウェブアプリのURL」を設定してください！ ★
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    let gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyv2UPEN5ysH1RLMTgYAZJMMphy_Q3aVt-ZEvbkLgmIQs0yuII1Tlu9z4LgezJeZeY8/exec'; 
-
     window.addEventListener('DOMContentLoaded', (event) => {
-      initializeWoff(); // 関数名を initializeLiff から initializeWoff に変更
+      initializeWoff();
     });
 
-    async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
+    async function initializeWoff() {
       try {
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★ ここに、LINE Developersコンソールで取得したLIFF IDを設定してください！ ★
-        // ★ (これはLINE WORKSのWOFFアプリのエンドポイントURLです) ★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // WOFF アプリIDに変更 (property_select.html と同様の値)
+        const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
         console.log('[room_select] woff.init with woffId:', woffIdForWorks);
-        await woff.init({ woffId: woffIdForWorks }); // woffId を使用
+        await woff.init({ woffId: woffIdForWorks });
         console.log('[room_select] woff.init successful.');
 
         if (!woff.isLoggedIn()) {
-          console.log("[initializeLiff] Not logged in.");
-          // woff.login(); // 必要に応じてログイン処理
+          console.log("[initializeWoff] Not logged in.");
         } else {
-          console.log("[initializeLiff] Logged in. OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
+          console.log("[initializeWoff] Logged in. OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
         }
-        // URLパラメータから物件情報を取得
-        const urlParams = new URLSearchParams(window.location.search);
-        const propertyId = urlParams.get('propertyId');
-        const propertyName = urlParams.get('propertyName');
+
+        // ★★★ sessionStorageから物件情報と部屋情報を取得 ★★★
+        const propertyId = sessionStorage.getItem('selectedPropertyId');
+        const propertyName = sessionStorage.getItem('selectedPropertyName');
+        const roomsString = sessionStorage.getItem('selectedRooms');
+        
+        console.log('[room_select] Loaded from sessionStorage - propertyId:', propertyId, 'propertyName:', propertyName, 'roomsString:', roomsString);
+
 
         if (propertyName) {
           document.getElementById('property-name-display').textContent = propertyName;
@@ -62,67 +56,40 @@
           document.getElementById('property-name-display').textContent = '物件情報なし';
         }
 
-        if (propertyId) {
-          fetchRooms(propertyId, propertyName);
+        if (propertyId && roomsString) {
+          try {
+            const rooms = JSON.parse(roomsString);
+            console.log('[room_select] Parsed rooms from sessionStorage:', rooms);
+            displayRooms(rooms, propertyId, propertyName);
+          } catch (e) {
+            console.error('[room_select] sessionStorageから部屋情報の解析に失敗しました:', e);
+            document.getElementById('room-list').innerHTML = '<p>部屋情報の読み込みに失敗しました。(不正なデータ形式)</p>';
+          }
         } else {
-          document.getElementById('room-list').innerHTML = '<p>物件IDが指定されていません。</p>';
+          let errorMsg = '';
+          if (!propertyId) errorMsg += '物件IDがありません。';
+          if (!roomsString) errorMsg += (errorMsg ? ' ' : '') + '部屋情報がありません。';
+          console.warn('[room_select] sessionStorageからの情報が不足:', errorMsg);
+          document.getElementById('room-list').innerHTML = `<p>部屋情報の読み込みに失敗しました。(${errorMsg})</p>`;
         }
       } catch (initError) {
-        console.error('[room_select] Error during initialization or fetching room info:', initError);
-        console.error('[room_select] Error details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError))); // エラーオブジェクトの詳細を出力
-        document.getElementById('room-list').innerHTML = '<p>アプリの起動または部屋情報の取得に失敗しました。</p>';
+        console.error('[room_select] Error during initialization or displaying room info:', initError);
+        document.getElementById('room-list').innerHTML = '<p>アプリの起動または部屋情報の表示に失敗しました。</p>';
       }
-    }
-
-    // GASから部屋リストを取得して表示する関数
-    async function fetchRooms(propertyId, propertyName) {
-      const roomListDiv = document.getElementById('room-list');
-      roomListDiv.innerHTML = '<p>部屋情報を読み込み中です...</p>';
-
-      try {
-        const response = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${propertyId}`);
-        // ★★★ デバッグ用: レスポンスのステータスとヘッダーを確認 ★★★
-        console.log('[room_select] GAS Response Status:', response.status);
-        console.log('[room_select] GAS Response Headers:', response.headers.get('Content-Type'));
-
-        if (!response.ok) {
-          // ★★★ エラーレスポンスの内容も確認 ★★★
-          const errorText = await response.text();
-          console.error('[room_select] GAS Error Response Text:', errorText);
-          throw new Error(`ネットワークの応答が正しくありませんでした。ステータス: ${response.status}, 本文: ${errorText}`);
-        }
-        const roomsData = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
-        
-        // ★★★ デバッグ用: GASからのレスポンス内容と型を確認 ★★★
-        console.log('[room_select] GAS Response (raw data):', roomsData);
-        console.log('[room_select] Type of roomsData:', typeof roomsData);
-        console.log('[room_select] Is roomsData an array?', Array.isArray(roomsData));
-
-        displayRooms(roomsData, propertyId, propertyName);
-      } catch (error) {
-        console.error('部屋情報の取得に失敗しました:', error);
-        roomListDiv.innerHTML = '<p>部屋情報の取得に失敗しました。時間をおいて再度お試しください。</p>';
-        return;
-      }
-
-      // // 現時点ではダミーデータで表示します (上記GAS連携を有効にしたためコメントアウト)
-      // const dummyRooms = [
-      //   { id: "R101", name: "101号室" },
-      //   { id: "R102", name: "102号室" },
-      //   { id: "R201", name: "201号室" },
-      //   { id: "R202", name: "202号室" }
-      // ];
-      // displayRooms(dummyRooms, propertyId, propertyName);
     }
 
     function displayRooms(rooms, propertyId, propertyName) {
       const roomListDiv = document.getElementById('room-list');
-      roomListDiv.innerHTML = ''; // 「読み込み中です」を消す
+      roomListDiv.innerHTML = ''; 
 
-      // ★★★ rooms が配列であることをより確実にチェック ★★★
-      if (!Array.isArray(rooms) || rooms.length === 0) {
-        console.warn('[room_select] 部屋データが空または配列ではありません。', rooms);
-        roomListDiv.innerHTML = '<p>この物件に登録されている部屋はありません。またはデータの形式が正しくありません。</p>';
+      if (!Array.isArray(rooms)) { 
+        console.warn('[room_select] 部屋データが配列ではありません。', rooms);
+        roomListDiv.innerHTML = '<p>部屋データの形式が正しくありません。</p>';
+        return;
+      }
+      if (rooms.length === 0) {
+        console.warn('[room_select] この物件に登録されている部屋はありません。', rooms);
+        roomListDiv.innerHTML = '<p>この物件に登録されている部屋はありません。</p>';
         return;
       }
 
