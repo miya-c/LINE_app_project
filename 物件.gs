@@ -121,7 +121,7 @@ function doGet(e) {
       }
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const sheetName = '検針データ'; // 検針データのシート名
+      const sheetName = '検針データ'; // 検針データのシート名
       const sheet = spreadsheet.getSheetByName(sheetName);
 
       if (!sheet) {
