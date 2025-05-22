@@ -47,12 +47,13 @@
           <!-- ここに検針データが挿入されます -->
         </tbody>
       </table>
+      <p id="no-data-message" style="display:none; color:red;"></p>
     </div>
   </div>
 
   <script>
     const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
-    const gasWebAppUrl = '''https://script.google.com/macros/s/AKfycbwS-sTvx9Jte1wB6fUK-_irBkxi4h9wj9EX6XylaGo6m9WSVivpZgD_MgrQccSaVesKeQ/exec'''; // 物件.gs のURL
+    const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxy_zC6XkqiXm_fw4xbIZ822tx5KkzBpURmxlX5rgng94QAJmJbTZkOkeybdTJxYh8Whw/exec'; // 物件.gs のURL
 
     window.addEventListener('DOMContentLoaded', async () => {
       try {
@@ -67,22 +68,7 @@
           console.log("[meter_reading] Logged in.");
         }
 
-        const params = new URLSearchParams(window.location.search);
-        const propertyId = params.get('propertyId');
-        const propertyName = params.get('propertyName');
-        const roomId = params.get('roomId');
-        const roomName = params.get('roomName');
-
-        document.getElementById('property-id').textContent = propertyId || 'N/A';
-        document.getElementById('property-name').textContent = propertyName || 'N/A';
-        document.getElementById('room-id').textContent = roomId || 'N/A';
-        document.getElementById('room-name').textContent = roomName || 'N/A';
-
-        if (roomId) {
-          fetchMeterReadings(roomId);
-        } else {
-          document.getElementById('meter-readings-list').innerHTML = '<p>部屋IDが指定されていないため、検針データを取得できません。</p>';
-        }
+        loadMeterReadings();
 
       } catch (initError) {
         console.error('[meter_reading] WOFFの初期化またはデータ表示に失敗しました:', initError);
@@ -90,18 +76,32 @@
       }
     });
 
-    async function fetchMeterReadings(roomId) {
-      const listDiv = document.getElementById('meter-readings-list');
-      const table = document.getElementById('meter-readings-table');
-      const tbody = table.querySelector('tbody');
-      listDiv.querySelector('p').textContent = '検針データを読み込み中です...';
-      tbody.innerHTML = ''; // 古いデータをクリア
+    async function loadMeterReadings() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const propertyId = urlParams.get('propertyId');
+      const propertyName = urlParams.get('propertyName');
+      const roomId = urlParams.get('roomId');
+      const roomName = urlParams.get('roomName');
+
+      document.getElementById('property-id').textContent = propertyId || 'N/A';
+      document.getElementById('property-name').textContent = propertyName || 'N/A';
+      document.getElementById('room-id').textContent = roomId || 'N/A';
+      document.getElementById('room-name').textContent = roomName || 'N/A';
+
+      if (!propertyId || !roomId) {
+        console.error('[meter_reading] 物件IDまたは部屋IDがURLパラメータにありません。');
+        document.getElementById('no-data-message').textContent = '物件情報または部屋情報が不足しているため、検針データを取得できません。';
+        document.getElementById('no-data-message').style.display = 'block';
+        return;
+      }
+
+      const tableBody = document.getElementById('meter-readings-table').getElementsByTagName('tbody')[0];
+      const noDataMessage = document.getElementById('no-data-message');
 
       try {
-        const response = await fetch(`${gasWebAppUrl}?action=getMeterReadings&roomId=${roomId}`);
+        const response = await fetch(`${gasWebAppUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`); // 変数名を修正
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`検針データの取得に失敗しました。ステータス: ${response.status}, 詳細: ${errorText}`);
+          throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
         const readings = await response.json();
 
@@ -112,11 +112,11 @@
         console.log('[meter_reading] Fetched meter readings:', readings);
 
         if (Array.isArray(readings) && readings.length > 0) {
-          listDiv.querySelector('p').style.display = 'none';
-          table.style.display = '';
+          noDataMessage.style.display = 'none';
+          tableBody.innerHTML = ''; // 古いデータをクリア
 
           readings.forEach(reading => {
-            const row = tbody.insertRow();
+            const row = tableBody.insertRow();
             row.insertCell().textContent = reading.date || 'N/A';
             row.insertCell().textContent = reading.currentReading || 'N/A';
             row.insertCell().textContent = reading.previousReading || 'N/A';
@@ -135,13 +135,15 @@
             }
           });
         } else {
-          listDiv.querySelector('p').textContent = 'この部屋の検針データはありません。';
-          table.style.display = 'none';
+          noDataMessage.textContent = 'この部屋の検針データはありません。';
+          noDataMessage.style.display = 'block';
+          document.getElementById('meter-readings-table').style.display = 'none';
         }
       } catch (error) {
         console.error('[meter_reading] fetchMeterReadings error:', error);
-        listDiv.querySelector('p').textContent = `検針データの取得に失敗しました: ${error.message}`;
-        table.style.display = 'none';
+        noDataMessage.textContent = `検針データの取得に失敗しました: ${error.message}`;
+        noDataMessage.style.display = 'block';
+        document.getElementById('meter-readings-table').style.display = 'none';
       }
     }
   </script>
