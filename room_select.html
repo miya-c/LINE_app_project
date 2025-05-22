@@ -60,6 +60,8 @@
           try {
             const rooms = JSON.parse(roomsString);
             console.log('[room_select] Parsed rooms from sessionStorage:', rooms);
+            // ★★★ 追加: displayRooms に渡す直前の rooms の型と内容を確認 ★★★
+            console.log('[room_select] Before calling displayRooms - Type of rooms:', typeof rooms, 'Is Array:', Array.isArray(rooms), 'Content:', JSON.stringify(rooms));
             displayRooms(rooms, propertyId, propertyName);
           } catch (e) {
             console.error('[room_select] sessionStorageから部屋情報の解析に失敗しました:', e);
