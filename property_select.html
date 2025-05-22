@@ -27,8 +27,11 @@
   <script>
     // WOFFアプリが初期化されたら実行される関数
     window.addEventListener('DOMContentLoaded', (event) => {
-      initializeWoff(); // 関数名を initializeLiff から initializeWoff に変更
+      initializeWoff();
     });
+
+    // ★★★ 部屋.gs のウェブアプリURLを追加 ★★★
+    const gasRoomWebAppUrl = 'https://script.google.com/macros/s/AKfycbyv2UPEN5ysH1RLMTgYAZJMMphy_Q3aVt-ZEvbkLgmIQs0yuII1Tlu9z4LgezJeZeY8/exec'; // 部屋.gs の正しいデプロイID
 
     async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
       try {
@@ -61,13 +64,12 @@
     // GASから物件リストを取得して表示する関数
     async function fetchProperties() {
       const propertyListDiv = document.getElementById('property-list');
-      propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; // いったん表示をリセット
+      propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; 
 
-      // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyBLMi-X4pEP9Et1IWGUUvCJvu3u51e8kOTaz2OCDyp0zQpxWFBrU3m1rAFMGGKQzvYag/exec'; // ← ★★★ 更新 ★★★
+      const gasPropertyWebAppUrl = 'https://script.google.com/macros/s/AKfycbyBLMi-X4pEP9Et1IWGUUvCJvu3u51e8kOTaz2OCDyp0zQpxWFBrU3m1rAFMGGKQzvYag/exec'; // 物件.gs のデプロイID
 
       try {
-        const response = await fetch(`${gasWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
+        const response = await fetch(`${gasPropertyWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
@@ -97,20 +99,41 @@
                 button.textContent = '物件情報エラー';
                 console.error('[property_select] Invalid property data:', property);
             }
-            button.onclick = function() {
-              // room_select.html に物件IDと物件名を渡して画面遷移する
-              const params = new URLSearchParams();
-              params.append('propertyId', property.id);
-              params.append('propertyName', property.name);
-              // liff.openWindow() を使って画面遷移
-              if (woff.isInClient()) {
-                woff.openWindow({
-                  url: `room_select.html?${params.toString()}`,
-                  external: false // WOFF内部での遷移
-                });
-              } else {
-                // WOFFクライアント外の場合のフォールバック（通常のブラウザ遷移）
-                window.location.href = `room_select.html?${params.toString()}`;
+            button.onclick = async function() { // ★★★ async function に変更
+              try {
+                // ★★★ 部屋情報を取得 ★★★
+                console.log(`[property_select] Fetching rooms for propertyId: ${property.id} from URL: ${gasRoomWebAppUrl}?action=getRooms&propertyId=${property.id}`);
+                const roomResponse = await fetch(`${gasRoomWebAppUrl}?action=getRooms&propertyId=${property.id}`);
+                
+                console.log('[property_select] Room Response Status:', roomResponse.status);
+                console.log('[property_select] Room Response Headers:', roomResponse.headers.get('Content-Type'));
+
+                if (!roomResponse.ok) {
+                  const errorText = await roomResponse.text();
+                  console.error('[property_select] 部屋情報の取得に失敗しました:', roomResponse.status, errorText);
+                  alert(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. Error: ${errorText}`);
+                  return;
+                }
+                const rooms = await roomResponse.json();
+                console.log('[property_select] Fetched rooms:', rooms);
+
+                // ★★★ sessionStorageに物件情報と部屋情報を保存 ★★★
+                sessionStorage.setItem('selectedPropertyId', property.id);
+                sessionStorage.setItem('selectedPropertyName', property.name);
+                sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
+
+                // room_select.html に画面遷移
+                if (woff.isInClient()) {
+                  woff.openWindow({
+                    url: `room_select.html`, // クエリパラメータは不要
+                    external: false
+                  });
+                } else {
+                  window.location.href = `room_select.html`; // クエリパラメータは不要
+                }
+              } catch (error) {
+                console.error('[property_select] 部屋情報の取得または画面遷移中にエラー:', error);
+                alert('部屋情報の処理中にエラーが発生しました。');
               }
             };
             propertyListDiv.appendChild(button);
