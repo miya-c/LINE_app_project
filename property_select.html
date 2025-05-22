@@ -31,7 +31,7 @@
     });
 
     // ★★★ 部屋.gs のウェブアプリURLを追加 ★★★
-    const gasRoomWebAppUrl = 'https://script.google.com/macros/s/AKfycbyv2UPEN5ysH1RLMTgYAZJMMphy_Q3aVt-ZEvbkLgmIQs0yuII1Tlu9z4LgezJeZeY8/exec'; // 部屋.gs の正しいデプロイID
+    const gasRoomWebAppUrl = 'https://script.google.com/macros/s/AKfycbycxo4fhFdKq1uB8aYh06IIMbyxm20jFJhXjCu4zh-2UAILdnaoRh88Ig-9hfC_oi6BNw/exec'; // 部屋.gs の正しいデプロイID
 
     async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
       try {
@@ -66,7 +66,7 @@
       const propertyListDiv = document.getElementById('property-list');
       propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; 
 
-      const gasPropertyWebAppUrl = 'https://script.google.com/macros/s/AKfycbyBLMi-X4pEP9Et1IWGUUvCJvu3u51e8kOTaz2OCDyp0zQpxWFBrU3m1rAFMGGKQzvYag/exec'; // 物件.gs のデプロイID
+      const gasPropertyWebAppUrl = 'https://script.google.com/macros/s/AKfycbycxo4fhFdKq1uB8aYh06IIMbyxm20jFJhXjCu4zh-2UAILdnaoRh88Ig-9hfC_oi6BNw/exec'; // 物件.gs のデプロイID
 
       try {
         const response = await fetch(`${gasPropertyWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
