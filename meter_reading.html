@@ -31,7 +31,7 @@
   <div class="info-section">
     <h2>検針履歴</h2>
     <div id="meter-readings-list">
-      <p>検針データを読み込み中です...</p>
+      <p id="loading-message-p">検針データを読み込み中です...</p>
       <table id="meter-readings-table" style="display:none;">
         <thead>
           <tr>
@@ -88,38 +88,45 @@
       document.getElementById('room-id').textContent = roomId || 'N/A';
       document.getElementById('room-name').textContent = roomName || 'N/A';
 
+      // Get references to the elements
+      const loadingElement = document.getElementById('loading-message-p');
+      const tableElement = document.getElementById('meter-readings-table');
+      const tableBody = tableElement.getElementsByTagName('tbody')[0];
+      const noDataMessageElement = document.getElementById('no-data-message');
+
+      // Initial state: Show loading, hide table and no-data message
+      if (loadingElement) loadingElement.style.display = 'block';
+      tableElement.style.display = 'none';
+      noDataMessageElement.style.display = 'none';
+
       if (!propertyId || !roomId) {
         console.error('[meter_reading] 物件IDまたは部屋IDがURLパラメータにありません。');
-        document.getElementById('no-data-message').textContent = '物件情報または部屋情報が不足しているため、検針データを取得できません。';
-        document.getElementById('no-data-message').style.display = 'block';
+        if (loadingElement) loadingElement.style.display = 'none'; // Hide loading
+        noDataMessageElement.textContent = '物件情報または部屋情報が不足しているため、検針データを取得できません。';
+        noDataMessageElement.style.display = 'block';
+        tableElement.style.display = 'none'; // Ensure table is hidden
         return;
       }
 
-      const tableBody = document.getElementById('meter-readings-table').getElementsByTagName('tbody')[0];
-      const noDataMessage = document.getElementById('no-data-message');
-
       try {
-        const response = await fetch(`${gasWebAppUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`); // 変数名を修正
+        const response = await fetch(`${gasWebAppUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`);
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
         const readings = await response.json();
 
+        if (loadingElement) loadingElement.style.display = 'none'; // Always hide loading message after fetch attempt
+
         if (readings.error) {
+          // Let the catch block handle the display of the error message
           throw new Error(readings.error);
         }
         
         console.log('[meter_reading] Fetched meter readings:', readings);
 
         if (Array.isArray(readings) && readings.length > 0) {
-          // 「読み込み中です」メッセージを非表示にする
-          const loadingMessage = document.getElementById('meter-readings-list').querySelector('p');
-          if (loadingMessage && loadingMessage.textContent.includes('読み込み中')) {
-            loadingMessage.style.display = 'none';
-          }
-          
-          document.getElementById('meter-readings-table').style.display = ''; // テーブルを表示
-          noDataMessage.style.display = 'none';
+          tableElement.style.display = ''; // Show table
+          noDataMessageElement.style.display = 'none'; // Hide no-data message
           tableBody.innerHTML = ''; // 古いデータをクリア
 
           readings.forEach(reading => {
@@ -141,16 +148,17 @@
               photoCell.textContent = 'なし';
             }
           });
-        } else {
-          noDataMessage.textContent = 'この部屋の検針データはありません。';
-          noDataMessage.style.display = 'block';
-          document.getElementById('meter-readings-table').style.display = 'none';
+        } else { // No data (readings is empty array or not an array)
+          noDataMessageElement.textContent = 'この部屋の検針データはありません。';
+          noDataMessageElement.style.display = 'block';
+          tableElement.style.display = 'none'; // Ensure table is hidden
         }
       } catch (error) {
         console.error('[meter_reading] fetchMeterReadings error:', error);
-        noDataMessage.textContent = `検針データの取得に失敗しました: ${error.message}`;
-        noDataMessage.style.display = 'block';
-        document.getElementById('meter-readings-table').style.display = 'none';
+        if (loadingElement) loadingElement.style.display = 'none'; // Hide loading message on error
+        noDataMessageElement.textContent = `検針データの取得に失敗しました: ${error.message}`;
+        noDataMessageElement.style.display = 'block';
+        tableElement.style.display = 'none'; // Ensure table is hidden
       }
     }
   </script>
