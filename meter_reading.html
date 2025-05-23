@@ -112,6 +112,13 @@
         console.log('[meter_reading] Fetched meter readings:', readings);
 
         if (Array.isArray(readings) && readings.length > 0) {
+          // 「読み込み中です」メッセージを非表示にする
+          const loadingMessage = document.getElementById('meter-readings-list').querySelector('p');
+          if (loadingMessage && loadingMessage.textContent.includes('読み込み中')) {
+            loadingMessage.style.display = 'none';
+          }
+          
+          document.getElementById('meter-readings-table').style.display = ''; // テーブルを表示
           noDataMessage.style.display = 'none';
           tableBody.innerHTML = ''; // 古いデータをクリア
 
