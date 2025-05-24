@@ -173,11 +173,20 @@
 
     function selectProperty(property) {
       console.log('[property_select] 物件が選択されました:', property);
-      sessionStorage.setItem('selectedProperty', JSON.stringify(property));
-      sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl); // gasWebAppUrlをsessionStorageに保存
-
-      // 部屋情報取得のロジックはここに移動、または room_select.html で行う
-      // ここでは room_select.html に遷移するだけとする
+      if (!gasWebAppUrl) {
+        console.error('[property_select] ★エラー: gasWebAppUrlが定義されていません！');
+        alert('アプリケーションの設定にエラーがあります。管理者に連絡してください。(code: P1)');
+        return;
+      }
+      try {
+        sessionStorage.setItem('selectedProperty', JSON.stringify(property));
+        sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
+        console.log('[property_select] gasWebAppUrlをsessionStorageに保存しました:', sessionStorage.getItem('gasWebAppUrl'));
+      } catch (e) {
+        console.error('[property_select] ★エラー: sessionStorageへの保存に失敗しました:', e);
+        alert('データの保存に失敗しました。ブラウザのシークレットモード等を利用している場合は解除してみてください。(code: P2)');
+        return;
+      }
       window.location.href = 'room_select.html';
     }
 
