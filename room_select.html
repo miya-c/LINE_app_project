@@ -14,6 +14,7 @@
   </style>
 </head>
 <body>
+  <button id="back-to-property-select" style="margin-bottom: 10px; padding: 8px 12px;">物件選択へ戻る</button>
   <h1>部屋選択</h1>
   <div id="property-info">
     <p class="property-name">物件名：<span id="property-name-display">読み込み中...</span></p>
@@ -27,6 +28,14 @@
   <script>
     window.addEventListener('DOMContentLoaded', (event) => {
       initializeWoff();
+      // 「戻る」ボタンのイベントリスナーを設定
+      document.getElementById('back-to-property-select').addEventListener('click', () => {
+        if (woff.isInClient()) {
+          woff.closeWindow(); // WOFF環境ではウィンドウを閉じることで前の画面に戻ることを期待
+        } else {
+          window.location.href = 'property_select.html'; // ブラウザ環境では直接遷移
+        }
+      });
     });
 
     async function initializeWoff() {
