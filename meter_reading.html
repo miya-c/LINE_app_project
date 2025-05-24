@@ -51,6 +51,7 @@
           <!-- ここに検針データが挿入されます -->
         </tbody>
       </table>
+      <button id="update-readings-button" style="margin-top: 10px; padding: 8px 12px; display:none;">指示数を更新</button> <!-- 更新ボタン追加 -->
       <p id="no-data-message" style="display:none; color:red;"></p>
     </div>
   </div>
@@ -151,6 +152,7 @@
 
         if (Array.isArray(readings) && readings.length > 0) {
           tableElement.style.display = ''; // Show table
+          document.getElementById('update-readings-button').style.display = 'block'; // 更新ボタン表示
           noDataMessageElement.style.display = 'none'; // Hide no-data message
           tableBody.innerHTML = ''; // 古いデータをクリア
 
@@ -183,7 +185,16 @@
               }
             }
             row.insertCell().textContent = formattedDate;
-            row.insertCell().textContent = reading.currentReading || 'N/A';
+            
+            // 今回指示数を入力フィールドに変更
+            const currentReadingCell = row.insertCell();
+            const currentReadingInput = document.createElement('input');
+            currentReadingInput.type = 'number';
+            currentReadingInput.value = reading.currentReading || '';
+            currentReadingInput.setAttribute('data-date', reading.date); // 識別子として日付を使用
+            currentReadingInput.style.width = '80px'; // スタイル調整
+            currentReadingCell.appendChild(currentReadingInput);
+
             row.insertCell().textContent = reading.previousReading || 'N/A';
             row.insertCell().textContent = reading.previousPreviousReading || 'N/A'; // 追加
             row.insertCell().textContent = reading.usage || 'N/A';
@@ -204,6 +215,7 @@
           noDataMessageElement.textContent = 'この部屋の検針データはありません。';
           noDataMessageElement.style.display = 'block';
           tableElement.style.display = 'none'; // Ensure table is hidden
+          document.getElementById('update-readings-button').style.display = 'none'; // 更新ボタン非表示
         }
       } catch (error) {
         console.error('[meter_reading] fetchMeterReadings error:', error);
@@ -211,7 +223,23 @@
         noDataMessageElement.textContent = `検針データの取得に失敗しました: ${error.message}`;
         noDataMessageElement.style.display = 'block';
         tableElement.style.display = 'none'; // Ensure table is hidden
+        document.getElementById('update-readings-button').style.display = 'none'; // 更新ボタン非表示
       }
+    }
+
+    // 指示数更新ボタンの処理
+    async function handleUpdateReadings() {
+      const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
+      const updatedReadings = [];
+      inputs.forEach(input => {
+        updatedReadings.push({
+          date: input.getAttribute('data-date'),
+          currentReading: input.value
+        });
+      });
+      console.log('[meter_reading] 更新する指示数:', updatedReadings);
+      // TODO: ここでGASにデータを送信してスプレッドシートを更新する処理を実装
+      alert('指示数の更新処理はまだ実装されていません。コンソールログを確認してください。');
     }
 
     // DOMContentLoaded ですべての初期化とイベントリスナー設定を行う
@@ -220,6 +248,12 @@
       const backButton = document.getElementById('back-button-meter');
       if (backButton) {
         backButton.addEventListener('click', handleBackButton);
+      }
+
+      // 更新ボタンのイベントリスナーを設定
+      const updateButton = document.getElementById('update-readings-button');
+      if (updateButton) {
+        updateButton.addEventListener('click', handleUpdateReadings);
       }
       
       // WOFFの初期化とデータ読み込み
