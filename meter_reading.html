@@ -65,9 +65,8 @@
       if (typeof woff !== 'undefined' && typeof woff.isInClient === 'function' && woff.isInClient()) {
         woff.closeWindow();
       } else {
-        // 部屋選択画面 (room_select.html) に戻る
-        // room_select.html は sessionStorage から selectedProperty を読み込むことを期待
-        window.location.href = 'room_select.html';
+        // 直前の画面に戻る
+        history.back();
       }
     }
 
