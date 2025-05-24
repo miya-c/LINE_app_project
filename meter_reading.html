@@ -143,7 +143,33 @@
 
           readings.forEach(reading => {
             const row = tableBody.insertRow();
-            row.insertCell().textContent = reading.date || 'N/A';
+            
+            // 日付フォーマット処理
+            let formattedDate = 'N/A';
+            if (reading.date) {
+              try {
+                const dateObj = new Date(reading.date);
+                // getTimezoneOffset() を使用してUTCとの差分を考慮し、JSTに近づける
+                // ただし、GASから返る日付が既にJSTである場合は、このオフセット調整は不要または逆効果になる可能性あり
+                // スプレッドシートの日時がどのように記録・返却されるかに依存
+                // ここでは一旦、Dateオブジェクトがローカルタイムゾーンで解釈されることを期待する
+                // もしGASがUTCで日付時刻を返し、表示時にJSTにしたい場合は、より厳密なタイムゾーン変換が必要
+                const year = dateObj.getFullYear();
+                const month = (dateObj.getMonth() + 1).toString().padStart(2, '0'); // 月は0から始まるため+1
+                const day = dateObj.getDate().toString().padStart(2, '0');
+                if (!isNaN(year) && !isNaN(parseInt(month)) && !isNaN(parseInt(day))) {
+                  formattedDate = `${year}年${month}月${day}日`;
+                } else {
+                  // パースに失敗した場合、元の値をそのまま使うか、エラーを示す文字列にする
+                  // ここでは元の値を使用
+                  formattedDate = reading.date; 
+                }
+              } catch (e) {
+                console.warn('[meter_reading] 日付のフォーマットに失敗しました:', reading.date, e);
+                formattedDate = reading.date; // エラー時も元の値を表示
+              }
+            }
+            row.insertCell().textContent = formattedDate;
             row.insertCell().textContent = reading.currentReading || 'N/A';
             row.insertCell().textContent = reading.previousReading || 'N/A';
             row.insertCell().textContent = reading.usage || 'N/A';
