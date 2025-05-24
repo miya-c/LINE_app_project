@@ -112,13 +112,15 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify({ error: "部屋データ取得中にエラーが発生しました: " + error.toString(), details: error.message }))
         .setMimeType(ContentService.MimeType.JSON);
     }
-  } else if (action == 'getMeterReadings') { // ★★★ 検針データを取得する処理を追加 ★★★
+  } else if (action == 'getMeterReadings') { // ★★★ 検針データを取得する処理 ★★★
     try {
       const roomId = e.parameter.roomId;
       if (!roomId) {
+        console.error("[物件.gs] getMeterReadings - 'roomId' パラメータがありません。");
         return ContentService.createTextOutput(JSON.stringify({ error: "'roomId' パラメータが必要です。" }))
           .setMimeType(ContentService.MimeType.JSON);
       }
+      console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データを取得開始`);
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       const sheetName = '検針データ'; // 検針データのシート名
@@ -140,29 +142,32 @@ function doGet(e) {
       const headers = data.shift(); // ヘッダー行を取得
       console.log(`[物件.gs] getMeterReadings - シート '${sheetName}' から読み込んだヘッダー: ${JSON.stringify(headers)}`);
 
+      // 列インデックスの取得（列名が完全に一致している必要があります）
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
       const currentReadingColIndex = headers.indexOf('今回の指示数');
       const previousReadingColIndex = headers.indexOf('前回指示数');
+      const previousPreviousReadingColIndex = headers.indexOf('前々回指示数'); // ★ 「前々回指示数」の列インデックスを取得
       const usageColIndex = headers.indexOf('今回使用量');
       const statusColIndex = headers.indexOf('警告フラグ');
-      const photoUrlColIndex = headers.indexOf('写真URL');
+      const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URLは任意
 
-      // 必須ヘッダーの存在チェック (写真URLは任意とする)
-      if (roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1 || previousReadingColIndex === -1 || usageColIndex === -1 || statusColIndex === -1) {
-        let missingHeaders = [];
-        if (roomIdColIndex === -1) missingHeaders.push('部屋ID');
-        if (dateColIndex === -1) missingHeaders.push('検針日時');
-        if (currentReadingColIndex === -1) missingHeaders.push('今回の指示数');
-        if (previousReadingColIndex === -1) missingHeaders.push('前回指示数');
-        if (usageColIndex === -1) missingHeaders.push('今回使用量');
-        if (statusColIndex === -1) missingHeaders.push('警告フラグ');
-        
-        const errorMessage = `必要な列（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
+      // 必須ヘッダーの存在チェック
+      let missingHeaders = [];
+      if (roomIdColIndex === -1) missingHeaders.push('部屋ID');
+      if (dateColIndex === -1) missingHeaders.push('検針日時');
+      if (currentReadingColIndex === -1) missingHeaders.push('今回の指示数');
+      if (previousReadingColIndex === -1) missingHeaders.push('前回指示数');
+      if (previousPreviousReadingColIndex === -1) missingHeaders.push('前々回指示数'); // ★ チェック対象に追加
+      if (usageColIndex === -1) missingHeaders.push('今回使用量');
+      if (statusColIndex === -1) missingHeaders.push('警告フラグ');
+      
+      if (missingHeaders.length > 0) {
+        const errorMessage = `必須の列ヘッダー（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
         console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);
         return ContentService.createTextOutput(JSON.stringify({ 
           error: errorMessage,
-          expectedHeaders: ['部屋ID', '検針日時', '今回の指示数', '前回指示数', '今回使用量', '警告フラグ'],
+          expectedHeaders: ['部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '今回使用量', '警告フラグ'],
           foundHeaders: headers,
           sheetName: sheetName
         }))
@@ -171,35 +176,45 @@ function doGet(e) {
 
       const readings = data.filter(row => String(row[roomIdColIndex]).trim() == String(roomId).trim())
         .map(row => {
+          // 各列の値を取得。列が存在しない場合はnullや空文字を適切に処理
+          const getDateValue = (index) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
+          
           let readingObject = {
-            date: row[dateColIndex] ? String(row[dateColIndex]).trim() : null,
-            currentReading: row[currentReadingColIndex] ? String(row[currentReadingColIndex]).trim() : null,
-            previousReading: row[previousReadingColIndex] ? String(row[previousReadingColIndex]).trim() : null,
-            usage: row[usageColIndex] ? String(row[usageColIndex]).trim() : null,
-            status: row[statusColIndex] ? String(row[statusColIndex]).trim() : null,
-            photoUrl: photoUrlColIndex !== -1 && row[photoUrlColIndex] ? String(row[photoUrlColIndex]).trim() : null
+            date: getDateValue(dateColIndex),
+            currentReading: getDateValue(currentReadingColIndex),
+            previousReading: getDateValue(previousReadingColIndex),
+            previousPreviousReading: getDateValue(previousPreviousReadingColIndex), // ★ 「前々回指示数」のデータを取得
+            usage: getDateValue(usageColIndex),
+            status: getDateValue(statusColIndex),
+            photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null
           };
           return readingObject;
         });
       
+      console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データ ${readings.length} 件を整形完了: ${JSON.stringify(readings)}`);
+
       // 日付の降順（新しいものが先頭）にソート
       readings.sort((a, b) => {
-        // 日付文字列をDateオブジェクトに変換して比較
-        // 無効な日付文字列の場合はエラーを避けるため、ソート順に影響しない値を返す
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
+        // dateがnullまたは不正な日付文字列の場合のフォールバック
+        const dateA = a.date ? new Date(a.date) : null;
+        const dateB = b.date ? new Date(b.date) : null;
+
+        if (!dateA && !dateB) return 0; // 両方無効なら順序変更なし
+        if (!dateA) return 1;  // aが無効ならbを前に
+        if (!dateB) return -1; // bが無効ならaを前に
         if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1; // dateA が無効なら dateB を前に
-        if (isNaN(dateB.getTime())) return -1; // dateB が無効なら dateA を前に
+        if (isNaN(dateA.getTime())) return 1;
+        if (isNaN(dateB.getTime())) return -1;
         return dateB - dateA;
       });
-
+      
+      console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
       return ContentService.createTextOutput(JSON.stringify(readings))
         .setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
-      console.error("[物件.gs] getMeterReadingsエラー:", error.message, error.stack, e.parameter ? JSON.stringify(e.parameter) : "no params");
-      return ContentService.createTextOutput(JSON.stringify({ error: "検針データ取得中にエラーが発生しました: " + error.toString(), details: error.message }))
+      console.error("[物件.gs] getMeterReadingsで予期せぬエラー:", error.message, error.stack, e.parameter ? JSON.stringify(e.parameter) : "no params");
+      return ContentService.createTextOutput(JSON.stringify({ error: "検針データの取得中にサーバー側でエラーが発生しました。", details: error.message }))
         .setMimeType(ContentService.MimeType.JSON);
     }
   } else {
