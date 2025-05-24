@@ -187,7 +187,15 @@
             currentReadingInput.type = 'number';
             currentReadingInput.value = reading.currentReading || '';
             currentReadingInput.setAttribute('data-date', reading.date); // 識別子として日付を使用
+            currentReadingInput.setAttribute('pattern', '[0-9]*'); // 数字のみを許可するパターン
+            currentReadingInput.setAttribute('inputmode', 'numeric'); // 数字キーボードを表示
             currentReadingInput.style.width = '80px'; // スタイル調整
+
+            // 数字以外の入力を防ぐイベントリスナーを追加
+            currentReadingInput.addEventListener('input', function(e) {
+              e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
+
             currentReadingCell.appendChild(currentReadingInput);
 
             row.insertCell().textContent = reading.previousReading || 'N/A';
