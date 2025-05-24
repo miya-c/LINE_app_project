@@ -123,7 +123,7 @@ function doGet(e) {
       console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データを取得開始`);
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const sheetName = '検針データ'; // 検針データのシート名
+      const sheetName = 'inspection_data'; // ★★★ 検針データのシート名を 'inspection_data' に変更 ★★★
       const sheet = spreadsheet.getSheetByName(sheetName);
 
       if (!sheet) {
