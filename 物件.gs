@@ -290,3 +290,105 @@ function getMeterReadings(propertyId, roomId) {
   }
 }
 */
+
+function doPost(e) {
+  let response;
+  try {
+    console.log("[物件.gs] doPost - 受信データ (raw): " + e.postData.contents);
+    const params = JSON.parse(e.postData.contents);
+    console.log("[物件.gs] doPost - パース後パラメータ: " + JSON.stringify(params));
+
+    if (params.action === 'updateMeterReadings') {
+      const propertyId = params.propertyId;
+      const roomId = params.roomId;
+      const readingsToUpdate = params.readings; // [{date: 'YYYY-MM-DDTHH:mm:ss.sssZ', currentReading: '新しい値'}, ...]
+
+      if (!propertyId || !roomId || !Array.isArray(readingsToUpdate) || readingsToUpdate.length === 0) {
+        throw new Error("必要なパラメータ（propertyId, roomId, readings）が不足しているか、形式が正しくありません。");
+      }
+
+      console.log(`[物件.gs] updateMeterReadings - 物件ID: ${propertyId}, 部屋ID: ${roomId} の検針データを更新開始。更新対象件数: ${readingsToUpdate.length}`);
+
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheetName = 'inspection_data';
+      const sheet = spreadsheet.getSheetByName(sheetName);
+
+      if (!sheet) {
+        throw new Error(`シート '${sheetName}' が見つかりません。`);
+      }
+
+      const data = sheet.getDataRange().getValues();
+      const headers = data.shift(); // ヘッダー行を取得
+
+      const roomIdColIndex = headers.indexOf('部屋ID');
+      const dateColIndex = headers.indexOf('検針日時');
+      const currentReadingColIndex = headers.indexOf('今回の指示数');
+      // 必要に応じて他の列のインデックスも取得（例：前回指示数、使用量などを再計算する場合）
+
+      if (roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
+        let missing = [];
+        if (roomIdColIndex === -1) missing.push('部屋ID');
+        if (dateColIndex === -1) missing.push('検針日時');
+        if (currentReadingColIndex === -1) missing.push('今回の指示数');
+        throw new Error(`必要な列（${missing.join(', ')}）がシート '${sheetName}' に見つかりません。`);
+      }
+
+      let updatedCount = 0;
+      let errors = [];
+
+      // スプレッドシートのデータを走査して更新
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        if (String(row[roomIdColIndex]).trim() === String(roomId).trim()) {
+          const sheetDateValue = row[dateColIndex];
+          let sheetDateStr;
+          if (sheetDateValue instanceof Date) {
+            sheetDateStr = sheetDateValue.toISOString(); // スプレッドシートの日付をISO文字列に統一
+          } else {
+            sheetDateStr = String(sheetDateValue); // 文字列の場合はそのまま比較（フォーマット注意）
+          }
+
+          for (const readingToUpdate of readingsToUpdate) {
+            // HTML側から送られてくる日付もISO文字列であることを期待
+            // もしHTML側の日付の形式が異なる場合は、ここで適切に比較できるように変換が必要
+            if (sheetDateStr === readingToUpdate.date) {
+              try {
+                // 更新対象の行（ヘッダーを除いたdata配列のインデックスi + ヘッダー行の1 + スプレッドシートの1ベースの行番号の補正1 = i + 2）
+                sheet.getRange(i + 2, currentReadingColIndex + 1).setValue(readingToUpdate.currentReading);
+                updatedCount++;
+                console.log(`[物件.gs] updateMeterReadings - 更新成功: 行 ${i+2}, 日時 ${readingToUpdate.date}, 新しい指示数 ${readingToUpdate.currentReading}`);
+                // TODO: 必要であれば、関連する「今回使用量」などもここで再計算して更新する
+              } catch (cellUpdateError) {
+                const errMsg = `セル(行:${i+2}, 列:${currentReadingColIndex+1})の更新に失敗: ${cellUpdateError.message}`;
+                console.error("[物件.gs] " + errMsg);
+                errors.push(errMsg);
+              }
+              break; // 一致する日付を見つけたら内側のループは抜ける
+            }
+          }
+        }
+      }
+
+      if (updatedCount > 0 && errors.length === 0) {
+        response = { success: true, message: `${updatedCount}件の検針指示数を更新しました。` };
+      } else if (updatedCount > 0 && errors.length > 0) {
+        response = { success: false, error: `一部の更新に失敗しました。成功: ${updatedCount}件。エラー: ${errors.join('; ')}` };
+      } else if (errors.length > 0) {
+        response = { success: false, error: `更新処理中にエラーが発生しました: ${errors.join('; ')}` };
+      } else {
+        response = { success: false, error: "更新対象のデータが見つかりませんでした。日付が一致するか確認してください。" };
+      }
+      console.log("[物件.gs] updateMeterReadings - 処理結果: " + JSON.stringify(response));
+
+    } else {
+      throw new Error("無効なアクションです。'updateMeterReadings' を期待していました。");
+    }
+  } catch (error) {
+    console.error("[物件.gs] doPostエラー:", error.message, error.stack);
+    response = { success: false, error: "サーバー処理中にエラーが発生しました: " + error.message };
+  }
+  return ContentService.createTextOutput(JSON.stringify(response))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ... (既存の古いgetMeterReadings関数はコメントアウトされたまま) ...
