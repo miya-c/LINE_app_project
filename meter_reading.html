@@ -55,7 +55,8 @@
 
   <script>
     const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
-    const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyFEvcugNGMht7qeD9bbdojyXslSgF7YgOs15rIknQ1Qmm3cESEf-CU7_3KgJrZNO-oxw/exec'; // 物件.gs のURL
+    // const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycby9QBNkkahA4TG61QjmfYJJ3i_ABs5dDnDshtzF1jPp1goQxc08tu3JueLbqWybrJDKQw/exec'; // sessionStorageから取得するためコメントアウト
+    let gasWebAppUrl; // sessionStorageから取得する変数として宣言
 
     // 戻るボタンの共通処理
     function handleBackButton() {
@@ -71,6 +72,16 @@
     async function initializeWoff() {
       try {
         console.log('[meter_reading] WOFFを初期化します。');
+
+        // sessionStorageからgasWebAppUrlを取得
+        gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+        if (!gasWebAppUrl) {
+          console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。');
+          document.getElementById('meter-readings-list').innerHTML = '<p>アプリの設定情報が不足しています。前の画面から再度操作してください。</p>';
+          return; // gasWebAppUrlがないと続行不可
+        }
+        console.log('[meter_reading] gasWebAppUrlをsessionStorageから取得しました:', gasWebAppUrl);
+
         if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
           console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
           document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に必要なコンポーネントが読み込めませんでした。</p>';
