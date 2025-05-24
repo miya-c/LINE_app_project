@@ -18,6 +18,7 @@
   </style>
 </head>
 <body>
+  <button id="back-button-meter" style="margin-bottom: 10px; padding: 8px 12px;">部屋選択へ戻る</button>
   <h1>検針情報</h1>
 
   <div class="info-section">
@@ -51,30 +52,42 @@
     </div>
   </div>
 
+  <button id="back-button-meter">部屋選択へ戻る</button>
+
+  <script src="https://static.worksmobile.net/woff/edge/woff-sdk.js"></script>
   <script>
     const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
     const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyFEvcugNGMht7qeD9bbdojyXslSgF7YgOs15rIknQ1Qmm3cESEf-CU7_3KgJrZNO-oxw/exec'; // 物件.gs のURL
 
     window.addEventListener('DOMContentLoaded', async () => {
-      try {
-        console.log('[meter_reading] woff.init with woffId:', woffIdForWorks);
-        await woff.init({ woffId: woffIdForWorks });
-        console.log('[meter_reading] woff.init successful.');
-
-        if (!woff.isLoggedIn()) {
-          console.log("[meter_reading] Not logged in.");
-          // 必要に応じてログイン処理をここに
+      // 「戻る」ボタンのイベントリスナーを設定
+      document.getElementById('back-button-meter').addEventListener('click', () => {
+        if (woff && woff.isInClient()) { // woff が初期化されているか確認
+          woff.closeWindow();
         } else {
-          console.log("[meter_reading] Logged in.");
+          window.history.back();
         }
-
-        loadMeterReadings();
-
-      } catch (initError) {
-        console.error('[meter_reading] WOFFの初期化またはデータ表示に失敗しました:', initError);
-        document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に失敗しました。</p>';
-      }
+      });
     });
+
+    async function initializeWoff() {
+      try {
+        console.log('[meter_reading] WOFFを初期化します。');
+        await woff.init({ woffId: woffIdForWorks });
+        console.log('[meter_reading] WOFFの初期化に成功しました。');
+        // WOFF初期化成功後にメインの処理を実行
+        await loadMeterReadings();
+      } catch (error) {
+        console.error('[meter_reading] WOFFの初期化に失敗しました:', error);
+        document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に失敗しました。WOFFの初期化を確認してください。</p>';
+        // WOFF初期化失敗時も戻るボタンは機能させたい場合がある
+        // ただし、この時点では woff.isInClient() は使えない可能性が高い
+        // ここでは、初期化失敗時はブラウザの戻る機能のみを提供することを想定
+        document.getElementById('back-button-meter').addEventListener('click', () => {
+            window.history.back();
+        });
+      }
+    }
 
     async function loadMeterReadings() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -161,6 +174,18 @@
         tableElement.style.display = 'none'; // Ensure table is hidden
       }
     }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initializeWoff(); // WOFFの初期化を待つ
+      // WOFF初期化後に実行したい処理（例えば、戻るボタンのイベントリスナー設定）
+      document.getElementById('back-button-meter').addEventListener('click', () => {
+        if (woff && woff.isInClient()) { // woff が初期化されているか確認
+          woff.closeWindow();
+        } else {
+          window.history.back();
+        }
+      });
+    });
   </script>
 </body>
 </html>
