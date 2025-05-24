@@ -248,14 +248,15 @@
       }
 
       console.log('[meter_reading] 更新する指示数:', updatedReadings);
+      console.log('[meter_reading] 送信先URL:', gasWebAppUrl); // 送信先URLをログに出力
 
       try {
-        const response = await fetch(gasWebAppUrl, {
+        const response = await fetch(gasWebAppUrl, { 
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'text/plain;charset=utf-8', 
           },
-          body: JSON.stringify({
+          body: JSON.stringify({ 
             action: 'updateMeterReadings',
             propertyId: propertyId,
             roomId: roomId,
@@ -263,19 +264,27 @@
           }),
         });
 
+        console.log('[meter_reading] Update response status:', response.status);
+
+        const resultText = await response.text(); 
+        console.log('[meter_reading] Update result text:', resultText);
+
         if (!response.ok) {
-          const errorResult = await response.json().catch(() => ({ error: 'サーバーからの応答が不正です。' }));
-          throw new Error(errorResult.error || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+          throw new Error(resultText || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+        }
+        
+        try {
+            const result = JSON.parse(resultText); 
+            if (result.success) {
+              alert('指示数を更新しました。');
+              await loadMeterReadings(); 
+            } else {
+              throw new Error(result.error || '指示数の更新に失敗しました。');
+            }
+        } catch (e) {
+            throw new Error('サーバーからの応答形式が不正です: ' + resultText);
         }
 
-        const result = await response.json();
-
-        if (result.success) {
-          alert('指示数を更新しました。');
-          await loadMeterReadings(); // データを再読み込みして表示を更新
-        } else {
-          throw new Error(result.error || '指示数の更新に失敗しました。');
-        }
       } catch (error) {
         console.error('[meter_reading] handleUpdateReadings error:', error);
         alert(`指示数の更新中にエラーが発生しました: ${error.message}`);
