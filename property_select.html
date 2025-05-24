@@ -43,9 +43,17 @@
         console.log('[property_select] woff.init successful.');
         if (!woff.isLoggedIn()) {
           // ログインしていなければログインを促す（WOFFでは通常自動ログインされることが多い）
-          // 必要に応じてログイン処理を実装してください
-          console.log("ログインしていません。");
-          // woff.login();
+          console.log("[property_select] ログインしていません。ログイン処理を開始します。");
+          try {
+            await woff.login(); // ログイン処理を実行
+            console.log("[property_select] ログイン成功、または既にログイン済みのため処理を継続します。");
+            // ログイン後に再度ユーザー情報を確認したり、UIを更新する処理が必要な場合はここに追加
+          } catch (loginError) {
+            console.error("[property_select] woff.login() でエラーが発生しました:", loginError);
+            // ログイン失敗時のユーザーへの通知やエラーハンドリング
+            document.getElementById('property-list').innerHTML = '<p>ログインに失敗しました。アプリを再度開いてお試しください。</p>';
+            return; // ログイン失敗時は処理を中断
+          }
         }
         // LIFFの初期化が成功したら、アプリのメイン処理を開始
         fetchProperties();
