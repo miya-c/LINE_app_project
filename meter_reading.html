@@ -224,6 +224,15 @@
 
     // 指示数更新ボタンの処理
     async function handleUpdateReadings() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const propertyId = urlParams.get('propertyId');
+      const roomId = urlParams.get('roomId');
+
+      if (!propertyId || !roomId) {
+        alert('物件IDまたは部屋IDが取得できませんでした。');
+        return;
+      }
+
       const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
       const updatedReadings = [];
       inputs.forEach(input => {
@@ -232,9 +241,45 @@
           currentReading: input.value
         });
       });
+
+      if (updatedReadings.length === 0) {
+        alert('更新するデータがありません。');
+        return;
+      }
+
       console.log('[meter_reading] 更新する指示数:', updatedReadings);
-      // TODO: ここでGASにデータを送信してスプレッドシートを更新する処理を実装
-      alert('指示数の更新処理はまだ実装されていません。コンソールログを確認してください。');
+
+      try {
+        const response = await fetch(gasWebAppUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'updateMeterReadings',
+            propertyId: propertyId,
+            roomId: roomId,
+            readings: updatedReadings
+          }),
+        });
+
+        if (!response.ok) {
+          const errorResult = await response.json().catch(() => ({ error: 'サーバーからの応答が不正です。' }));
+          throw new Error(errorResult.error || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('指示数を更新しました。');
+          await loadMeterReadings(); // データを再読み込みして表示を更新
+        } else {
+          throw new Error(result.error || '指示数の更新に失敗しました。');
+        }
+      } catch (error) {
+        console.error('[meter_reading] handleUpdateReadings error:', error);
+        alert(`指示数の更新中にエラーが発生しました: ${error.message}`);
+      }
     }
 
     // DOMContentLoaded ですべての初期化とイベントリスナー設定を行う
