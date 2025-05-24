@@ -39,6 +39,7 @@
             <th>検針日時</th>
             <th>今回の指示数</th>
             <th>前回指示数</th>
+            <th>前々回指示数</th> <!-- 追加 -->
             <th>今回使用量</th>
             <th>状態</th>
             <th>写真</th>
@@ -172,6 +173,7 @@
             row.insertCell().textContent = formattedDate;
             row.insertCell().textContent = reading.currentReading || 'N/A';
             row.insertCell().textContent = reading.previousReading || 'N/A';
+            row.insertCell().textContent = reading.previousPreviousReading || 'N/A'; // 追加
             row.insertCell().textContent = reading.usage || 'N/A';
             row.insertCell().textContent = reading.status || 'N/A';
             const photoCell = row.insertCell();
