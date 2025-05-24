@@ -121,7 +121,7 @@ function doGet(e) {
       }
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const sheetName = '検針データ'; // 検針データのシート名
+      const sheetName = '検針データ'; // 検針データのシート名
       const sheet = spreadsheet.getSheetByName(sheetName);
 
       if (!sheet) {
@@ -211,5 +211,63 @@ function doGet(e) {
         queryString: e.queryString 
       }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getMeterReadings(propertyId, roomId) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('検針データ');
+    if (!sheet) {
+      Logger.log("シート '検針データ' が見つかりません。propertyId: " + propertyId + ", roomId: " + roomId);
+      return ContentService.createTextOutput(JSON.stringify({ error: "シート '検針データ' が見つかりません。" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    const data = sheet.getDataRange().getValues();
+    const header = data.shift(); // ヘッダー行を除外
+
+    // 新しい列のインデックス (0始まり)
+    // 記録ID, 部屋ID, 検針日時, 今回使用量, 今回の指示数, 前回指示数, 前々回指示数, 警告フラグ, 写真URL
+    const COL_ROOM_ID = 1;
+    const COL_DATE = 2;
+    const COL_USAGE = 3;
+    const COL_CURRENT_READING = 4;
+    const COL_PREVIOUS_READING = 5;
+    const COL_PREVIOUS_PREVIOUS_READING = 6; // 前々回指示数の列インデックス
+    const COL_STATUS = 7; // 警告フラグ
+    const COL_PHOTO_URL = 8;
+
+    Logger.log("getMeterReadings - propertyId: " + propertyId + ", roomId: " + roomId + ". Filtering " + data.length + " rows.");
+
+    const readings = data.filter(row => row[COL_ROOM_ID] == roomId) // roomIdでフィルタリング
+      .map(row => {
+        let dateValue = row[COL_DATE];
+        // 日付オブジェクトをISO文字列に変換してタイムゾーン問題を回避することを検討
+        if (dateValue instanceof Date) {
+          // dateValue = dateValue.toISOString(); 
+        }
+        return {
+          date: dateValue,
+          currentReading: row[COL_CURRENT_READING],
+          previousReading: row[COL_PREVIOUS_READING],
+          previousPreviousReading: row[COL_PREVIOUS_PREVIOUS_READING], // 前々回指示数を追加
+          usage: row[COL_USAGE],
+          status: row[COL_STATUS], 
+          photoUrl: row[COL_PHOTO_URL]
+        };
+      })
+      .sort((a, b) => { // 日付で降順ソート
+        // 日付の比較はDateオブジェクトで行うのが確実
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+        if (isNaN(dateA.getTime())) return 1; // 無効な日付は後方に
+        if (isNaN(dateB.getTime())) return -1; // 無効な日付は後方に
+        return dateB - dateA; // 降順
+      });
+
+    Logger.log("Found " + readings.length + " readings for roomId: " + roomId);
+    return ContentService.createTextOutput(JSON.stringify(readings)).setMimeType(ContentService.MimeType.JSON);
+  } catch (e) {
+    Logger.log("getMeterReadings Error: " + e.toString() + " Stack: " + e.stack + " for roomId: " + roomId);
+    return ContentService.createTextOutput(JSON.stringify({ error: "検針データの取得中にエラーが発生しました: " + e.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
