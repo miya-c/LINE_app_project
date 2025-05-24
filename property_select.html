@@ -63,7 +63,7 @@
       const propertyListDiv = document.getElementById('property-list');
       propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; 
 
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyFEvcugNGMht7qeD9bbdojyXslSgF7YgOs15rIknQ1Qmm3cESEf-CU7_3KgJrZNO-oxw/exec';
+      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycby9QBNkkahA4TG61QjmfYJJ3i_ABs5dDnDshtzF1jPp1goQxc08tu3JueLbqWybrJDKQw/exec';
 
       try {
         const response = await fetch(`${gasWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
@@ -170,6 +170,20 @@
         }
       });
     }
+
+    function selectProperty(property) {
+      console.log('[property_select] 物件が選択されました:', property);
+      sessionStorage.setItem('selectedProperty', JSON.stringify(property));
+      sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl); // gasWebAppUrlをsessionStorageに保存
+
+      // 部屋情報取得のロジックはここに移動、または room_select.html で行う
+      // ここでは room_select.html に遷移するだけとする
+      window.location.href = 'room_select.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      initializeWoff();
+    });
   </script>
 </body>
 </html>
