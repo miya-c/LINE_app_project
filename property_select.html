@@ -120,6 +120,15 @@
                 sessionStorage.setItem('selectedPropertyId', property.id);
                 sessionStorage.setItem('selectedPropertyName', property.name);
                 sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
+                // gasWebAppUrl を sessionStorage に保存
+                if (gasWebAppUrl) {
+                  sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
+                  console.log('[property_select] onclick: gasWebAppUrlをsessionStorageに保存しました:', gasWebAppUrl);
+                } else {
+                  console.error('[property_select] onclick: ★エラー: gasWebAppUrlが定義されていません！');
+                  alert('アプリケーションの設定にエラーがあります。(code: P3)');
+                  return; // 遷移を中止
+                }
 
                 // room_select.html に画面遷移
                 if (woff.isInClient()) {
