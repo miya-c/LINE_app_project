@@ -30,11 +30,8 @@
       initializeWoff();
       // 「戻る」ボタンのイベントリスナーを設定
       document.getElementById('back-to-property-select').addEventListener('click', () => {
-        if (woff.isInClient()) {
-          woff.closeWindow(); // WOFF環境ではウィンドウを閉じることで前の画面に戻ることを期待
-        } else {
-          window.location.href = 'property_select.html'; // ブラウザ環境では直接遷移
-        }
+        // property_select.html に遷移する
+        window.location.href = 'property_select.html';
       });
     });
 

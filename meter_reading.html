@@ -58,16 +58,12 @@
 
   <script>
     const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
-    let gasWebAppUrl; // sessionStorageから取得する変数として宣言
+    let gasWebAppUrl; // sessionStorageから取得するとして宣言
 
     // 戻るボタンの共通処理
     function handleBackButton() {
-      if (typeof woff !== 'undefined' && typeof woff.isInClient === 'function' && woff.isInClient()) {
-        woff.closeWindow();
-      } else {
-        // 直前の画面に戻る
-        history.back();
-      }
+      // room_select.html に遷移する
+      window.location.href = 'room_select.html';
     }
 
     async function initializeWoff() {
