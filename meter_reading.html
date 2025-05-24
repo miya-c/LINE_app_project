@@ -52,25 +52,29 @@
     </div>
   </div>
 
-  <script src="https://static.worksmobile.net/woff/edge/woff-sdk.js"></script>
   <script>
     const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
     const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyFEvcugNGMht7qeD9bbdojyXslSgF7YgOs15rIknQ1Qmm3cESEf-CU7_3KgJrZNO-oxw/exec'; // 物件.gs のURL
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      // 「戻る」ボタンのイベントリスナーを設定
-      document.getElementById('back-button-meter').addEventListener('click', () => {
-        if (woff && woff.isInClient()) { // woff が初期化されているか確認
-          woff.closeWindow();
-        } else {
-          window.history.back();
-        }
-      });
-    });
+    // 戻るボタンの共通処理
+    function handleBackButton() {
+      if (typeof woff !== 'undefined' && typeof woff.isInClient === 'function' && woff.isInClient()) {
+        woff.closeWindow();
+      } else {
+        // 部屋選択画面 (room_select.html) に戻る
+        // room_select.html は sessionStorage から selectedProperty を読み込むことを期待
+        window.location.href = 'room_select.html';
+      }
+    }
 
     async function initializeWoff() {
       try {
         console.log('[meter_reading] WOFFを初期化します。');
+        if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
+          console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
+          document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に必要なコンポーネントが読み込めませんでした。</p>';
+          return; // WOFFが利用できない場合は初期化処理を中断
+        }
         await woff.init({ woffId: woffIdForWorks });
         console.log('[meter_reading] WOFFの初期化に成功しました。');
         // WOFF初期化成功後にメインの処理を実行
@@ -78,12 +82,9 @@
       } catch (error) {
         console.error('[meter_reading] WOFFの初期化に失敗しました:', error);
         document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に失敗しました。WOFFの初期化を確認してください。</p>';
-        // WOFF初期化失敗時も戻るボタンは機能させたい場合がある
-        // ただし、この時点では woff.isInClient() は使えない可能性が高い
-        // ここでは、初期化失敗時はブラウザの戻る機能のみを提供することを想定
-        document.getElementById('back-button-meter').addEventListener('click', () => {
-            window.history.back();
-        });
+        // WOFF初期化失敗時も、loadMeterReadings を試みるか、あるいはエラー表示のみとするか。
+        // 現状はエラー表示のみで、戻るボタンは機能する。
+        // loadMeterReadings(); // WOFFなしで続行する場合（ただしWOFF依存機能は使えない）
       }
     }
 
@@ -173,16 +174,17 @@
       }
     }
 
+    // DOMContentLoaded ですべての初期化とイベントリスナー設定を行う
     document.addEventListener('DOMContentLoaded', async () => {
-      await initializeWoff(); // WOFFの初期化を待つ
-      // WOFF初期化後に実行したい処理（例えば、戻るボタンのイベントリスナー設定）
-      document.getElementById('back-button-meter').addEventListener('click', () => {
-        if (woff && woff.isInClient()) { // woff が初期化されているか確認
-          woff.closeWindow();
-        } else {
-          window.history.back();
-        }
-      });
+      // 戻るボタンのイベントリスナーを一度だけ設定
+      const backButton = document.getElementById('back-button-meter');
+      if (backButton) {
+        backButton.addEventListener('click', handleBackButton);
+      }
+      
+      // WOFFの初期化とデータ読み込み
+      // initializeWoff内でエラーが発生しても、戻るボタンのリスナーは既に設定されている
+      await initializeWoff(); 
     });
   </script>
 </body>
