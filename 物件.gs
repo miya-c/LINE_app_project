@@ -229,6 +229,9 @@ function doGet(e) {
   }
 }
 
+/*
+// 古いgetMeterReadings関数はコメントアウトします。
+// こちらの関数はdoGet内のaction分岐で処理が統一されたため不要です。
 function getMeterReadings(propertyId, roomId) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('検針データ');
@@ -286,3 +289,4 @@ function getMeterReadings(propertyId, roomId) {
     return ContentService.createTextOutput(JSON.stringify({ error: "検針データの取得中にエラーが発生しました: " + e.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
+*/
