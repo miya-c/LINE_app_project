@@ -227,6 +227,14 @@
               try {
                 const date = event.target.getAttribute('data-date-button');
                 console.log('[meter_reading] カメラボタンクリック: date=', date);
+
+                // woff.media.getPicture が利用可能か確認
+                if (typeof woff === 'undefined' || typeof woff.media === 'undefined' || typeof woff.media.getPicture !== 'function') {
+                  console.error('[meter_reading] woff.media.getPicture が利用できません。woffオブジェクト:', woff, 'woff.mediaオブジェクト:', (woff ? woff.media : 'woff is undefined'));
+                  alert('カメラ機能を利用できません。アプリがLINE WORKSモバイル版アプリで実行されており、カメラへのアクセス権限が許可されているか確認してください。');
+                  return;
+                }
+
                 const result = await woff.media.getPicture({
                   sourceType: 'camera', // 'camera', 'album', 'camera_album'
                   // encodingType: 'jpeg', // 'jpeg', 'png' (default: jpeg)
@@ -287,7 +295,11 @@
                     // 例: woff.ErrorCode.CANCELLED (ユーザーによるキャンセル)
                     // 例: woff.ErrorCode.NO_PERMISSION (権限なし)
                     alert('写真の取得に失敗しました。エラーコード: ' + error.code);
-                } else {
+                } else if (error.message && error.message.includes("reading 'getPicture'")) {
+                    // このエラーは既に追加したチェックで捕捉されるはずだが、念のため
+                    alert('カメラ機能の呼び出しに失敗しました。アプリの実行環境や権限設定を確認してください。');
+                } 
+                else {
                     alert('写真の取得中に予期せぬエラーが発生しました。');
                 }
               }
