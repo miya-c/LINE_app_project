@@ -15,6 +15,44 @@
     #meter-readings-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     #meter-readings-table th, #meter-readings-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
     #meter-readings-table th { background-color: #f2f2f2; }
+    /* モーダルのスタイル */
+    #photo-modal {
+      display: none; /* 初めは非表示 */
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.8); /* 半透明の黒 */
+    }
+
+    #modal-content {
+      position: relative;
+      margin: 15% auto;
+      padding: 20px;
+      width: 80%;
+      max-width: 700px;
+      background-color: #fff;
+      border-radius: 8px;
+    }
+
+    #modal-image {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+
+    .close-modal-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -57,9 +95,20 @@
     </div>
   </div>
 
+  <!-- 写真表示モーダル -->
+  <div id="photo-modal">
+    <div id="modal-content">
+      <button class="close-modal-button">&times;</button>
+      <img id="modal-image" alt="検針写真"> <!-- src属性を削除 -->
+    </div>
+  </div>
+
   <script>
     const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // これは適切なWOFF IDに置き換えてください
     let gasWebAppUrl; // sessionStorageから取得するとして宣言
+
+    // モーダル関連の変数をグローバルスコープで宣言 (ただし初期化はDOMContentLoaded内)
+    let photoModal, modalImage, closeModalButton;
 
     // 戻るボタンの共通処理
     function handleBackButton() {
@@ -440,6 +489,24 @@
 
     // DOMContentLoaded ですべての初期化とイベントリスナー設定を行う
     document.addEventListener('DOMContentLoaded', async () => {
+      // モーダル関連の要素をここで取得・初期化
+      photoModal = document.getElementById('photo-modal');
+      modalImage = document.getElementById('modal-image');
+      closeModalButton = document.querySelector('.close-modal-button');
+
+      if (closeModalButton) {
+        closeModalButton.addEventListener('click', hidePhotoModal);
+      }
+
+      if (photoModal) {
+        // モーダルの背景クリックで閉じる
+        photoModal.addEventListener('click', function(event) {
+          if (event.target === photoModal) { // クリックされたのが背景自身である場合のみ
+            hidePhotoModal();
+          }
+        });
+      }
+
       // 戻るボタンのイベントリスナーを一度だけ設定
       const backButton = document.getElementById('back-button-meter');
       if (backButton) {
@@ -532,6 +599,130 @@
         reader.readAsDataURL(file);
       });
     }
+
+    // 写真をモーダルで表示する関数
+    function showPhotoModal(imageData) {
+      // DOMContentLoadedで初期化されるが、念のためチェック
+      if (!photoModal) photoModal = document.getElementById('photo-modal');
+      if (!modalImage) modalImage = document.getElementById('modal-image');
+
+      if (photoModal && modalImage) {
+        modalImage.src = imageData;
+        photoModal.style.display = 'block';
+      } else {
+        console.error('[meter_reading] モーダル要素が見つかりません。');
+      }
+    }
+
+    // モーダルを閉じる関数
+    function hidePhotoModal() {
+      if (!photoModal) photoModal = document.getElementById('photo-modal'); //念のため
+      if (photoModal) {
+        photoModal.style.display = 'none';
+        if (modalImage) {
+            modalImage.src = ''; // 次回表示のためにクリア
+        }
+      }
+    }
+
+    // DOMContentLoaded ですべての初期化とイベントリスナー設定を行う
+    document.addEventListener('DOMContentLoaded', async () => {
+      // モーダル関連の要素をここで取得・初期化
+      photoModal = document.getElementById('photo-modal');
+      modalImage = document.getElementById('modal-image');
+      closeModalButton = document.querySelector('.close-modal-button');
+
+      if (closeModalButton) {
+        closeModalButton.addEventListener('click', hidePhotoModal);
+      }
+
+      if (photoModal) {
+        // モーダルの背景クリックで閉じる
+        photoModal.addEventListener('click', function(event) {
+          if (event.target === photoModal) { // クリックされたのが背景自身である場合のみ
+            hidePhotoModal();
+          }
+        });
+      }
+
+      // 戻るボタンのイベントリスナーを一度だけ設定
+      const backButton = document.getElementById('back-button-meter');
+      if (backButton) {
+        backButton.addEventListener('click', handleBackButton);
+      }
+
+      // 更新ボタンのイベントリスナーを設定
+      const updateButton = document.getElementById('update-readings-button');
+      if (updateButton) {
+        updateButton.addEventListener('click', handleUpdateReadings);
+      }
+      
+      // HTML Media Capture用のファイル入力要素のイベントリスナー
+      const photoInput = document.getElementById('photo-input');
+      if (photoInput) {
+        photoInput.addEventListener('change', async function(event) {
+          const targetDate = this.getAttribute('data-current-target-date');
+          if (!targetDate) {
+            console.error('[meter_reading] 対象の日付がphoto-inputから取得できませんでした。');
+            return;
+          }
+          const file = event.target.files[0];
+          if (file) {
+            console.log('[meter_reading] ファイルが選択されました:', file.name, '対象日付:', targetDate);
+            try {
+              const imageData = await readFileAsBase64(file);
+              console.log('[meter_reading] Base64変換成功。');
+
+              const targetPhotoCell = document.querySelector(`td[data-date-photo="${targetDate}"]`);
+              if (targetPhotoCell) {
+                targetPhotoCell.innerHTML = ''; // 既存の内容をクリア
+
+                // 撮影した画像のプレビュー（小さい画像）
+                const newImg = document.createElement('img');
+                newImg.src = imageData;
+                newImg.alt = '撮影した写真';
+                newImg.style.maxWidth = '50px';
+                newImg.style.maxHeight = '50px';
+                newImg.style.cursor = 'pointer';
+                newImg.addEventListener('click', () => showPhotoModal(imageData));
+                targetPhotoCell.appendChild(newImg);
+
+                // 表示ボタンの作成
+                const viewButton = document.createElement('button');
+                viewButton.textContent = '表示';
+                viewButton.style.marginLeft = '5px';
+                viewButton.addEventListener('click', () => showPhotoModal(imageData));
+                targetPhotoCell.appendChild(viewButton);
+
+                // 再撮影ボタンの作成 (元のカメラボタンのイベントを再利用するのではなく、再度fileInputをクリックさせる)
+                const retakeButton = document.createElement('button');
+                retakeButton.textContent = '再撮影';
+                retakeButton.style.marginLeft = '5px';
+                retakeButton.addEventListener('click', () => {
+                    // 元のカメラボタンのイベントリスナーを直接呼び出すのではなく、
+                    // fileInputを再度トリガーする方がシンプルで確実
+                    fileInput.click(); 
+                });
+                targetPhotoCell.appendChild(retakeButton);
+
+                // 撮影した画像データをinput要素に紐付ける
+                const currentReadingInput = document.querySelector(`#meter-readings-table tbody input[data-date="${targetDate}"]`);
+                if (currentReadingInput) {
+                  currentReadingInput.setAttribute('data-new-photo', imageData);
+                  console.log('[meter_reading] 写真データをdata-new-photo属性に保存しました。');
+                }
+              }
+            } catch (error) {
+              console.error('[meter_reading] 写真のBase64変換に失敗しました:', error);
+              alert('写真の処理中にエラーが発生しました。');
+            }
+          }
+        });
+      }
+
+      // WOFF初期化処理を開始
+      initializeWoff();
+    });
   </script>
 </body>
 </html>
