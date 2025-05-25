@@ -86,6 +86,12 @@
         }
         await woff.init({ woffId: woffIdForWorks });
         console.log('[meter_reading] WOFFの初期化に成功しました。');
+        // WOFF初期化成功直後のwoffオブジェクトの状態を確認
+        console.log('[meter_reading] WOFF初期化成功直後のwoffオブジェクト全体:', woff);
+        if (woff) {
+            console.log('[meter_reading] woffのプロパティ一覧:', Object.keys(woff));
+            console.log('[meter_reading] WOFF初期化成功直後のwoff.media:', woff.media);
+        }
         // WOFF初期化成功後にメインの処理を実行
         await loadMeterReadings();
       } catch (error) {
