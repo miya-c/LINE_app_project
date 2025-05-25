@@ -203,16 +203,98 @@
             row.insertCell().textContent = reading.usage || 'N/A';
             row.insertCell().textContent = reading.status || 'N/A';
             const photoCell = row.insertCell();
+            photoCell.setAttribute('data-date-photo', reading.date); // 写真セルにも日付を紐付け
+
+            // 既存の画像表示ロジック
             if (reading.photoUrl) {
               const img = document.createElement('img');
               img.src = reading.photoUrl;
               img.alt = '検針写真';
-              img.style.maxWidth = '100px'; // 簡単なスタイル
-              img.style.maxHeight = '100px';
+              img.style.maxWidth = '50px'; // 少し小さく調整
+              img.style.maxHeight = '50px';
+              img.style.cursor = 'pointer';
+              img.addEventListener('click', () => showPhotoModal(reading.photoUrl));
               photoCell.appendChild(img);
             } else {
-              photoCell.textContent = 'なし';
+              // photoCell.textContent = 'なし'; // 「なし」の代わりにボタンを配置
             }
+
+            // カメラボタンの作成
+            const cameraButton = document.createElement('button');
+            cameraButton.textContent = '撮影';
+            cameraButton.setAttribute('data-date-button', reading.date);
+            cameraButton.addEventListener('click', async (event) => {
+              try {
+                const date = event.target.getAttribute('data-date-button');
+                console.log('[meter_reading] カメラボタンクリック: date=', date);
+                const result = await woff.media.getPicture({
+                  sourceType: 'camera', // 'camera', 'album', 'camera_album'
+                  // encodingType: 'jpeg', // 'jpeg', 'png' (default: jpeg)
+                  // mediaType: 'photo', // 'photo', 'video', 'all' (default: photo)
+                  // allowEdit: false, // (default: false)
+                  // saveToPhotoAlbum: false, // (default: false)
+                  // cameraDirection: 'back' // 'back', 'front' (default: back)
+                });
+                console.log('[meter_reading] 写真取得成功:', result);
+                if (result && result.data) {
+                  // Base64エンコードされた画像データ
+                  const imageData = result.data; // `data:image/jpeg;base64,` のような形式
+                  
+                  // 該当行の写真セルを特定
+                  const targetPhotoCell = document.querySelector(`td[data-date-photo="${date}"]`);
+                  if (targetPhotoCell) {
+                    targetPhotoCell.innerHTML = ''; // 既存の内容をクリア
+
+                    // 撮影した画像のプレビュー（小さい画像）
+                    const newImg = document.createElement('img');
+                    newImg.src = imageData;
+                    newImg.alt = '撮影した写真';
+                    newImg.style.maxWidth = '50px';
+                    newImg.style.maxHeight = '50px';
+                    newImg.style.cursor = 'pointer';
+                    newImg.addEventListener('click', () => showPhotoModal(imageData));
+                    targetPhotoCell.appendChild(newImg);
+
+                    // 表示ボタンの作成
+                    const viewButton = document.createElement('button');
+                    viewButton.textContent = '表示';
+                    viewButton.style.marginLeft = '5px';
+                    viewButton.addEventListener('click', () => showPhotoModal(imageData));
+                    targetPhotoCell.appendChild(viewButton);
+
+                    // カメラボタンを再度追加（撮り直し用）
+                    const retakeButton = document.createElement('button');
+                    retakeButton.textContent = '再撮影';
+                    retakeButton.style.marginLeft = '5px';
+                    retakeButton.setAttribute('data-date-button', date); // 再度日付を紐付け
+                    retakeButton.addEventListener('click', cameraButton.onclick); // 元のカメラボタンのイベントを再利用
+                    targetPhotoCell.appendChild(retakeButton);
+
+
+                    // 撮影した画像データをinput要素に紐付けるか、別途管理する
+                    // ここでは、更新時に送信するデータに含めるため、どこかに保持する必要がある
+                    // 例: input要素にdata属性として保持
+                    const currentReadingInput = document.querySelector(`#meter-readings-table tbody input[data-date="${date}"]`);
+                    if (currentReadingInput) {
+                        currentReadingInput.setAttribute('data-new-photo', imageData);
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('[meter_reading] 写真の取得または処理に失敗しました:', error);
+                if (error && error.code) {
+                    // WOFF APIのエラーコードに応じた処理
+                    // 例: woff.ErrorCode.CANCELLED (ユーザーによるキャンセル)
+                    // 例: woff.ErrorCode.NO_PERMISSION (権限なし)
+                    alert('写真の取得に失敗しました。エラーコード: ' + error.code);
+                } else {
+                    alert('写真の取得中に予期せぬエラーが発生しました。');
+                }
+              }
+            });
+            photoCell.appendChild(cameraButton);
+
+
           });
         } else { // No data (readings is empty array or not an array)
           noDataMessageElement.textContent = 'この部屋の検針データはありません。';
@@ -244,10 +326,15 @@
       const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
       const updatedReadings = [];
       inputs.forEach(input => {
+        const date = input.getAttribute('data-date');
+        const newPhotoData = input.getAttribute('data-new-photo'); // 新しく撮影した写真のデータを取得
         updatedReadings.push({
-          date: input.getAttribute('data-date'),
-          currentReading: input.value
+          date: date,
+          currentReading: input.value,
+          photoData: newPhotoData || null // 写真データがない場合はnull
         });
+        // 送信後にクリアするならここで
+        // input.removeAttribute('data-new-photo'); 
       });
 
       if (updatedReadings.length === 0) {
@@ -316,7 +403,39 @@
       // WOFFの初期化とデータ読み込み
       // initializeWoff内でエラーが発生しても、戻るボタンのリスナーは既に設定されている
       await initializeWoff(); 
+
+      // モーダル関連のイベントリスナー
+      const modal = document.getElementById('photo-modal');
+      const modalCloseButton = document.getElementById('modal-close-button');
+      
+      if (modalCloseButton) {
+        modalCloseButton.onclick = function() {
+          if (modal) modal.style.display = "none";
+        }
+      }
+      
+      if (modal) {
+        window.onclick = function(event) {
+          if (event.target == modal) {
+            modal.style.display = "none";
+          }
+        }
+      }
     });
+
+    function showPhotoModal(imageUrl) {
+      const modal = document.getElementById('photo-modal');
+      const modalImage = document.getElementById('modal-image');
+      if (modal && modalImage) {
+        modalImage.src = imageUrl;
+        modal.style.display = 'block';
+      }
+    }
   </script>
+
+  <div id="photo-modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.8);">
+    <span id="modal-close-button" style="position:absolute; top:20px; right:35px; color:#f1f1f1; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
+    <img id="modal-image" style="margin:auto; display:block; max-width:90%; max-height:90%; position:relative; top:50%; transform:translateY(-50%);">
+  </div>
 </body>
 </html>
