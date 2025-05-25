@@ -83,6 +83,36 @@
     #meter-readings-table button:hover {
       background-color: #f0f0f0;
     }
+    
+    /* 初回検針行のスタイル */
+    .initial-reading-row {
+      background-color: #f0f8ff !important;
+      border-left: 4px solid #007bff !important;
+    }
+    
+    .initial-reading-row input[type="number"] {
+      border: 2px solid #007bff;
+      background-color: #fff;
+    }
+    
+    .initial-reading-row input[type="number"]:focus {
+      outline: none;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+    
+    /* モバイル表示での初回検針行の追加スタイル */
+    @media (max-width: 767px) {
+      .initial-reading-row {
+        border: 3px solid #007bff !important;
+        background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%) !important;
+      }
+      
+      .initial-reading-row td::before {
+        color: #007bff !important;
+        font-weight: bold !important;
+      }
+    }
+    
     /* デスクトップサイズでの通常テーブル表示 */
     @media (min-width: 768px) {
       #meter-readings-table { 
@@ -447,22 +477,109 @@
             photoCell.appendChild(cameraButton);
           });
         } else {
-          // データがない場合でも空のテーブルを表示
+          // データがない場合は初回検針データ登録用のテンプレート行を表示
           tableElement.style.display = '';
-          tableBody.innerHTML = ''; // テーブルボディを空にする
+          document.getElementById('update-readings-button').style.display = 'block'; // 更新ボタンを表示
+          noDataMessageElement.style.display = 'none';
+          tableBody.innerHTML = '';
+
+          // 初回検針用のテンプレート行を作成
+          const row = tableBody.insertRow();
+          row.classList.add('initial-reading-row'); // 初回検針行であることを示すクラスを追加
           
-          // 「データなし」を示す行を1行追加（オプション）
-          const emptyRow = tableBody.insertRow();
-          const emptyCell = emptyRow.insertCell();
-          emptyCell.colSpan = 7; // 全ての列をスパン
-          emptyCell.textContent = 'この部屋の検針データはありません。';
-          emptyCell.style.textAlign = 'center';
-          emptyCell.style.color = '#666';
-          emptyCell.style.padding = '20px';
-          emptyCell.style.fontStyle = 'italic';
+          // 検針日時（現在の日時を表示）
+          const currentDate = new Date();
+          const year = currentDate.getFullYear();
+          const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+          const day = currentDate.getDate().toString().padStart(2, '0');
+          const formattedCurrentDate = `${year}年${month}月${day}日`;
           
-          noDataMessageElement.style.display = 'none'; // メッセージは非表示
-          document.getElementById('update-readings-button').style.display = 'none';
+          const dateCell = row.insertCell();
+          dateCell.textContent = formattedCurrentDate;
+          dateCell.setAttribute('data-label', '検針日時');
+          
+          // 今回指示数入力フィールド
+          const currentReadingCell = row.insertCell();
+          currentReadingCell.setAttribute('data-label', '今回(㎥)');
+          const currentReadingInput = document.createElement('input');
+          currentReadingInput.type = 'number';
+          currentReadingInput.value = '';
+          currentReadingInput.placeholder = '初回指示数を入力';
+          currentReadingInput.setAttribute('data-date', currentDate.toISOString());
+          currentReadingInput.setAttribute('data-original-value', '');
+          currentReadingInput.setAttribute('pattern', '[0-9]*');
+          currentReadingInput.setAttribute('inputmode', 'numeric');
+          currentReadingInput.setAttribute('min', '0'); // 最小値を設定
+          currentReadingInput.required = true; // 必須フィールドとして設定
+
+          currentReadingInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            // 入力時にエラー表示をクリア
+            e.target.style.borderColor = '';
+          });
+
+          currentReadingCell.appendChild(currentReadingInput);
+
+          // 前回指示数（初回なので N/A）
+          const prevReadingCell = row.insertCell();
+          prevReadingCell.textContent = 'N/A';
+          prevReadingCell.setAttribute('data-label', '前回');
+          
+          // 前々回指示数（初回なので N/A）
+          const prevPrevReadingCell = row.insertCell();
+          prevPrevReadingCell.textContent = 'N/A';
+          prevPrevReadingCell.setAttribute('data-label', '前々回');
+          
+          // 今回使用量（初回なので計算不可）
+          const usageCell = row.insertCell();
+          usageCell.textContent = '初回登録';
+          usageCell.setAttribute('data-label', '今回使用量');
+          
+          // 状態
+          const statusCell = row.insertCell();
+          statusCell.textContent = '初回検針';
+          statusCell.setAttribute('data-label', '状態');
+          statusCell.style.color = '#007bff';
+          statusCell.style.fontWeight = 'bold';
+          
+          // 写真欄
+          const photoCell = row.insertCell();
+          photoCell.setAttribute('data-date-photo', currentDate.toISOString());
+          photoCell.setAttribute('data-label', '写真');
+
+          // カメラボタンの作成
+          const cameraButton = document.createElement('button');
+          cameraButton.textContent = '撮影';
+          cameraButton.setAttribute('data-date-button', currentDate.toISOString());
+          cameraButton.addEventListener('click', async (event) => {
+            const debugInfoDiv = document.getElementById('debug-info');
+            debugInfoDiv.innerHTML = 'カメラボタンクリック時のデバッグ情報:<br>';
+            try {
+              const date = event.target.getAttribute('data-date-button');
+              console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
+              debugInfoDiv.innerHTML += 'カメラボタンクリック (HTML Media Capture): date=' + date + '<br>';
+
+              const fileInput = document.createElement('input');
+              fileInput.type = 'file';
+              fileInput.accept = 'image/*';
+              fileInput.capture = 'environment'; 
+              fileInput.style.display = 'none';
+
+              fileInput.onchange = (e) => handleFileSelection(e, date, debugInfoDiv);
+              
+              document.body.appendChild(fileInput);
+              fileInput.click();
+            } catch (error) {
+              console.error('[meter_reading] 写真の取得または処理に失敗しました (HTML Media Capture):', error);
+              debugInfoDiv.innerHTML += '<span style="color: red;">写真処理エラー: ' + error.toString() + '</span><br>';
+              alert('写真の処理中に予期せぬエラーが発生しました。');
+              const orphanInput = document.querySelector('input[type="file"][style*="display: none"]');
+              if (orphanInput && orphanInput.parentElement === document.body) {
+                  document.body.removeChild(orphanInput);
+              }
+            }
+          });
+          photoCell.appendChild(cameraButton);
         }
       } catch (error) {
         console.error('[meter_reading] fetchMeterReadings error:', error);
@@ -487,14 +604,33 @@
 
       const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
       const updatedReadings = [];
+      let hasValidationErrors = false;
+      
       inputs.forEach(input => {
         const date = input.getAttribute('data-date');
         const newPhotoData = input.getAttribute('data-new-photo');
         const originalValue = input.getAttribute('data-original-value') || '';
         const currentValue = input.value || '';
         
+        // 初回検針の場合（originalValueが空）の入力バリデーション
+        if (originalValue === '' && currentValue.trim() === '') {
+          input.style.borderColor = 'red';
+          hasValidationErrors = true;
+          return;
+        } else {
+          input.style.borderColor = ''; // エラー表示をクリア
+        }
+        
         // 指示数が変更されたか、新しい写真が撮影された場合のみ更新対象に含める
         if (currentValue !== originalValue || newPhotoData) {
+          // 数値の妥当性チェック
+          const numericValue = parseFloat(currentValue);
+          if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
+            input.style.borderColor = 'red';
+            hasValidationErrors = true;
+            return;
+          }
+          
           updatedReadings.push({
             date: date,
             currentReading: currentValue,
@@ -502,6 +638,11 @@
           });
         }
       });
+
+      if (hasValidationErrors) {
+        alert('入力値に誤りがあります。初回検針では指示数の入力が必須です。また、指示数は0以上の数値を入力してください。');
+        return;
+      }
 
       if (updatedReadings.length === 0) {
         alert('更新するデータがありません。');
@@ -537,7 +678,15 @@
         try {
             const result = JSON.parse(resultText); 
             if (result.success) {
-              alert('指示数と検針日時を更新しました。');
+              // 初回検針データかどうかを判定
+              const isInitialReading = inputs.length > 0 && 
+                inputs[0].getAttribute('data-original-value') === '';
+              
+              if (isInitialReading) {
+                alert('初回検針データを正常に登録しました。次回からは使用量も計算されます。');
+              } else {
+                alert('指示数と検針日時を更新しました。');
+              }
               await loadMeterReadings(); 
             } else {
               throw new Error(result.error || '指示数の更新に失敗しました。');
