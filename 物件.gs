@@ -115,12 +115,18 @@ function doGet(e) {
   } else if (action == 'getMeterReadings') { // ★★★ 検針データを取得する処理 ★★★
     try {
       const roomId = e.parameter.roomId;
+      const propertyId = e.parameter.propertyId; // 物件IDも取得
       if (!roomId) {
         console.error("[物件.gs] getMeterReadings - 'roomId' パラメータがありません。");
         return ContentService.createTextOutput(JSON.stringify({ error: "'roomId' パラメータが必要です。" }))
           .setMimeType(ContentService.MimeType.JSON);
       }
-      console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データを取得開始`);
+      if (!propertyId) {
+        console.error("[物件.gs] getMeterReadings - 'propertyId' パラメータがありません。");
+        return ContentService.createTextOutput(JSON.stringify({ error: "'propertyId' パラメータが必要です。" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを取得開始`);
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       const sheetName = 'inspection_data'; // ★★★ 検針データのシート名を 'inspection_data' に変更 ★★★
@@ -143,6 +149,7 @@ function doGet(e) {
       console.log(`[物件.gs] getMeterReadings - シート '${sheetName}' から読み込んだヘッダー: ${JSON.stringify(headers)}`);
 
       // 列インデックスの取得（列名が完全に一致している必要があります）
+      const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
       const currentReadingColIndex = headers.indexOf('今回の指示数');
@@ -154,6 +161,7 @@ function doGet(e) {
 
       // 必須ヘッダーの存在チェック
       let missingHeaders = [];
+      if (propertyIdColIndex === -1) missingHeaders.push('物件ID'); // 物件IDを必須チェックに追加
       if (roomIdColIndex === -1) missingHeaders.push('部屋ID');
       if (dateColIndex === -1) missingHeaders.push('検針日時');
       if (currentReadingColIndex === -1) missingHeaders.push('今回の指示数');
@@ -167,14 +175,17 @@ function doGet(e) {
         console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);
         return ContentService.createTextOutput(JSON.stringify({ 
           error: errorMessage,
-          expectedHeaders: ['部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '今回使用量', '警告フラグ'],
+          expectedHeaders: ['物件ID', '部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '今回使用量', '警告フラグ'], // 物件IDを追加
           foundHeaders: headers,
           sheetName: sheetName
         }))
           .setMimeType(ContentService.MimeType.JSON);
       }
 
-      const readings = data.filter(row => String(row[roomIdColIndex]).trim() == String(roomId).trim())
+      const readings = data.filter(row => 
+        String(row[propertyIdColIndex]).trim() == String(propertyId).trim() && // 物件IDでもフィルタリング
+        String(row[roomIdColIndex]).trim() == String(roomId).trim()
+      )
         .map(row => {
           // 各列の値を取得。列が存在しない場合はnullや空文字を適切に処理
           const getDateValue = (index) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
@@ -191,7 +202,7 @@ function doGet(e) {
           return readingObject;
         });
       
-      console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データ ${readings.length} 件を整形完了: ${JSON.stringify(readings)}`);
+      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データ ${readings.length} 件を整形完了: ${JSON.stringify(readings)}`);
 
       // 日付の降順（新しいものが先頭）にソート
       readings.sort((a, b) => {
@@ -208,7 +219,7 @@ function doGet(e) {
         return dateB - dateA;
       });
       
-      console.log(`[物件.gs] getMeterReadings - roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
+      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
       return ContentService.createTextOutput(JSON.stringify(readings))
         .setMimeType(ContentService.MimeType.JSON);
 
@@ -320,6 +331,7 @@ function doPost(e) {
       const data = sheet.getDataRange().getValues();
       const headers = data.shift(); // ヘッダー行を取得
 
+      const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
       const currentReadingColIndex = headers.indexOf('今回の指示数');
@@ -333,8 +345,9 @@ function doPost(e) {
         console.log(`[物件.gs] updateMeterReadings - '写真URL' 列を ${photoUrlColIndex + 1} 列目に追加しました。`);
       }
 
-      if (roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
+      if (propertyIdColIndex === -1 || roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
         let missing = [];
+        if (propertyIdColIndex === -1) missing.push('物件ID'); // 物件IDを必須チェックに追加
         if (roomIdColIndex === -1) missing.push('部屋ID');
         if (dateColIndex === -1) missing.push('検針日時');
         if (currentReadingColIndex === -1) missing.push('今回の指示数');
@@ -359,7 +372,8 @@ function doPost(e) {
       // スプレッドシートのデータを走査して更新
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
-        if (String(row[roomIdColIndex]).trim() === String(roomId).trim()) {
+        if (String(row[propertyIdColIndex]).trim() === String(propertyId).trim() && // 物件IDでもフィルタリング
+            String(row[roomIdColIndex]).trim() === String(roomId).trim()) {
           const sheetDateValue = row[dateColIndex];
           let sheetDateStr;
           if (sheetDateValue instanceof Date) {
