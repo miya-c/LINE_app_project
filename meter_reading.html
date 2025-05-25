@@ -247,6 +247,7 @@
             currentReadingInput.type = 'number';
             currentReadingInput.value = reading.currentReading || '';
             currentReadingInput.setAttribute('data-date', reading.date);
+            currentReadingInput.setAttribute('data-original-value', reading.currentReading || ''); // 元の値を保存
             currentReadingInput.setAttribute('pattern', '[0-9]*');
             currentReadingInput.setAttribute('inputmode', 'numeric');
             currentReadingInput.style.width = '80px';
@@ -342,11 +343,17 @@
       inputs.forEach(input => {
         const date = input.getAttribute('data-date');
         const newPhotoData = input.getAttribute('data-new-photo');
-        updatedReadings.push({
-          date: date,
-          currentReading: input.value,
-          photoData: newPhotoData || null
-        });
+        const originalValue = input.getAttribute('data-original-value') || '';
+        const currentValue = input.value || '';
+        
+        // 指示数が変更されたか、新しい写真が撮影された場合のみ更新対象に含める
+        if (currentValue !== originalValue || newPhotoData) {
+          updatedReadings.push({
+            date: date,
+            currentReading: currentValue,
+            photoData: newPhotoData || null
+          });
+        }
       });
 
       if (updatedReadings.length === 0) {
@@ -383,7 +390,7 @@
         try {
             const result = JSON.parse(resultText); 
             if (result.success) {
-              alert('指示数を更新しました。');
+              alert('指示数と検針日時を更新しました。');
               await loadMeterReadings(); 
             } else {
               throw new Error(result.error || '指示数の更新に失敗しました。');

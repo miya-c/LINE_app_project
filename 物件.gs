@@ -398,6 +398,11 @@ function doPost(e) {
                 if (readingToUpdate.currentReading !== undefined && readingToUpdate.currentReading !== null) {
                     sheet.getRange(i + 2, currentReadingColIndex + 1).setValue(readingToUpdate.currentReading);
                     console.log(`[物件.gs] updateMeterReadings - 指示数更新成功: 行 ${i+2}, 日時 ${readingToUpdate.date}, 新しい指示数 ${readingToUpdate.currentReading}`);
+                    
+                    // 指示数が更新された際に検針日時も現在の日時に更新
+                    const currentDateTime = new Date();
+                    sheet.getRange(i + 2, dateColIndex + 1).setValue(currentDateTime);
+                    console.log(`[物件.gs] updateMeterReadings - 検針日時更新成功: 行 ${i+2}, 新しい日時 ${currentDateTime.toISOString()}`);
                 }
                 
                 // 写真URLの更新 (photoUrlColIndex は 0ベースなので +1 する)
