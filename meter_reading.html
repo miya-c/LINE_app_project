@@ -447,9 +447,21 @@
             photoCell.appendChild(cameraButton);
           });
         } else {
-          noDataMessageElement.textContent = 'この部屋の検針データはありません。';
-          noDataMessageElement.style.display = 'block';
-          tableElement.style.display = 'none';
+          // データがない場合でも空のテーブルを表示
+          tableElement.style.display = '';
+          tableBody.innerHTML = ''; // テーブルボディを空にする
+          
+          // 「データなし」を示す行を1行追加（オプション）
+          const emptyRow = tableBody.insertRow();
+          const emptyCell = emptyRow.insertCell();
+          emptyCell.colSpan = 7; // 全ての列をスパン
+          emptyCell.textContent = 'この部屋の検針データはありません。';
+          emptyCell.style.textAlign = 'center';
+          emptyCell.style.color = '#666';
+          emptyCell.style.padding = '20px';
+          emptyCell.style.fontStyle = 'italic';
+          
+          noDataMessageElement.style.display = 'none'; // メッセージは非表示
           document.getElementById('update-readings-button').style.display = 'none';
         }
       } catch (error) {
