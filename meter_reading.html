@@ -264,17 +264,17 @@
             const photoCell = row.insertCell();
             photoCell.setAttribute('data-date-photo', reading.date);
 
-            // 既存の画像表示ロジック
-            if (reading.photoUrl) {
-              const img = document.createElement('img');
-              img.src = reading.photoUrl;
-              img.alt = '検針写真';
-              img.style.maxWidth = '50px'; 
-              img.style.maxHeight = '50px';
-              img.style.cursor = 'pointer';
-              img.addEventListener('click', () => showPhotoModal(reading.photoUrl));
-              photoCell.appendChild(img);
-            }
+            // 既存の画像表示ロジック（撮影前は非表示）
+            // if (reading.photoUrl) {
+            //   const img = document.createElement('img');
+            //   img.src = reading.photoUrl;
+            //   img.alt = '検針写真';
+            //   img.style.maxWidth = '50px'; 
+            //   img.style.maxHeight = '50px';
+            //   img.style.cursor = 'pointer';
+            //   img.addEventListener('click', () => showPhotoModal(reading.photoUrl));
+            //   photoCell.appendChild(img);
+            // }
 
             // カメラボタンの作成
             const cameraButton = document.createElement('button');
