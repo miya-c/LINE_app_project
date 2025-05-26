@@ -414,9 +414,10 @@ function doPost(e) {
                 } catch (photoError) {
                   const photoErrMsg = `写真の保存に失敗 (日時: ${readingToUpdate.date}): ${photoError.message}`
                   console.error("[物件.gs] " + photoErrMsg, photoError.stack);
-                  errors.push(photoErrMsg);
-                }
-              }              try {
+                  errors.push(photoErrMsg);                }
+              }
+
+              try {
                 // 指示数の更新
                 if (readingToUpdate.currentReading !== undefined && readingToUpdate.currentReading !== null) {
                     sheet.getRange(latestRecordIndex + 2, currentReadingColIndex + 1).setValue(readingToUpdate.currentReading);
@@ -438,6 +439,7 @@ function doPost(e) {
                 console.error("[物件.gs] " + errMsg);
                 errors.push(errMsg);
               }
+        }
         
         // 既存データに該当する部屋のレコードが見つからない場合は新規追加
         if (!found) {
