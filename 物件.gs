@@ -146,9 +146,8 @@ function doGet(e) {
       }
 
       const headers = data.shift(); // ヘッダー行を取得
-      console.log(`[物件.gs] getMeterReadings - シート '${sheetName}' から読み込んだヘッダー: ${JSON.stringify(headers)}`);
-
-      // 列インデックスの取得（列名が完全に一致している必要があります）
+      console.log(`[物件.gs] getMeterReadings - シート '${sheetName}' から読み込んだヘッダー: ${JSON.stringify(headers)}`);      // 列インデックスの取得（列名が完全に一致している必要があります）
+      const propertyNameColIndex = headers.indexOf('物件名'); // 物件名列のインデックスを追加
       const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
@@ -161,6 +160,7 @@ function doGet(e) {
 
       // 必須ヘッダーの存在チェック
       let missingHeaders = [];
+      if (propertyNameColIndex === -1) missingHeaders.push('物件名'); // 物件名を必須チェックに追加
       if (propertyIdColIndex === -1) missingHeaders.push('物件ID'); // 物件IDを必須チェックに追加
       if (roomIdColIndex === -1) missingHeaders.push('部屋ID');
       if (dateColIndex === -1) missingHeaders.push('検針日時');
@@ -172,10 +172,9 @@ function doGet(e) {
       
       if (missingHeaders.length > 0) {
         const errorMessage = `必須の列ヘッダー（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
-        console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);
-        return ContentService.createTextOutput(JSON.stringify({ 
+        console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);        return ContentService.createTextOutput(JSON.stringify({ 
           error: errorMessage,
-          expectedHeaders: ['物件ID', '部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '今回使用量', '警告フラグ'], // 物件IDを追加
+          expectedHeaders: ['物件名', '物件ID', '部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '今回使用量', '警告フラグ'], // 物件名を追加
           foundHeaders: headers,
           sheetName: sheetName
         }))
@@ -326,11 +325,10 @@ function doPost(e) {
 
       if (!sheet) {
         throw new Error(`シート '${sheetName}' が見つかりません。`);
-      }
-
-      const data = sheet.getDataRange().getValues();
+      }      const data = sheet.getDataRange().getValues();
       const headers = data.shift(); // ヘッダー行を取得
 
+      const propertyNameColIndex = headers.indexOf('物件名'); // 物件名列のインデックスを追加
       const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
@@ -343,10 +341,9 @@ function doPost(e) {
         photoUrlColIndex = headers.length; // 新しいインデックス
         headers.push('写真URL'); // ヘッダー配列にも追加
         console.log(`[物件.gs] updateMeterReadings - '写真URL' 列を ${photoUrlColIndex + 1} 列目に追加しました。`);
-      }
-
-      if (propertyIdColIndex === -1 || roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
+      }      if (propertyNameColIndex === -1 || propertyIdColIndex === -1 || roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
         let missing = [];
+        if (propertyNameColIndex === -1) missing.push('物件名'); // 物件名を必須チェックに追加
         if (propertyIdColIndex === -1) missing.push('物件ID'); // 物件IDを必須チェックに追加
         if (roomIdColIndex === -1) missing.push('部屋ID');
         if (dateColIndex === -1) missing.push('検針日時');
@@ -439,11 +436,28 @@ function doPost(e) {
             }
           }
         }
-        
-        // 既存データに該当する行が見つからない場合は新規追加
+          // 既存データに該当する行が見つからない場合は新規追加
         if (!found) {
           try {
             console.log(`[物件.gs] updateMeterReadings - 新規データを追加します: ${JSON.stringify(readingToUpdate)}`);
+            
+            // 物件IDから物件名を取得
+            let propertyName = '';
+            try {
+              const propertyMasterSheet = spreadsheet.getSheetByName('物件マスタ');
+              if (propertyMasterSheet) {
+                const propertyData = propertyMasterSheet.getDataRange().getValues();
+                for (let i = 1; i < propertyData.length; i++) { // ヘッダー行をスキップ
+                  if (String(propertyData[i][0]).trim() === String(propertyId).trim()) { // A列が物件ID、B列が物件名
+                    propertyName = String(propertyData[i][1]).trim();
+                    break;
+                  }
+                }
+              }
+            } catch (propertyLookupError) {
+              console.error("[物件.gs] 物件名の取得に失敗:", propertyLookupError.message);
+              propertyName = `物件ID:${propertyId}`; // フォールバック
+            }
             
             let photoUrl = null;
             // 写真データの処理
@@ -470,11 +484,12 @@ function doPost(e) {
             // 新しい行を追加
             const newRowIndex = sheet.getLastRow() + 1;
             const currentDateTime = new Date();
-            
-            // 新しい行のデータを準備（列の順序に注意）
+              // 新しい行のデータを準備（列の順序に注意）
             const newRowData = [];
             for (let colIndex = 0; colIndex < headers.length; colIndex++) {
-              if (colIndex === propertyIdColIndex) {
+              if (colIndex === propertyNameColIndex) {
+                newRowData.push(propertyName);
+              } else if (colIndex === propertyIdColIndex) {
                 newRowData.push(propertyId);
               } else if (colIndex === roomIdColIndex) {
                 newRowData.push(roomId);
@@ -500,7 +515,7 @@ function doPost(e) {
             // 新しい行を挿入
             sheet.getRange(newRowIndex, 1, 1, headers.length).setValues([newRowData]);
             
-            console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndex}, 物件ID ${propertyId}, 部屋ID ${roomId}, 指示数 ${readingToUpdate.currentReading}`);
+            console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndex}, 物件名 ${propertyName}, 物件ID ${propertyId}, 部屋ID ${roomId}, 指示数 ${readingToUpdate.currentReading}`);
             newRecordsCount++;
             updatedCount++;
             
