@@ -658,10 +658,10 @@
           headers: {
             'Content-Type': 'text/plain;charset=utf-8', 
           },
-          body: JSON.stringify({ 
-            action: 'updateMeterReadings',
-            propertyId: propertyId,
-            roomId: roomId,
+          body: JSON.stringify({
+            action: 'updateMeterReadings', // アクションタイプを追加
+            propertyId: propertyId,       // 物件IDを追加
+            roomId: roomId,               // 部屋IDを追加
             readings: updatedReadings
           }),
         });
