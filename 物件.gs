@@ -156,7 +156,7 @@ function doGet(e) {
       const previousPreviousReadingColIndex = headers.indexOf('前々回指示数'); // ★ 「前々回指示数」の列インデックスを取得
       const usageColIndex = headers.indexOf('今回使用量');
       const statusColIndex = headers.indexOf('警告フラグ');
-      const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URLは任意
+      // const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URL列は使用しないためコメントアウト
 
       // 必須ヘッダーの存在チェック
       let missingHeaders = [];
@@ -195,8 +195,8 @@ function doGet(e) {
             previousReading: getDateValue(previousReadingColIndex),
             previousPreviousReading: getDateValue(previousPreviousReadingColIndex), // ★ 「前々回指示数」のデータを取得
             usage: getDateValue(usageColIndex),
-            status: getDateValue(statusColIndex),
-            photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null
+            status: getDateValue(statusColIndex)
+            // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLはコメントで扱うため削除
           };
           return readingObject;
         });
@@ -325,30 +325,29 @@ function doPost(e) {
 
       if (!sheet) {
         throw new Error(`シート '${sheetName}' が見つかりません。`);
-      }      const data = sheet.getDataRange().getValues();
-      const headers = data.shift(); // ヘッダー行を取得
+      }
+      const data = sheet.getDataRange().getValues(); // ヘッダーを含む全データを取得
+      const headers = data.length > 0 ? data.shift() : []; // ヘッダー行を取得、データが空の場合は空配列
 
-      const propertyNameColIndex = headers.indexOf('物件名'); // 物件名列のインデックスを追加
-      const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
+      if (headers.length === 0) {
+        throw new Error(`シート '${sheetName}' にヘッダー行がありません。`);
+      }
+
+      const propertyNameColIndex = headers.indexOf('物件名');
+      const propertyIdColIndex = headers.indexOf('物件ID');
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
       const currentReadingColIndex = headers.indexOf('今回の指示数');
-      let photoUrlColIndex = headers.indexOf('写真URL');
+      // photoUrlColIndex は使用しない
 
-      // 写真URL列が存在しない場合は追加
-      if (photoUrlColIndex === -1) {
-        sheet.getRange(1, headers.length + 1).setValue('写真URL');
-        photoUrlColIndex = headers.length; // 新しいインデックス
-        headers.push('写真URL'); // ヘッダー配列にも追加
-        console.log(`[物件.gs] updateMeterReadings - '写真URL' 列を ${photoUrlColIndex + 1} 列目に追加しました。`);
-      }      if (propertyNameColIndex === -1 || propertyIdColIndex === -1 || roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
+      if (propertyNameColIndex === -1 || propertyIdColIndex === -1 || roomIdColIndex === -1 || dateColIndex === -1 || currentReadingColIndex === -1) {
         let missing = [];
-        if (propertyNameColIndex === -1) missing.push('物件名'); // 物件名を必須チェックに追加
-        if (propertyIdColIndex === -1) missing.push('物件ID'); // 物件IDを必須チェックに追加
+        if (propertyNameColIndex === -1) missing.push('物件名');
+        if (propertyIdColIndex === -1) missing.push('物件ID');
         if (roomIdColIndex === -1) missing.push('部屋ID');
         if (dateColIndex === -1) missing.push('検針日時');
         if (currentReadingColIndex === -1) missing.push('今回の指示数');
-        throw new Error(`必要な列（${missing.join(', ')}）がシート '${sheetName}' に見つかりません。`);
+        throw new Error(`必要な列（${missing.join(', ')}）がシート '${sheetName}' に見つかりません。ヘッダー: ${JSON.stringify(headers)}`);
       }
 
       // Google Driveのフォルダ設定
@@ -365,13 +364,14 @@ function doPost(e) {
       let updatedCount = 0;
       let photoSavedCount = 0;
       let errors = [];
-      let newRecordsCount = 0; // 新規追加されたレコード数      // スプレッドシートのデータを走査して更新
+      let newRecordsCount = 0; // 新規追加されたレコード数
+      // スプレッドシートのデータを走査して更新 (dataはヘッダー行が除かれた状態)
       for (const readingToUpdate of readingsToUpdate) {
         let found = false;
         let latestRecordIndex = -1;
         let latestDate = null;
         
-        // 同じ物件・部屋の最新レコードを検索
+        // 同じ物件・部屋の最新レコードを検索 (data配列は0ベース、ヘッダー除去済み)
         for (let i = 0; i < data.length; i++) {
           const row = data[i];
           if (String(row[propertyIdColIndex]).trim() === String(propertyId).trim() && 
@@ -382,14 +382,26 @@ function doPost(e) {
             if (sheetDateValue instanceof Date) {
               sheetDate = sheetDateValue;
             } else {
-              sheetDate = new Date(String(sheetDateValue));
+              try {
+                sheetDate = new Date(String(sheetDateValue));
+                if (isNaN(sheetDate.getTime())) { // 無効な日付の場合
+                    console.warn(`[物件.gs] updateMeterReadings - 行 ${i + 2} の日付が無効です: ${sheetDateValue}`);
+                    sheetDate = null; // 無効な日付はnullとして扱う
+                }
+              } catch (dateParseError) {
+                console.warn(`[物件.gs] updateMeterReadings - 行 ${i + 2} の日付パースエラー: ${sheetDateValue}`, dateParseError);
+                sheetDate = null;
+              }
             }
             
             // 最新の日時のレコードを特定
-            if (latestDate === null || sheetDate > latestDate) {
+            if (sheetDate && (latestDate === null || sheetDate > latestDate)) {
               latestDate = sheetDate;
-              latestRecordIndex = i;
+              latestRecordIndex = i; // data 配列のインデックス (0ベース)
               found = true;
+            } else if (!sheetDate && latestDate === null && !found) { // 日付が無効でも、まだ何も見つかっていない場合は最初の該当行を候補とする
+                latestRecordIndex = i;
+                found = true; // ただし、有効な日付を持つレコードを優先する
             }
           }
         }
@@ -412,30 +424,39 @@ function doPost(e) {
                   console.log(`[物件.gs] updateMeterReadings - 写真をDriveに保存しました: ${fileName}, URL: ${photoUrl}`);
                   photoSavedCount++;
                 } catch (photoError) {
-                  const photoErrMsg = `写真の保存に失敗 (日時: ${readingToUpdate.date}): ${photoError.message}`
+                  const photoErrMsg = `写真の保存に失敗 (物件ID: ${propertyId}, 部屋ID: ${roomId}): ${photoError.message}`
                   console.error("[物件.gs] " + photoErrMsg, photoError.stack);
-                  errors.push(photoErrMsg);                }
+                  errors.push(photoErrMsg);
+                }
               }
 
               try {
+                const targetRowInSheet = latestRecordIndex + 2; // スプレッドシート上の行番号 (1ベース、ヘッダー行の分+1)
                 // 指示数の更新
                 if (readingToUpdate.currentReading !== undefined && readingToUpdate.currentReading !== null) {
-                    sheet.getRange(latestRecordIndex + 2, currentReadingColIndex + 1).setValue(readingToUpdate.currentReading);
-                    console.log(`[物件.gs] updateMeterReadings - 指示数更新成功: 行 ${latestRecordIndex + 2}, 物件ID ${propertyId}, 部屋ID ${roomId}, 新しい指示数 ${readingToUpdate.currentReading}`);
+                    sheet.getRange(targetRowInSheet, currentReadingColIndex + 1).setValue(readingToUpdate.currentReading);
+                    console.log(`[物件.gs] updateMeterReadings - 指示数更新成功: 行 ${targetRowInSheet}, 物件ID ${propertyId}, 部屋ID ${roomId}, 新しい指示数 ${readingToUpdate.currentReading}`);
                     
+                    // 写真があればコメントを追加
+                    if (photoUrl) {
+                        sheet.getRange(targetRowInSheet, currentReadingColIndex + 1).addComment("写真: " + photoUrl);
+                        console.log(`[物件.gs] updateMeterReadings - 写真コメント追加成功: 行 ${targetRowInSheet}, URL ${photoUrl}`);
+                    }
+
                     // 指示数が更新された際に検針日時も現在の日時に更新
                     const currentDateTime = new Date();
-                    sheet.getRange(latestRecordIndex + 2, dateColIndex + 1).setValue(currentDateTime);
-                    console.log(`[物件.gs] updateMeterReadings - 検針日時更新成功: 行 ${latestRecordIndex + 2}, 新しい日時 ${currentDateTime.toISOString()}`);
+                    sheet.getRange(targetRowInSheet, dateColIndex + 1).setValue(currentDateTime);
+                    console.log(`[物件.gs] updateMeterReadings - 検針日時更新成功: 行 ${targetRowInSheet}, 新しい日時 ${currentDateTime.toISOString()}`);
                 }
                 
-                // 写真URLの更新 (photoUrlColIndex は 0ベースなので +1 する)
-                if (photoUrl) {
-                    sheet.getRange(latestRecordIndex + 2, photoUrlColIndex + 1).setValue(photoUrl);
-                    console.log(`[物件.gs] updateMeterReadings - 写真URL更新成功: 行 ${latestRecordIndex + 2}, URL ${photoUrl}`);
-                }
-                updatedCount++;              } catch (cellUpdateError) {
-                const errMsg = `セル(行:${latestRecordIndex + 2})の更新に失敗: ${cellUpdateError.message}`;
+                // 写真URLのセルへの書き込みは削除
+                // if (photoUrl) {
+                //     sheet.getRange(targetRowInSheet, photoUrlColIndex + 1).setValue(photoUrl);
+                //     console.log(`[物件.gs] updateMeterReadings - 写真URL更新成功: 行 ${targetRowInSheet}, URL ${photoUrl}`);
+                // }
+                updatedCount++;
+              } catch (cellUpdateError) {
+                const errMsg = `セル(行:${latestRecordIndex + 2})の更新に失敗: ${cellUpdateError.message}`;// スプレッドシート上の行番号に修正
                 console.error("[物件.gs] " + errMsg);
                 errors.push(errMsg);
               }
@@ -444,7 +465,7 @@ function doPost(e) {
         // 既存データに該当する部屋のレコードが見つからない場合は新規追加
         if (!found) {
           try {
-            console.log(`[物件.gs] updateMeterReadings - 新規データを追加します: ${JSON.stringify(readingToUpdate)}`);
+            console.log(`[物件.gs] updateMeterReadings - 新規データを追加します: 物件ID ${propertyId}, 部屋ID ${roomId}, データ ${JSON.stringify(readingToUpdate)}`);
             
             // 物件IDから物件名を取得
             let propertyName = '';
@@ -492,72 +513,33 @@ function doPost(e) {
               // 新しい行のデータを準備（列の順序に注意）
             const newRowData = [];
             for (let colIndex = 0; colIndex < headers.length; colIndex++) {
-              if (colIndex === propertyNameColIndex) {
+              if (headers[colIndex] === '物件名') { // ヘッダー名で比較
                 newRowData.push(propertyName);
-              } else if (colIndex === propertyIdColIndex) {
+              } else if (headers[colIndex] === '物件ID') {
                 newRowData.push(propertyId);
-              } else if (colIndex === roomIdColIndex) {
+              } else if (headers[colIndex] === '部屋ID') {
                 newRowData.push(roomId);
-              } else if (colIndex === dateColIndex) {
+              } else if (headers[colIndex] === '検針日時') {
                 newRowData.push(currentDateTime);
-              } else if (colIndex === currentReadingColIndex) {
+              } else if (headers[colIndex] === '今回の指示数') {
                 newRowData.push(readingToUpdate.currentReading || '');
-              } else if (colIndex === photoUrlColIndex && photoUrl) {
-                newRowData.push(photoUrl);
-              } else if (colIndex === headers.indexOf('前回指示数')) {
+              } else if (headers[colIndex] === '前回指示数') {
                 newRowData.push(''); // 初回なので空
-              } else if (colIndex === headers.indexOf('前々回指示数')) {
+              } else if (headers[colIndex] === '前々回指示数') {
                 newRowData.push(''); // 初回なので空
-              } else if (colIndex === headers.indexOf('今回使用量')) {
+              } else if (headers[colIndex] === '今回使用量') {
                 newRowData.push('初回登録'); // 初回なので計算不可
-              } else if (colIndex === headers.indexOf('警告フラグ')) {
+              } else if (headers[colIndex] === '警告フラグ') {
                 newRowData.push('初回検針');
+              // } else if (headers[colIndex] === '写真URL' && photoUrl) { // 写真URL列はもうない
+              //   newRowData.push(photoUrl);
               } else {
                 newRowData.push(''); // その他の列は空
               }
             }
             
             // 新しい行を挿入
-            sheet.getRange(newRowIndex, 1, 1, headers.length).setValues([newRowData]);
+            sheet.getRange(newRowIndex, 1, 1, newRowData.length).setValues([newRowData]); // newRowData.length を使用
             
-            console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndex}, 物件名 ${propertyName}, 物件ID ${propertyId}, 部屋ID ${roomId}, 指示数 ${readingToUpdate.currentReading}`);
-            newRecordsCount++;
-            updatedCount++;
-            
-          } catch (addError) {
-            const errMsg = `新規データの追加に失敗: ${addError.message}`;
-            console.error("[物件.gs] " + errMsg);
-            errors.push(errMsg);
-          }
-        }
-      }
-
-      let message = "";
-      if (updatedCount > 0) {
-        message += `${updatedCount}件の検針記録を処理しました。`;
-        if (photoSavedCount > 0) {
-          message += ` ${photoSavedCount}件の写真を保存しました。`;
-        }
-      } else {
-        message = "更新対象のデータが見つかりませんでした。日付が一致するか確認してください。";
-      }
-
-      if (errors.length === 0) {
-        response = { success: true, message: message };
-      } else {
-        response = { success: updatedCount > 0, message: message + ` エラー: ${errors.join('; ')}`, error: errors.join('; ') };
-      }
-      console.log("[物件.gs] updateMeterReadings - 処理結果: " + JSON.stringify(response));
-
-    } else {
-      throw new Error("無効なアクションです。'updateMeterReadings' を期待していました。");
-    }
-  } catch (error) {
-    console.error("[物件.gs] doPostエラー:", error.message, error.stack);
-    response = { success: false, error: "サーバー処理中にエラーが発生しました: " + error.message };
-  }
-  return ContentService.createTextOutput(JSON.stringify(response))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// ... (既存の古いgetMeterReadings関数はコメントアウトされたまま) ...
+            // 写真があればコメントを追加
+            if
