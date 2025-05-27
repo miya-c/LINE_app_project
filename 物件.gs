@@ -505,7 +505,11 @@ function doPost(e) {
               }
             }
             
-            sheet.getRange(newRowIndexInSheet, 1, 1, headers.length).setValues([newRowData]);
+            // sheet.appendRow(newRowData); // この行を削除
+            // console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndexInSheet}`); // この行を削除
+
+            // ★★★ 修正点: appendRowの代わりにsetValuesを使用し、行番号を確実に把握する ★★★
+            sheet.getRange(newRowIndexInSheet, 1, 1, newRowData.length).setValues([newRowData]);
             console.log(`[物件.gs] updateMeterReadings - 新規データ本体追加成功: 行 ${newRowIndexInSheet}`);
             
             if (photoUrl && currentReadingColIndex !== -1) {
