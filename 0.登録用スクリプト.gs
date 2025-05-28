@@ -1,6 +1,5 @@
-/* 物件登録用のスクリプト
-   物件の追加登録が発生する際に実行してください
-*/
+// データ連携.gs
+
 const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId(); // 現在のスプレッドシートID
 const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
 const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
@@ -24,17 +23,17 @@ function createInitialInspectionData() {
   let inspectionDataSheet = ss.getSheetByName(INSPECTION_DATA_SHEET_NAME);
 
   if (!propertyMasterSheet) {
-    SpreadsheetApp.getUi().alert(`エラー: "${PROPERTY_MASTER_SHEET_NAME}" シートが見つかりません。`);
+    Logger.log(`エラー: "${PROPERTY_MASTER_SHEET_NAME}" シートが見つかりません。`); // MODIFIED
     return;
   }
   if (!roomMasterSheet) {
-    SpreadsheetApp.getUi().alert(`エラー: "${ROOM_MASTER_SHEET_NAME}" シートが見つかりません。`);
+    Logger.log(`エラー: "${ROOM_MASTER_SHEET_NAME}" シートが見つかりません。`); // MODIFIED
     return;
   }
 
   // 検針データシートの存在確認
   if (!inspectionDataSheet) {
-    SpreadsheetApp.getUi().alert(`エラー: "${INSPECTION_DATA_SHEET_NAME}" シートが見つかりません。このスクリプトは既存のシートにデータを追加します。先に "${INSPECTION_DATA_SHEET_NAME}" という名前のシートを作成してください。`);
+    Logger.log(`エラー: "${INSPECTION_DATA_SHEET_NAME}" シートが見つかりません。このスクリプトは既存のシートにデータを追加します。先に "${INSPECTION_DATA_SHEET_NAME}" という名前のシートを作成してください。`); // MODIFIED
     Logger.log(`エラー: "${INSPECTION_DATA_SHEET_NAME}" シートが見つかりませんでした。処理を中断します。`);
     return; // 処理を中断
   }
@@ -148,10 +147,20 @@ function createInitialInspectionData() {
     const lastRow = inspectionDataSheet.getLastRow();
     inspectionDataSheet.getRange(lastRow + 1, 1, newInspectionEntries.length, INSPECTION_DATA_HEADERS.length)
                        .setValues(newInspectionEntries);
-    Logger.log(`${newInspectionEntries.length} 件の初期検針データを生成しました。`);
-    SpreadsheetApp.getUi().alert(`${newInspectionEntries.length} 件の初期検針データを "${INSPECTION_DATA_SHEET_NAME}" に生成しました。`);
+    Logger.log(`${newInspectionEntries.length} 件の初期検針データを生成しました。`); // MODIFIED
+    Logger.log(`${newInspectionEntries.length} 件の初期検針データを "${INSPECTION_DATA_SHEET_NAME}" に生成しました。`); // MODIFIED
   } else {
     Logger.log('部屋マスタに有効なデータがないため、検針データは生成されませんでした。');
-    SpreadsheetApp.getUi().alert('部屋マスタに有効なデータがないか、既に処理済みのため、検針データは生成されませんでした。');
+    Logger.log('部屋マスタに有効なデータがないか、既に処理済みのため、検針データは生成されませんでした。'); // MODIFIED
   }
+}
+
+/**
+ * スクリプト実行時にカスタムメニューをエディタに追加する関数
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+      .createMenu('カスタム連携機能')
+      .addItem('初期検針データ生成', 'createInitialInspectionData')
+      .addToUi();
 }
