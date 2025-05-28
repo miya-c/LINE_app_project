@@ -179,13 +179,11 @@ function doGet(e) {
           sheetName: sheetName
         }))
           .setMimeType(ContentService.MimeType.JSON);
-      }
-
-      const readings = data.filter(row => 
+      }      const readings = data.filter(row => 
         String(row[propertyIdColIndex]).trim() == String(propertyId).trim() && // 物件IDでもフィルタリング
         String(row[roomIdColIndex]).trim() == String(roomId).trim()
       )
-        .map(row => {
+        .map((row, filteredIndex) => {
           // 各列の値を取得。列が存在しない場合はnullや空文字を適切に処理
           const getDateValue = (index) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
           
@@ -198,14 +196,34 @@ function doGet(e) {
             status: getDateValue(statusColIndex)
             // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLは返さない
           };
-          // 「今回の指示数」セルからコメントを取得
-          const currentReadingCell = sheet.getRange(data.indexOf(row) + 2, currentReadingColIndex + 1); // +2 because data is 0-indexed and headers were shifted, and sheet is 1-indexed
-          const comment = currentReadingCell.getComment();
-          if (comment && comment.startsWith("写真: ")) {
-            readingObject.photoUrl = comment.substring("写真: ".length);
-          } else {
+          
+          // ★★★ 「今回の指示数」セルからコメントを取得（正確な行番号を計算）★★★
+          try {
+            // data配列内での元のインデックスを見つける
+            const originalRowIndex = data.findIndex(dataRow => dataRow === row);
+            if (originalRowIndex !== -1) {
+              // スプレッドシートの行番号（1始まり、ヘッダー行+1）
+              const sheetRowNumber = originalRowIndex + 2;
+              const currentReadingCell = sheet.getRange(sheetRowNumber, currentReadingColIndex + 1);
+              const comment = currentReadingCell.getComment();
+              
+              console.log(`[物件.gs] getMeterReadings - 行 ${sheetRowNumber} のコメント確認: "${comment}"`);
+              
+              if (comment && comment.startsWith("写真: ")) {
+                readingObject.photoUrl = comment.substring("写真: ".length);
+                console.log(`[物件.gs] getMeterReadings - 写真URL取得成功: ${readingObject.photoUrl}`);
+              } else {
+                readingObject.photoUrl = null;
+              }
+            } else {
+              console.warn(`[物件.gs] getMeterReadings - 行インデックスが見つかりません`);
+              readingObject.photoUrl = null;
+            }
+          } catch (commentError) {
+            console.error(`[物件.gs] getMeterReadings - コメント取得エラー:`, commentError.message);
             readingObject.photoUrl = null;
           }
+          
           return readingObject;
         });
       
@@ -424,44 +442,43 @@ function doPost(e) {
             console.error("[物件.gs] " + photoErrMsg, photoError.stack);
             errors.push(photoErrMsg);
           }
-        }
-
-        if (found && latestRecordIndex >= 0) { // 既存レコードの更新処理
+        }        if (found && latestRecordIndex >= 0) { // 既存レコードの更新処理
           try {
             const recordRowInSheet = latestRecordIndex + 2; // スプレッドシート上の行番号 (1始まり、ヘッダー分+1)
-            const targetCellForComment = sheet.getRange(recordRowInSheet, currentReadingColIndex + 1);
 
             if (readingToUpdate.currentReading !== undefined && readingToUpdate.currentReading !== null) {
-                targetCellForComment.setValue(readingToUpdate.currentReading);
+                // 値を設定
+                sheet.getRange(recordRowInSheet, currentReadingColIndex + 1).setValue(readingToUpdate.currentReading);
                 console.log(`[物件.gs] updateMeterReadings - 指示数更新成功: 行 ${recordRowInSheet}, 物件ID ${propertyId}, 部屋ID ${roomId}, 新しい指示数 ${readingToUpdate.currentReading}`);
                 
                 const currentDateTime = new Date();
                 sheet.getRange(recordRowInSheet, dateColIndex + 1).setValue(currentDateTime);
                 console.log(`[物件.gs] updateMeterReadings - 検針日時更新成功: 行 ${recordRowInSheet}, 新しい日時 ${currentDateTime.toISOString()}`);
-
-                if (photoUrl) {
-                    targetCellForComment.setComment("写真: " + photoUrl);
-                    console.log(`[物件.gs] updateMeterReadings - 写真URLをコメントとして追加成功: 行 ${recordRowInSheet}, URL ${photoUrl}`);
-                } else {
-                    // 写真がない場合、既存のコメントをクリアするかどうかは要件による
-                    // targetCellForComment.clearComment(); 
-                }
             }
-            updatedCount++;
 
-            // ★★★ 防御的コード: 「写真URL」列が存在する場合、その値を明示的にクリア ★★★
+            // ★★★ 写真URLのコメント設定を必ず実行 ★★★
+            if (photoUrl) {
+                const commentCell = sheet.getRange(recordRowInSheet, currentReadingColIndex + 1);
+                commentCell.setComment("写真: " + photoUrl);
+                console.log(`[物件.gs] updateMeterReadings - 写真URLをコメントとして追加成功: 行 ${recordRowInSheet}, コメント: "写真: ${photoUrl}"`);
+                
+                // コメントが正しく設定されたかを確認
+                const verifyComment = commentCell.getComment();
+                console.log(`[物件.gs] updateMeterReadings - コメント確認: "${verifyComment}"`);
+            }
+
+            // ★★★ 「写真URL」列が存在する場合、その値を明示的にクリア ★★★
             const photoUrlHeaderIndex = headers.indexOf('写真URL');
-            if (photoUrlHeaderIndex !== -1) {
-                // 「今回の指示数」列と「写真URL」列が異なることを確認（通常は異なるはず）
-                if (photoUrlHeaderIndex !== currentReadingColIndex) {
-                    sheet.getRange(recordRowInSheet, photoUrlHeaderIndex + 1).setValue('');
-                    console.log(`[物件.gs] updateMeterReadings (既存レコード) - 「写真URL」列 (行 ${recordRowInSheet}) の値を念のためクリアしました。`);
-                }
+            if (photoUrlHeaderIndex !== -1 && photoUrlHeaderIndex !== currentReadingColIndex) {
+                sheet.getRange(recordRowInSheet, photoUrlHeaderIndex + 1).setValue('');
+                console.log(`[物件.gs] updateMeterReadings (既存レコード) - 「写真URL」列 (行 ${recordRowInSheet}) の値をクリアしました。`);
             }
+
+            updatedCount++;
 
           } catch (cellUpdateError) {
             const errMsg = `セル(行:${latestRecordIndex + 2})の更新に失敗: ${cellUpdateError.message}`;
-            console.error("[物件.gs] " + errMsg);
+            console.error("[物件.gs] " + errMsg, cellUpdateError.stack);
             errors.push(errMsg);
           }
         } else {
@@ -484,16 +501,22 @@ function doPost(e) {
               console.error("[物件.gs] 物件名の取得に失敗:", propertyLookupError.message);
               propertyName = `物件ID:${propertyId}`; 
             }
-            
-            const newRowIndexInSheet = sheet.getLastRow() + 1;
+              const newRowIndexInSheet = sheet.getLastRow() + 1;
             const currentDateTime = new Date();
+            
+            // ★★★ 各列のデータを明示的に設定（写真URLは一切含めない）★★★
             const newRowData = [];
             for (let colIdx = 0; colIdx < headers.length; colIdx++) {
-              // 「写真URL」という名前の列があっても、そこには何も書き込まないようにする
-              if (headers[colIdx] === '写真URL') {
-                newRowData.push(''); // 写真URL列には何もセットしない
+              const columnName = headers[colIdx];
+              
+              // 写真URL列には必ず空文字列を設定
+              if (columnName === '写真URL') {
+                newRowData.push('');
+                console.log(`[物件.gs] updateMeterReadings - 写真URL列（インデックス ${colIdx}）に空文字列を設定`);
                 continue;
               }
+              
+              // その他の列は既存のロジック通り
               if (colIdx === propertyNameColIndex) {
                 newRowData.push(propertyName);
               } else if (colIdx === propertyIdColIndex) {
@@ -504,13 +527,13 @@ function doPost(e) {
                 newRowData.push(currentDateTime);
               } else if (colIdx === currentReadingColIndex) {
                 newRowData.push(readingToUpdate.currentReading || '');
-              } else if (colIdx === headers.indexOf('前回指示数')) {
+              } else if (columnName === '前回指示数') {
                 newRowData.push(''); 
-              } else if (colIdx === headers.indexOf('前々回指示数')) {
+              } else if (columnName === '前々回指示数') {
                 newRowData.push(''); 
-              } else if (colIdx === headers.indexOf('今回使用量')) {
+              } else if (columnName === '今回使用量') {
                 newRowData.push('初回登録'); 
-              } else if (colIdx === headers.indexOf('警告フラグ')) {
+              } else if (columnName === '警告フラグ') {
                 newRowData.push('初回検針');
               } else {
                 newRowData.push(''); 
@@ -518,26 +541,26 @@ function doPost(e) {
             }
             
             // sheet.appendRow(newRowData); // この行を削除
-            // console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndexInSheet}`); // この行を削除
-
-            // ★★★ 修正点: appendRowの代わりにsetValuesを使用し、行番号を確実に把握する ★★★
+            // console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndexInSheet}`); // この行を削除            // ★★★ データをシートに書き込み ★★★
             sheet.getRange(newRowIndexInSheet, 1, 1, newRowData.length).setValues([newRowData]);
-            console.log(`[物件.gs] updateMeterReadings - 新規データ本体追加成功: 行 ${newRowIndexInSheet}`);
+            console.log(`[物件.gs] updateMeterReadings - 新規データ本体追加成功: 行 ${newRowIndexInSheet}, データ: ${JSON.stringify(newRowData)}`);
             
+            // ★★★ 写真URLのコメント設定を必ず実行 ★★★
             if (photoUrl && currentReadingColIndex !== -1) {
-                const targetCellForComment = sheet.getRange(newRowIndexInSheet, currentReadingColIndex + 1);
-                targetCellForComment.setComment("写真: " + photoUrl);
-                console.log(`[物件.gs] updateMeterReadings - 新規データに写真URLをコメントとして追加成功: 行 ${newRowIndexInSheet}, URL ${photoUrl}`);
+                const commentCell = sheet.getRange(newRowIndexInSheet, currentReadingColIndex + 1);
+                commentCell.setComment("写真: " + photoUrl);
+                console.log(`[物件.gs] updateMeterReadings - 新規データに写真URLをコメントとして追加成功: 行 ${newRowIndexInSheet}, コメント: "写真: ${photoUrl}"`);
+                
+                // コメントが正しく設定されたかを確認
+                const verifyComment = commentCell.getComment();
+                console.log(`[物件.gs] updateMeterReadings - 新規データのコメント確認: "${verifyComment}"`);
             }
 
-            // ★★★ 防御的コード: 「写真URL」列が存在する場合、その値を明示的にクリア ★★★
+            // ★★★ 「写真URL」列が存在する場合、その値を明示的にクリア ★★★
             const photoUrlHeaderIndex = headers.indexOf('写真URL');
-            if (photoUrlHeaderIndex !== -1) {
-                 // 「今回の指示数」列と「写真URL」列が異なることを確認
-                if (photoUrlHeaderIndex !== currentReadingColIndex) {
-                    sheet.getRange(newRowIndexInSheet, photoUrlHeaderIndex + 1).setValue('');
-                    console.log(`[物件.gs] updateMeterReadings (新規レコード) - 「写真URL」列 (行 ${newRowIndexInSheet}) の値を念のためクリアしました。`);
-                }
+            if (photoUrlHeaderIndex !== -1 && photoUrlHeaderIndex !== currentReadingColIndex) {
+                sheet.getRange(newRowIndexInSheet, photoUrlHeaderIndex + 1).setValue('');
+                console.log(`[物件.gs] updateMeterReadings (新規レコード) - 「写真URL」列 (行 ${newRowIndexInSheet}) の値をクリアしました。`);
             }
 
             newRecordsCount++;
