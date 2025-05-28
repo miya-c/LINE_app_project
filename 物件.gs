@@ -370,6 +370,30 @@ function doPost(e) {
         if (dateColIndex === -1) missing.push('検針日時');
         if (currentReadingColIndex === -1) missing.push('今回の指示数');
         throw new Error(`必要な列（${missing.join(', ')}）がシート '${sheetName}' に見つかりません。ヘッダー: ${JSON.stringify(headers)}`);
+      }      // ★★★ 既存の写真URL列データをコメントに移行する処理 ★★★
+      const photoUrlColIndex = headers.indexOf('写真URL');
+      if (photoUrlColIndex !== -1) {
+        console.log(`[物件.gs] updateMeterReadings - 写真URL列が見つかりました。既存データをコメントに移行します。`);
+        for (let i = 0; i < data.length; i++) {
+          const row = data[i];
+          const photoUrlValue = row[photoUrlColIndex];
+          
+          if (photoUrlValue && photoUrlValue.trim() !== '') {
+            const rowInSheet = i + 2; // ヘッダー行を考慮した行番号
+            const currentReadingCell = sheet.getRange(rowInSheet, currentReadingColIndex + 1);
+            const existingComment = currentReadingCell.getComment();
+            
+            // 既にコメントに写真URLが設定されていない場合のみ移行
+            if (!existingComment || !existingComment.startsWith("写真: ")) {
+              currentReadingCell.setComment("写真: " + photoUrlValue);
+              console.log(`[物件.gs] updateMeterReadings - 行 ${rowInSheet}: 写真URLをコメントに移行: "${photoUrlValue}"`);
+            }
+            
+            // 写真URL列の値をクリア
+            sheet.getRange(rowInSheet, photoUrlColIndex + 1).setValue('');
+            console.log(`[物件.gs] updateMeterReadings - 行 ${rowInSheet}: 写真URL列をクリアしました。`);
+          }
+        }
       }
 
       const driveFolderName = "MeterReadingPhotos";
