@@ -478,8 +478,13 @@ function doPost(e) {
                 const currentDateTime = new Date();
                 sheet.getRange(recordRowInSheet, dateColIndex + 1).setValue(currentDateTime);
                 console.log(`[物件.gs] updateMeterReadings - 検針日時更新成功: 行 ${recordRowInSheet}, 新しい日時 ${currentDateTime.toISOString()}`);
+            }            // ★★★ 「写真URL」列が存在する場合、その値を強制的にクリア ★★★
+            const photoUrlHeaderIndex = headers.indexOf('写真URL');
+            if (photoUrlHeaderIndex !== -1) {
+                sheet.getRange(recordRowInSheet, photoUrlHeaderIndex + 1).setValue('');
+                console.log(`[物件.gs] updateMeterReadings (既存レコード) - 「写真URL」列 (行 ${recordRowInSheet}) の値を強制的にクリアしました。`);
             }
-
+            
             // ★★★ 写真URLのコメント設定を必ず実行 ★★★
             if (photoUrl) {
                 const commentCell = sheet.getRange(recordRowInSheet, currentReadingColIndex + 1);
@@ -489,13 +494,6 @@ function doPost(e) {
                 // コメントが正しく設定されたかを確認
                 const verifyComment = commentCell.getComment();
                 console.log(`[物件.gs] updateMeterReadings - コメント確認: "${verifyComment}"`);
-            }
-
-            // ★★★ 「写真URL」列が存在する場合、その値を明示的にクリア ★★★
-            const photoUrlHeaderIndex = headers.indexOf('写真URL');
-            if (photoUrlHeaderIndex !== -1 && photoUrlHeaderIndex !== currentReadingColIndex) {
-                sheet.getRange(recordRowInSheet, photoUrlHeaderIndex + 1).setValue('');
-                console.log(`[物件.gs] updateMeterReadings (既存レコード) - 「写真URL」列 (行 ${recordRowInSheet}) の値をクリアしました。`);
             }
 
             updatedCount++;
@@ -527,16 +525,15 @@ function doPost(e) {
             }
               const newRowIndexInSheet = sheet.getLastRow() + 1;
             const currentDateTime = new Date();
-            
-            // ★★★ 各列のデータを明示的に設定（写真URLは一切含めない）★★★
+              // ★★★ 各列のデータを明示的に設定（写真URLは絶対に含めない）★★★
             const newRowData = [];
             for (let colIdx = 0; colIdx < headers.length; colIdx++) {
               const columnName = headers[colIdx];
               
-              // 写真URL列には必ず空文字列を設定
+              // 写真URL列には絶対に空文字列を設定（photoUrlを使用しない）
               if (columnName === '写真URL') {
                 newRowData.push('');
-                console.log(`[物件.gs] updateMeterReadings - 写真URL列（インデックス ${colIdx}）に空文字列を設定`);
+                console.log(`[物件.gs] updateMeterReadings - 写真URL列（インデックス ${colIdx}）に空文字列を強制設定（photoUrlは使用しない）`);
                 continue;
               }
               
@@ -568,6 +565,12 @@ function doPost(e) {
             // console.log(`[物件.gs] updateMeterReadings - 新規データ追加成功: 行 ${newRowIndexInSheet}`); // この行を削除            // ★★★ データをシートに書き込み ★★★
             sheet.getRange(newRowIndexInSheet, 1, 1, newRowData.length).setValues([newRowData]);
             console.log(`[物件.gs] updateMeterReadings - 新規データ本体追加成功: 行 ${newRowIndexInSheet}, データ: ${JSON.stringify(newRowData)}`);
+              // ★★★ 「写真URL」列が存在する場合、その値を強制的にクリア ★★★
+            const photoUrlHeaderIndex = headers.indexOf('写真URL');
+            if (photoUrlHeaderIndex !== -1) {
+                sheet.getRange(newRowIndexInSheet, photoUrlHeaderIndex + 1).setValue('');
+                console.log(`[物件.gs] updateMeterReadings (新規レコード) - 「写真URL」列 (行 ${newRowIndexInSheet}) の値を強制的にクリアしました。`);
+            }
             
             // ★★★ 写真URLのコメント設定を必ず実行 ★★★
             if (photoUrl && currentReadingColIndex !== -1) {
@@ -578,13 +581,6 @@ function doPost(e) {
                 // コメントが正しく設定されたかを確認
                 const verifyComment = commentCell.getComment();
                 console.log(`[物件.gs] updateMeterReadings - 新規データのコメント確認: "${verifyComment}"`);
-            }
-
-            // ★★★ 「写真URL」列が存在する場合、その値を明示的にクリア ★★★
-            const photoUrlHeaderIndex = headers.indexOf('写真URL');
-            if (photoUrlHeaderIndex !== -1 && photoUrlHeaderIndex !== currentReadingColIndex) {
-                sheet.getRange(newRowIndexInSheet, photoUrlHeaderIndex + 1).setValue('');
-                console.log(`[物件.gs] updateMeterReadings (新規レコード) - 「写真URL」列 (行 ${newRowIndexInSheet}) の値をクリアしました。`);
             }
 
             newRecordsCount++;
