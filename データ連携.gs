@@ -1,5 +1,6 @@
-// データ連携.gs
-
+/* 物件登録用のスクリプト
+   物件の追加登録が発生する際に実行してください
+*/
 const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId(); // 現在のスプレッドシートID
 const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
 const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
@@ -153,14 +154,4 @@ function createInitialInspectionData() {
     Logger.log('部屋マスタに有効なデータがないため、検針データは生成されませんでした。');
     SpreadsheetApp.getUi().alert('部屋マスタに有効なデータがないか、既に処理済みのため、検針データは生成されませんでした。');
   }
-}
-
-/**
- * スクリプト実行時にカスタムメニューをエディタに追加する関数
- */
-function onOpen() {
-  SpreadsheetApp.getUi()
-      .createMenu('カスタム連携機能')
-      .addItem('初期検針データ生成', 'createInitialInspectionData')
-      .addToUi();
 }
