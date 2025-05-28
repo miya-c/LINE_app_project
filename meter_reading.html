@@ -425,21 +425,9 @@
             const statusCell = row.insertCell();
             statusCell.textContent = reading.status || 'N/A';
             statusCell.setAttribute('data-label', '状態');
-            
-            const photoCell = row.insertCell();
+              const photoCell = row.insertCell();
             photoCell.setAttribute('data-date-photo', reading.date);
-            photoCell.setAttribute('data-label', '写真');            // reading.photoUrl があれば、それを表示する (コメントから取得したURL)
-            if (reading.photoUrl) {
-              const img = document.createElement('img');
-              img.src = reading.photoUrl; // Google DriveのURL
-              img.alt = '検針写真';
-              img.style.maxWidth = '50px';
-              img.style.maxHeight = '50px';
-              img.style.marginRight = '5px';
-              img.style.cursor = 'pointer';
-              img.addEventListener('click', () => showPhotoModal(reading.photoUrl));
-              photoCell.appendChild(img);
-            }
+            photoCell.setAttribute('data-label', '写真');
 
             // カメラボタンの作成
             const cameraButton = document.createElement('button');
@@ -471,31 +459,8 @@
                 if (orphanInput && orphanInput.parentElement === document.body) {
                     document.body.removeChild(orphanInput);
                 }
-              }
-            });
+              }            });
             photoCell.appendChild(cameraButton);
-
-            // reading.photoUrl があれば、それを表示する (コメントから取得したURL)
-            if (reading.photoUrl) {
-              const img = document.createElement('img');
-              img.src = reading.photoUrl; // Google DriveのURL
-              img.alt = '検針写真';
-              img.style.maxWidth = '50px';
-              img.style.maxHeight = '50px';
-              img.style.marginRight = '5px';
-              img.style.cursor = 'pointer';
-              img.addEventListener('click', () => showPhotoModal(reading.photoUrl));
-
-              // 既存のプレビューがあれば削除 (通常はないはずだが念のため)
-              const tempPreview = photoCell.querySelector('img.temp-preview');
-              if (tempPreview) tempPreview.remove();
-              
-              // 既存の永続画像があれば削除 (再レンダリング時)
-              const existingPersistentImage = photoCell.querySelector('img:not(.temp-preview)');
-              if (existingPersistentImage) existingPersistentImage.remove();
-
-              photoCell.insertBefore(img, cameraButton); // カメラボタンの前に挿入
-            }
           });
         } else {
           // データがない場合は初回検針データ登録用のテンプレート行を表示
@@ -747,9 +712,7 @@
                         document.body.removeChild(e.target);
                     }
                     return;
-                }
-
-                const photoCell = document.querySelector(`td[data-date-photo="${date}"]`);
+                }                const photoCell = document.querySelector(`td[data-date-photo="${date}"]`);
                 if (photoCell) {
                     let previewImg = photoCell.querySelector('img.temp-preview');
                     if (!previewImg) {
@@ -770,6 +733,58 @@
                     previewImg.src = base64PhotoData;
                     previewImg.onclick = () => showPhotoModal(base64PhotoData);
 
+                    // 削除ボタンの作成・表示
+                    let deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+                    if (!deleteBtn) {
+                        deleteBtn = document.createElement('button');
+                        deleteBtn.classList.add('delete-photo-btn');
+                        deleteBtn.textContent = '削除';
+                        deleteBtn.style.backgroundColor = '#dc3545';
+                        deleteBtn.style.color = 'white';
+                        deleteBtn.style.border = 'none';
+                        deleteBtn.style.padding = '2px 6px';
+                        deleteBtn.style.marginRight = '5px';
+                        deleteBtn.style.fontSize = '12px';
+                        deleteBtn.style.cursor = 'pointer';
+                        deleteBtn.style.borderRadius = '3px';
+                        
+                        deleteBtn.addEventListener('click', () => {
+                            // 写真データを削除
+                            const currentReadingInput = document.querySelector(`#meter-readings-table input[type="number"][data-date="${date}"]`);
+                            if (currentReadingInput) {
+                                currentReadingInput.removeAttribute('data-new-photo');
+                            }
+                            
+                            // プレビュー画像と削除ボタンを削除
+                            const previewImg = photoCell.querySelector('img.temp-preview');
+                            const deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+                            if (previewImg) previewImg.remove();
+                            if (deleteBtn) deleteBtn.remove();
+                            
+                            // カメラボタンのテキストを「撮影」に戻す
+                            const cameraBtn = photoCell.querySelector('button[data-date-button]');
+                            if (cameraBtn) {
+                                cameraBtn.textContent = '撮影';
+                            }
+                            
+                            // 既存の画像を再表示（もしあれば）
+                            const existingPersistentImage = photoCell.querySelector('img:not(.temp-preview)');
+                            if (existingPersistentImage) {
+                                existingPersistentImage.style.display = '';
+                            }
+                            
+                            console.log('[meter_reading] 写真を削除しました for date:', date);
+                            if(debugInfoDiv) debugInfoDiv.innerHTML += '写真削除完了 for date: ' + date + '<br>';
+                        });
+                        
+                        const cameraBtn = photoCell.querySelector('button[data-date-button]');
+                        if (cameraBtn) {
+                            photoCell.insertBefore(deleteBtn, cameraBtn);
+                        } else {
+                            photoCell.appendChild(deleteBtn);
+                        }
+                    }
+
                     const cameraBtn = photoCell.querySelector('button[data-date-button]');
                     if (cameraBtn) {
                         // Hide existing non-preview image if a new photo is taken
@@ -779,13 +794,18 @@
                         }
 
                         // Insert the preview image if it's not already in the cell, or if it's the one we just created/updated
-                        // Ensure it's inserted before the camera button.
+                        // Ensure it's inserted before the delete button (which is before the camera button).
                         if (!previewImg.parentElement || previewImg.parentElement !== photoCell) {
-                           photoCell.insertBefore(previewImg, cameraBtn);
+                            const deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+                            if (deleteBtn) {
+                                photoCell.insertBefore(previewImg, deleteBtn);
+                            } else {
+                                photoCell.insertBefore(previewImg, cameraBtn);
+                            }
                         }
                         cameraBtn.textContent = '再撮影';
                     }
-                    if(debugInfoDiv) debugInfoDiv.innerHTML += '写真プレビュー表示、ボタンテキスト更新完了 for date: ' + date + '<br>';
+                    if(debugInfoDiv) debugInfoDiv.innerHTML += '写真プレビュー表示、削除ボタン追加、ボタンテキスト更新完了 for date: ' + date + '<br>';
                 } else {
                     console.error('[meter_reading] 対応する写真セルが見つかりません for date:', date);
                     if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">エラー: 対応する写真セルが見つかりません for date: ' + date + '</span><br>';
