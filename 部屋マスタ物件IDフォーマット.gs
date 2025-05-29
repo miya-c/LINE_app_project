@@ -1,6 +1,6 @@
 // 部屋マスタ物件IDフォーマット.gs
 
-const ROOM_MASTER_SHEET_NAME = '部屋マスタ'; // 対象のシート名
+const ROOM_MASTER_FORMAT_TARGET_SHEET_NAME = '部屋マスタ'; // 対象のシート名
 const PROPERTY_ID_COLUMN_INDEX_IN_ROOM_MASTER = 0; // 物件IDの列インデックス (A列なので0)
 const HEADER_ROWS_IN_ROOM_MASTER = 1; // ヘッダー行の数
 
@@ -10,10 +10,10 @@ const HEADER_ROWS_IN_ROOM_MASTER = 1; // ヘッダー行の数
  */
 function formatPropertyIdsInRoomMaster() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ROOM_MASTER_SHEET_NAME);
+  const sheet = ss.getSheetByName(ROOM_MASTER_FORMAT_TARGET_SHEET_NAME);
 
   if (!sheet) {
-    Logger.log(`エラー: "${ROOM_MASTER_SHEET_NAME}" シートが見つかりません。`);
+    Logger.log(`エラー: "${ROOM_MASTER_FORMAT_TARGET_SHEET_NAME}" シートが見つかりません。`);
     return;
   }
 
@@ -22,7 +22,7 @@ function formatPropertyIdsInRoomMaster() {
   let updatedCount = 0;
 
   if (values.length <= HEADER_ROWS_IN_ROOM_MASTER) {
-    Logger.log(`"${ROOM_MASTER_SHEET_NAME}" シートに処理対象のデータがありません（ヘッダー行のみ、または空）。`);
+    Logger.log(`"${ROOM_MASTER_FORMAT_TARGET_SHEET_NAME}" シートに処理対象のデータがありません（ヘッダー行のみ、または空）。`);
     return;
   }
 
@@ -70,9 +70,9 @@ function formatPropertyIdsInRoomMaster() {
 
   if (updatedCount > 0) {
     dataRange.setValues(values);
-    Logger.log(`${updatedCount} 件の物件IDを "${ROOM_MASTER_SHEET_NAME}" シートでフォーマットしました。`);
+    Logger.log(`${updatedCount} 件の物件IDを "${ROOM_MASTER_FORMAT_TARGET_SHEET_NAME}" シートでフォーマットしました。`);
   } else {
-    Logger.log(`"${ROOM_MASTER_SHEET_NAME}" シートで更新対象の物件IDはありませんでした。`);
+    Logger.log(`"${ROOM_MASTER_FORMAT_TARGET_SHEET_NAME}" シートで更新対象の物件IDはありませんでした。`);
   }
 }
 
