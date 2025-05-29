@@ -421,26 +421,12 @@
             const usageCell = row.insertCell();
             usageCell.textContent = reading.usage || 'N/A';
             usageCell.setAttribute('data-label', '今回使用量');
-            
-            const statusCell = row.insertCell();
+              const statusCell = row.insertCell();
             statusCell.textContent = reading.status || 'N/A';
             statusCell.setAttribute('data-label', '状態');
-            
-            const photoCell = row.insertCell();
+              const photoCell = row.insertCell();
             photoCell.setAttribute('data-date-photo', reading.date);
             photoCell.setAttribute('data-label', '写真');
-
-            // 既存の画像表示ロジック（撮影前は非表示）
-            // if (reading.photoUrl) {
-            //   const img = document.createElement('img');
-            //   img.src = reading.photoUrl;
-            //   img.alt = '検針写真';
-            //   img.style.maxWidth = '50px'; 
-            //   img.style.maxHeight = '50px';
-            //   img.style.cursor = 'pointer';
-            //   img.addEventListener('click', () => showPhotoModal(reading.photoUrl));
-            //   photoCell.appendChild(img);
-            // }
 
             // カメラボタンの作成
             const cameraButton = document.createElement('button');
@@ -472,8 +458,7 @@
                 if (orphanInput && orphanInput.parentElement === document.body) {
                     document.body.removeChild(orphanInput);
                 }
-              }
-            });
+              }            });
             photoCell.appendChild(cameraButton);
           });
         } else {
@@ -707,107 +692,146 @@
 
         if (file) {
             console.log('[meter_reading] ファイルが選択されました (handleFileSelection):', file.name, 'for date:', date);
-            if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル選択 (handleFileSelection): ' + file.name + '<br>';
+            if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル選択 (handleFileSelection): ' + file.name + ' for date: ' + date + '<br>';
+            
             const reader = new FileReader();
             reader.onload = (readerEvent) => {
-                const imageData = readerEvent.target.result;
-                console.log('[meter_reading] 画像データ (Base64) を取得しました (handleFileSelection)。');
-                if(debugInfoDiv) debugInfoDiv.innerHTML += '画像データをBase64で取得 (handleFileSelection)。<br>';
+                const base64PhotoData = readerEvent.target.result;
+                if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル読み込み完了 (base64): ' + base64PhotoData.substring(0, 30) + '...<br>';
 
-                const targetPhotoCell = document.querySelector(`td[data-date-photo="${date}"]`);
-                if (targetPhotoCell) {
-                    targetPhotoCell.innerHTML = '';
-
-                    // 撮影した画像のプレビュー
-                    const newImg = document.createElement('img');
-                    newImg.src = imageData;
-                    newImg.alt = '撮影した写真';
-                    newImg.style.maxWidth = '50px';
-                    newImg.style.maxHeight = '50px';
-                    newImg.style.cursor = 'pointer';
-                    newImg.addEventListener('click', () => showPhotoModal(imageData));
-                    targetPhotoCell.appendChild(newImg);
-
-                    // 表示ボタン
-                    const viewButton = document.createElement('button');
-                    viewButton.textContent = '表示';
-                    viewButton.style.marginLeft = '5px';
-                    viewButton.addEventListener('click', () => showPhotoModal(imageData));
-                    targetPhotoCell.appendChild(viewButton);
-
-                    // 再撮影ボタン
-                    const retakeButton = document.createElement('button');
-                    retakeButton.textContent = '再撮影';
-                    retakeButton.style.marginLeft = '5px';
-                    retakeButton.addEventListener('click', () => {
-                        const tempFileInput = document.createElement('input');
-                        tempFileInput.type = 'file';
-                        tempFileInput.accept = 'image/*';
-                        tempFileInput.capture = 'environment';
-                        tempFileInput.style.display = 'none';
-                        tempFileInput.onchange = (event) => handleFileSelection(event, date, debugInfoDiv); 
-                        document.body.appendChild(tempFileInput);
-                        tempFileInput.click();
-                    });
-                    targetPhotoCell.appendChild(retakeButton);
-
-                    // 削除ボタン
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = '削除';
-                    deleteButton.style.marginLeft = '5px';
-                    deleteButton.addEventListener('click', () => {
-                        targetPhotoCell.innerHTML = '';
-                        // 元のカメラボタンを再作成
-                        const originalCameraButton = document.createElement('button');
-                        originalCameraButton.textContent = '撮影';
-                        originalCameraButton.setAttribute('data-date-button', date);
-                        originalCameraButton.addEventListener('click', (event) => {
-                            const clickedDateForOriginal = event.target.getAttribute('data-date-button');
-                            const newFileInputForOriginal = document.createElement('input');
-                            newFileInputForOriginal.type = 'file';
-                            newFileInputForOriginal.accept = 'image/*';
-                            newFileInputForOriginal.capture = 'environment';
-                            newFileInputForOriginal.style.display = 'none';
-                            newFileInputForOriginal.onchange = (evt) => handleFileSelection(evt, clickedDateForOriginal, debugInfoDiv);
-                            document.body.appendChild(newFileInputForOriginal);
-                            newFileInputForOriginal.click();
-                        });
-                        targetPhotoCell.appendChild(originalCameraButton);
-
-                        // 関連するinputフィールドからdata-new-photo属性を削除
-                        const currentReadingInput = document.querySelector(`#meter-readings-table tbody input[data-date="${date}"]`);
-                        if (currentReadingInput) {
-                            currentReadingInput.removeAttribute('data-new-photo');
-                            console.log('[meter_reading] 写真データをdata-new-photo属性から削除しました (handleFileSelection)。');
-                            if(debugInfoDiv) debugInfoDiv.innerHTML += '写真データをクリアしました (handleFileSelection)。<br>';
-                        }
-                    });
-                    targetPhotoCell.appendChild(deleteButton);
-
-                    // 撮影した画像データをinput要素に紐付ける
-                    const currentReadingInput = document.querySelector(`#meter-readings-table tbody input[data-date="${date}"]`);
-                    if (currentReadingInput) {
-                        currentReadingInput.setAttribute('data-new-photo', imageData);
-                        console.log('[meter_reading] 写真データをdata-new-photo属性に保存しました (handleFileSelection)。');
+                const currentReadingInput = document.querySelector(`#meter-readings-table input[type="number"][data-date="${date}"]`);
+                if (currentReadingInput) {
+                    currentReadingInput.setAttribute('data-new-photo', base64PhotoData);
+                    console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
+                } else {
+                    console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
+                    if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">エラー: 対応する指示数入力フィールドが見つかりません for date: ' + date + '</span><br>';
+                    alert('写真データを紐付ける入力フィールドが見つかりませんでした。');
+                    if (e.target.parentElement === document.body) {
+                        document.body.removeChild(e.target);
                     }
+                    return;
+                }                const photoCell = document.querySelector(`td[data-date-photo="${date}"]`);
+                if (photoCell) {
+                    let previewImg = photoCell.querySelector('img.temp-preview');
+                    if (!previewImg) {
+                        previewImg = document.createElement('img');
+                        previewImg.classList.add('temp-preview');
+                        previewImg.alt = '撮影プレビュー';
+                        previewImg.style.maxWidth = '50px';
+                        previewImg.style.maxHeight = '50px';
+                        previewImg.style.marginRight = '5px';
+                        previewImg.style.cursor = 'pointer';
+                        const cameraBtn = photoCell.querySelector('button[data-date-button]');
+                        if (cameraBtn) {
+                            photoCell.insertBefore(previewImg, cameraBtn);
+                        } else {
+                            photoCell.appendChild(previewImg); // Fallback
+                        }
+                    }
+                    previewImg.src = base64PhotoData;
+                    previewImg.onclick = () => showPhotoModal(base64PhotoData);
+
+                    // 削除ボタンの作成・表示
+                    let deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+                    if (!deleteBtn) {
+                        deleteBtn = document.createElement('button');
+                        deleteBtn.classList.add('delete-photo-btn');
+                        deleteBtn.textContent = '削除';
+                        deleteBtn.style.backgroundColor = '#dc3545';
+                        deleteBtn.style.color = 'white';
+                        deleteBtn.style.border = 'none';
+                        deleteBtn.style.padding = '2px 6px';
+                        deleteBtn.style.marginRight = '5px';
+                        deleteBtn.style.fontSize = '12px';
+                        deleteBtn.style.cursor = 'pointer';
+                        deleteBtn.style.borderRadius = '3px';
+                        
+                        deleteBtn.addEventListener('click', () => {
+                            // 写真データを削除
+                            const currentReadingInput = document.querySelector(`#meter-readings-table input[type="number"][data-date="${date}"]`);
+                            if (currentReadingInput) {
+                                currentReadingInput.removeAttribute('data-new-photo');
+                            }
+                            
+                            // プレビュー画像と削除ボタンを削除
+                            const previewImg = photoCell.querySelector('img.temp-preview');
+                            const deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+                            if (previewImg) previewImg.remove();
+                            if (deleteBtn) deleteBtn.remove();
+                            
+                            // カメラボタンのテキストを「撮影」に戻す
+                            const cameraBtn = photoCell.querySelector('button[data-date-button]');
+                            if (cameraBtn) {
+                                cameraBtn.textContent = '撮影';
+                            }
+                            
+                            // 既存の画像を再表示（もしあれば）
+                            const existingPersistentImage = photoCell.querySelector('img:not(.temp-preview)');
+                            if (existingPersistentImage) {
+                                existingPersistentImage.style.display = '';
+                            }
+                            
+                            console.log('[meter_reading] 写真を削除しました for date:', date);
+                            if(debugInfoDiv) debugInfoDiv.innerHTML += '写真削除完了 for date: ' + date + '<br>';
+                        });
+                        
+                        const cameraBtn = photoCell.querySelector('button[data-date-button]');
+                        if (cameraBtn) {
+                            photoCell.insertBefore(deleteBtn, cameraBtn);
+                        } else {
+                            photoCell.appendChild(deleteBtn);
+                        }
+                    }
+
+                    const cameraBtn = photoCell.querySelector('button[data-date-button]');
+                    if (cameraBtn) {
+                        // Hide existing non-preview image if a new photo is taken
+                        const existingPersistentImage = photoCell.querySelector('img:not(.temp-preview)');
+                        if (existingPersistentImage) {
+                            existingPersistentImage.style.display = 'none';
+                        }
+
+                        // Insert the preview image if it's not already in the cell, or if it's the one we just created/updated
+                        // Ensure it's inserted before the delete button (which is before the camera button).
+                        if (!previewImg.parentElement || previewImg.parentElement !== photoCell) {
+                            const deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+                            if (deleteBtn) {
+                                photoCell.insertBefore(previewImg, deleteBtn);
+                            } else {
+                                photoCell.insertBefore(previewImg, cameraBtn);
+                            }
+                        }
+                        cameraBtn.textContent = '再撮影';
+                    }
+                    if(debugInfoDiv) debugInfoDiv.innerHTML += '写真プレビュー表示、削除ボタン追加、ボタンテキスト更新完了 for date: ' + date + '<br>';
+                } else {
+                    console.error('[meter_reading] 対応する写真セルが見つかりません for date:', date);
+                    if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">エラー: 対応する写真セルが見つかりません for date: ' + date + '</span><br>';
+                }
+
+                if (e.target.parentElement === document.body) {
+                    document.body.removeChild(e.target);
+                    console.log('[meter_reading] 動的に作成されたファイル入力を削除しました。');
                 }
             };
-            reader.onerror = (error) => {
-                console.error('[meter_reading] FileReaderエラー (handleFileSelection):', error);
-                if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">FileReaderエラー (handleFileSelection): ' + error.toString() + '</span><br>';
-                alert('写真ファイルの読み込みに失敗しました。');
+            reader.onerror = (errorEvent) => {
+                console.error('[meter_reading] FileReader error:', errorEvent);
+                if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">FileReaderエラー: ' + errorEvent.toString() + '</span><br>';
+                alert('ファイルの読み込みに失敗しました。');
+                if (e.target.parentElement === document.body) {
+                    document.body.removeChild(e.target);
+                }
             };
             reader.readAsDataURL(file);
         } else {
-            console.log('[meter_reading] ファイルは選択されませんでした (handleFileSelection)。');
-            if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイルは選択されませんでした (handleFileSelection)。<br>';
-        }
-        
-        // ファイル入力要素をクリーンアップ
-        const inputFileElement = e.target;
-        if (inputFileElement && inputFileElement.parentElement) {
-            inputFileElement.onchange = null; 
-            inputFileElement.parentElement.removeChild(inputFileElement);
+            // ファイルが選択されなかった場合（キャンセルなど）
+            console.log('[meter_reading] ファイル選択がキャンセルされました。');
+            if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル選択がキャンセルされました。<br>';
+            // input要素が残っていれば削除
+            if (e.target.parentElement === document.body) {
+                document.body.removeChild(e.target);
+            }
         }
     }
 

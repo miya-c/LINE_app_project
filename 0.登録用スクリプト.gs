@@ -1,5 +1,6 @@
-// データ連携.gs
-
+/* 物件登録用のスクリプト
+   物件の追加登録が発生する際に実行してください
+*/
 const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId(); // 現在のスプレッドシートID
 const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
 const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
