@@ -14,7 +14,6 @@ function formatPropertyIds() {
 
   if (!sheet) {
     Logger.log(`エラー: "${PROPERTY_MASTER_SHEET_NAME_FOR_FORMATTING}" シートが見つかりません。`);
-    Logger.log(`エラー: "${PROPERTY_MASTER_SHEET_NAME_FOR_FORMATTING}" シートが見つかりません。`); // MODIFIED
     return;
   }
 
@@ -24,7 +23,6 @@ function formatPropertyIds() {
 
   if (values.length <= HEADER_ROWS) {
     Logger.log(`"${PROPERTY_MASTER_SHEET_NAME_FOR_FORMATTING}" シートに処理対象のデータがありません（ヘッダー行のみ、または空）。`);
-    Logger.log(`"${PROPERTY_MASTER_SHEET_NAME_FOR_FORMATTING}" シートに処理対象のデータがありません。`); // MODIFIED
     return;
   }
 
@@ -77,10 +75,8 @@ function formatPropertyIds() {
   if (updatedCount > 0) {
     dataRange.setValues(values);
     Logger.log(`${updatedCount} 件の物件IDをフォーマットしました。`);
-    Logger.log(`${updatedCount} 件の物件IDをフォーマットしました。`); // MODIFIED
   } else {
-    Logger.log('更新対象の物件IDはありませんでした。');
-    Logger.log('更新対象の物件IDはありませんでした。全てのIDが既に正しい形式であるか、処理対象外です。'); // MODIFIED
+    Logger.log('更新対象の物件IDはありませんでした。全てのIDが既に正しい形式であるか、処理対象外です。');
   }
 }
 
