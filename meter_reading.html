@@ -348,11 +348,14 @@
       }
 
       try {
-        const response = await fetch(`${gasWebAppUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`);
+        const fetchUrl = `${gasWebAppUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`;
+        console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl); // リクエストURLをログ出力
+        const response = await fetch(fetchUrl);
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
         const responseObject = await response.json(); // サーバーからの応答全体を取得
+        console.log('[meter_reading] Received responseObject from server:', responseObject); // responseObject全体をログ出力
 
         if (loadingElement) loadingElement.style.display = 'none';
 
@@ -379,6 +382,9 @@
         }
         
         console.log('[meter_reading] Fetched meter readings:', readings); // readings 配列をログに出力
+
+        console.log('[meter_reading] Extracted readings variable:', readings); // readings変数をログ出力
+        console.log('[meter_reading] readings.length:', Array.isArray(readings) ? readings.length : 'not an array'); // readings.lengthをログ出力
 
         if (Array.isArray(readings) && readings.length > 0) {
           tableElement.style.display = '';
