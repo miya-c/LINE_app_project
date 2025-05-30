@@ -425,19 +425,30 @@
             console.log(`[meter_reading] 差分計算前データ確認 (日付: ${reading.date}):`);
             console.log(`  reading.previousReading: ${reading.previousReading}`);
             console.log(`  reading.previousPreviousReading: ${reading.previousPreviousReading}`);
-            console.log(`  reading.threeTimesPrevious: ${reading.threeTimesPrevious}`); // 修正箇所
-            console.log(`  prevPrevReadingText: ${prevPrevReadingText}`);
+            console.log(`  reading.threeTimesPrevious: ${reading.threeTimesPrevious}`);
+            console.log(`  prevPrevReadingText (初期値): ${prevPrevReadingText}`);
             console.log(`  prevPrevPrevReadingText: ${prevPrevPrevReadingText}`);
             // --- ここまでデバッグログ追加 ---
 
             const prev = parseFloat(reading.previousReading);
             const prevPrev = parseFloat(reading.previousPreviousReading);
-            const prevPrevPrev = parseFloat(reading.threeTimesPrevious); // 修正箇所
+            const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
+
+            // 追加ログ: parseFloat後の値
+            console.log(`  parseFloat(reading.previousPreviousReading) -> prevPrev: ${prevPrev}`);
+            console.log(`  parseFloat(reading.threeTimesPrevious) -> prevPrevPrev: ${prevPrevPrev}`);
 
             // 前々回と前々々回の差分計算と表示
             if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
               const diff = prevPrev - prevPrevPrev;
               prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+              console.log(`  前々回と前々々回の差分計算結果: diff=${diff}, 更新後prevPrevReadingText=${prevPrevReadingText}`);
+            } else {
+              console.log(`  前々回と前々々回の差分計算スキップ:`);
+              console.log(`    prevPrevReadingText !== 'N/A': ${prevPrevReadingText !== 'N/A'} (値: ${prevPrevReadingText})`);
+              console.log(`    prevPrevPrevReadingText !== 'N/A': ${prevPrevPrevReadingText !== 'N/A'} (値: ${prevPrevPrevReadingText})`);
+              console.log(`    !isNaN(prevPrev): ${!isNaN(prevPrev)} (値: ${prevPrev})`);
+              console.log(`    !isNaN(prevPrevPrev): ${!isNaN(prevPrevPrev)} (値: ${prevPrevPrev})`);
             }
 
             // 前回と前々回の差分計算と表示
