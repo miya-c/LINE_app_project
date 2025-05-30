@@ -384,6 +384,25 @@
           tableElement.style.display = '';
           document.getElementById('update-readings-button').style.display = 'block';
           noDataMessageElement.style.display = 'none';
+          tableBody.innerHTML = ''; 
+          readings.forEach(reading => {
+            const row = tableBody.insertRow();
+            let formattedDate = '';
+
+            // 日付のフォーマット処理
+            if (reading.date) {
+              try {
+                const dateParts = reading.date.split('/');
+                if (dateParts.length === 3) {
+                  // YYYY/MM/DD 形式
+                  const year = dateParts[0];
+                  const month = dateParts[1].padStart(2, '0');
+                  const day = dateParts[2].padStart(2, '0');
+                  formattedDate = `${year}年${month}月${day}日`;
+                } else {
+                  // その他の形式はそのまま使用
+                  formattedDate = reading.date;
+                }
               } catch (e) {
                 console.warn('[meter_reading] 日付のフォーマットに失敗しました:', reading.date, e);
                 formattedDate = reading.date;
@@ -790,80 +809,35 @@
                         deleteBtn.style.borderRadius = '3px';
                         
                         deleteBtn.addEventListener('click', () => {
-                            // 写真データを削除
-                            const currentReadingInput = document.querySelector(`#meter-readings-table input[type="number"][data-date="${date}"]`);
+                            // Actual delete logic: remove photo data, preview, and delete button
                             if (currentReadingInput) {
                                 currentReadingInput.removeAttribute('data-new-photo');
                             }
-                            
-                            // プレビュー画像と削除ボタンを削除
-                            const previewImg = photoCell.querySelector('img.temp-preview');
-                            const deleteBtn = photoCell.querySelector('button.delete-photo-btn');
                             if (previewImg) previewImg.remove();
                             if (deleteBtn) deleteBtn.remove();
-                            
-                            // カメラボタンのテキストを「撮影」に戻す
                             const cameraBtn = photoCell.querySelector('button[data-date-button]');
-                            if (cameraBtn) {
-                                cameraBtn.textContent = '撮影';
-                            }
-                            
-                            // 既存の画像を再表示（もしあれば）
-                            const existingPersistentImage = photoCell.querySelector('img:not(.temp-preview)');
-                            if (existingPersistentImage) {
-                                existingPersistentImage.style.display = '';
-                            }
-                            
-                            console.log('[meter_reading] 写真を削除しました for date:', date);
+                            if (cameraBtn) cameraBtn.textContent = '撮影'; // Reset camera button text
+
                             if(debugInfoDiv) debugInfoDiv.innerHTML += '写真削除完了 for date: ' + date + '<br>';
                         });
-                        
                         const cameraBtn = photoCell.querySelector('button[data-date-button]');
                         if (cameraBtn) {
                             photoCell.insertBefore(deleteBtn, cameraBtn);
                         } else {
-                            photoCell.appendChild(deleteBtn);
+                            photoCell.appendChild(deleteBtn); // Fallback
                         }
                     }
-
+                    // Update camera button text to "変更"
                     const cameraBtn = photoCell.querySelector('button[data-date-button]');
-                    if (cameraBtn) {
-                        // Hide existing non-preview image if a new photo is taken
-                        const existingPersistentImage = photoCell.querySelector('img:not(.temp-preview)');
-                        if (existingPersistentImage) {
-                            existingPersistentImage.style.display = 'none';
-                        }
+                    if (cameraBtn) cameraBtn.textContent = '変更';
 
-                        // Insert the preview image if it's not already in the cell, or if it's the one we just created/updated
-                        // Ensure it's inserted before the delete button (which is before the camera button).
-                        if (!previewImg.parentElement || previewImg.parentElement !== photoCell) {
-                            const deleteBtn = photoCell.querySelector('button.delete-photo-btn');
-                            if (deleteBtn) {
-                                photoCell.insertBefore(previewImg, deleteBtn);
-                            } else {
-                                photoCell.insertBefore(previewImg, cameraBtn);
-                            }
-                        }
-                        cameraBtn.textContent = '再撮影';
-                    }
                     if(debugInfoDiv) debugInfoDiv.innerHTML += '写真プレビュー表示、削除ボタン追加、ボタンテキスト更新完了 for date: ' + date + '<br>';
-                } else {
-                    console.error('[meter_reading] 対応する写真セルが見つかりません for date:', date);
-                    if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">エラー: 対応する写真セルが見つかりません for date: ' + date + '</span><br>';
-                }
-
-                if (e.target.parentElement === document.body) {
-                    document.body.removeChild(e.target);
-                    console.log('[meter_reading] 動的に作成されたファイル入力を削除しました。');
                 }
             };
             reader.onerror = (errorEvent) => {
-                console.error('[meter_reading] FileReader error:', errorEvent);
-                if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">FileReaderエラー: ' + errorEvent.toString() + '</span><br>';
-                alert('ファイルの読み込みに失敗しました。');
-                if (e.target.parentElement === document.body) {
-                    document.body.removeChild(e.target);
-                }
+                console.error('[meter_reading] File reading error:', errorEvent);
+                if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">ファイル読み込みエラーが発生しました。</span><br>';
+                alert('ファイルの読み込み中にエラーが発生しました。');
             };
             reader.readAsDataURL(file);
         } else {
