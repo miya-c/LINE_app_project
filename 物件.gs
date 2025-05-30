@@ -234,25 +234,17 @@ function doGet(e) {
           return readingObject;
         });
       
-      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データ ${readings.length} 件を整形完了: ${JSON.stringify(readings)}`);
-
-      // 日付の降順（新しいものが先頭）にソート
-      readings.sort((a, b) => {
-        // dateがnullまたは不正な日付文字列の場合のフォールバック
-        const dateA = a.date ? new Date(a.date) : null;
-        const dateB = b.date ? new Date(b.date) : null;
-
-        if (!dateA && !dateB) return 0; // 両方無効なら順序変更なし
-        if (!dateA) return 1;  // aが無効ならbを前に
-        if (!dateB) return -1; // bが無効ならaを前に
-        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-        return dateB - dateA;
-      });
-      
       console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
-      return ContentService.createTextOutput(JSON.stringify(readings))
+      // ★★★ デバッグ用に返すデータ構造を変更 ★★★
+      const responseObject = {
+        readings: readings,
+        debugInfo: {
+          detectedHeaders: headers,
+          threeTimesPreviousIndex: threeTimesPreviousReadingColIndex,
+          message: "この情報はデバッグ用です。threeTimesPreviousIndexが-1の場合、'前々々回指示数'ヘッダーが見つかっていません。"
+        }
+      };
+      return ContentService.createTextOutput(JSON.stringify(responseObject))
         .setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
