@@ -154,6 +154,7 @@ function doGet(e) {
       const currentReadingColIndex = headers.indexOf('今回の指示数');
       const previousReadingColIndex = headers.indexOf('前回指示数');
       const previousPreviousReadingColIndex = headers.indexOf('前々回指示数'); // ★ 「前々回指示数」の列インデックスを取得
+      const threeTimesPreviousReadingColIndex = headers.indexOf('前々々回指示数'); // ★ 「前々々回指示数」の列インデックスを取得
       const usageColIndex = headers.indexOf('今回使用量');
       const statusColIndex = headers.indexOf('警告フラグ');
       // const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URL列は使用しない
@@ -167,6 +168,7 @@ function doGet(e) {
       if (currentReadingColIndex === -1) missingHeaders.push('今回の指示数');
       if (previousReadingColIndex === -1) missingHeaders.push('前回指示数');
       if (previousPreviousReadingColIndex === -1) missingHeaders.push('前々回指示数'); // ★ チェック対象に追加
+      if (threeTimesPreviousReadingColIndex === -1) missingHeaders.push('前々々回指示数'); // ★ チェック対象に追加
       if (usageColIndex === -1) missingHeaders.push('今回使用量');
       if (statusColIndex === -1) missingHeaders.push('警告フラグ');
       
@@ -174,7 +176,7 @@ function doGet(e) {
         const errorMessage = `必須の列ヘッダー（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
         console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);        return ContentService.createTextOutput(JSON.stringify({ 
           error: errorMessage,
-          expectedHeaders: ['物件名', '物件ID', '部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '今回使用量', '警告フラグ'], // 物件名を追加
+          expectedHeaders: ['物件名', '物件ID', '部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数', '今回使用量', '警告フラグ'], // 物件名を追加
           foundHeaders: headers,
           sheetName: sheetName
         }))
@@ -192,6 +194,7 @@ function doGet(e) {
             currentReading: getDateValue(currentReadingColIndex),
             previousReading: getDateValue(previousReadingColIndex),
             previousPreviousReading: getDateValue(previousPreviousReadingColIndex), // ★ 「前々回指示数」のデータを取得
+            threeTimesPrevious: getDateValue(threeTimesPreviousReadingColIndex), // ★ 「前々々回指示数」のデータを取得
             usage: getDateValue(usageColIndex),
             status: getDateValue(statusColIndex)
             // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLは返さない
