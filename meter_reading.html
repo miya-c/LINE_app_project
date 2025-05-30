@@ -411,12 +411,34 @@
             currentReadingCell.appendChild(currentReadingInput);
 
             const prevReadingCell = row.insertCell();
-            prevReadingCell.textContent = reading.previousReading || 'N/A';
+            let prevReadingText = reading.previousReading || 'N/A';
             prevReadingCell.setAttribute('data-label', '前回');
             
             const prevPrevReadingCell = row.insertCell();
-            prevPrevReadingCell.textContent = reading.previousPreviousReading || 'N/A';
+            let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
             prevPrevReadingCell.setAttribute('data-label', '前々回');
+
+            // 前々々回指示数を取得 (サーバーから渡される想定、キーは 'previousPreviousPreviousReading' と仮定)
+            const prevPrevPrevReadingText = reading.previousPreviousPreviousReading || 'N/A';
+
+            const prev = parseFloat(reading.previousReading);
+            const prevPrev = parseFloat(reading.previousPreviousReading);
+            const prevPrevPrev = parseFloat(reading.previousPreviousPreviousReading); // サーバーからのデータ
+
+            // 前々回と前々々回の差分計算と表示
+            if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+              const diff = prevPrev - prevPrevPrev;
+              prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+            }
+
+            // 前回と前々回の差分計算と表示
+            if (prevReadingText !== 'N/A' && prevPrevReadingText.split(' ')[0] !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
+              const diff = prev - prevPrev;
+              prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+            }
+
+            prevReadingCell.textContent = prevReadingText;
+            prevPrevReadingCell.textContent = prevPrevReadingText;
             
             const usageCell = row.insertCell();
             usageCell.textContent = reading.usage || 'N/A';
