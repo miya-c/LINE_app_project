@@ -424,8 +424,8 @@
                   // YYYY/MM/DD 形式
                   const year = dateParts[0];
                   const month = dateParts[1].padStart(2, '0');
-                  const day = dateParts[2].padStart(2, '0');
-                  formattedDate = `${year}年${month}月${day}日`;
+                  const day = dateParts[2].padStart(2, '0'); // 日を再度含める
+                  formattedDate = `${year}年${month}月${day}日`; // 年月日表示に戻す
                 } else {
                   // その他の形式はそのまま使用
                   formattedDate = reading.date;
@@ -485,7 +485,7 @@
             console.log(`  parseFloat(reading.threeTimesPrevious) -> prevPrevPrev: ${prevPrevPrev}`);
 
             // 前々回と前々々回の差分計算と表示
-            if (prevPrevReadingText !== 'N/A' && (prevPrevPrevReadingText !== 'N/A') && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+            if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
               const diff = prevPrev - prevPrevPrev;
               prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
               console.log(`  前々回と前々々回の差分計算結果: diff=${diff}, 更新後prevPrevReadingText=${prevPrevReadingText}`);
@@ -564,8 +564,8 @@
           const currentDate = new Date();
           const year = currentDate.getFullYear();
           const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = currentDate.getDate().toString().padStart(2, '0');
-          const formattedCurrentDate = `${year}年${month}月${day}日`;
+          const day = currentDate.getDate().toString().padStart(2, '0'); // 日を再度含める
+          const formattedCurrentDate = `${year}年${month}月${day}日`; // 年月日表示に戻す
           
           const dateCell = row.insertCell();
           dateCell.textContent = formattedCurrentDate;
