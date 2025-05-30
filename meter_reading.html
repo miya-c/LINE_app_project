@@ -355,19 +355,39 @@
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
         const responseObject = await response.json(); // サーバーからの応答全体を取得
-        console.log('[meter_reading] Received responseObject from server:', responseObject); // responseObject全体をログ出力
+        console.log('[meter_reading] Received responseObject from server:', responseObject);
+
+        let actualDataPayload;
+        if (Array.isArray(responseObject) && responseObject.length === 1 && 
+            typeof responseObject[0] === 'object' && responseObject[0] !== null && 
+            'readings' in responseObject[0]) {
+            console.log('[meter_reading] Server response appears to be an array containing the main data object. Using element at index 0.');
+            actualDataPayload = responseObject[0];
+        } else if (typeof responseObject === 'object' && responseObject !== null && 'readings' in responseObject) {
+            console.log('[meter_reading] Server response appears to be the main data object directly.');
+            actualDataPayload = responseObject;
+        } else {
+            // フォールバック: もし応答が検針値の直接の配列である場合 (debugInfoなし、古い構造)
+            if (Array.isArray(responseObject)) {
+                 console.warn('[meter_reading] Server response appears to be an array of readings. Debug info might be missing or incorrect.');
+                 actualDataPayload = { readings: responseObject, debugInfo: { message: "Interpreted as direct array of readings."} };
+            } else {
+                console.error('[meter_reading] Unrecognized server response structure:', responseObject);
+                throw new Error('サーバーからの応答の形式が認識できません。');
+            }
+        }
 
         if (loadingElement) loadingElement.style.display = 'none';
 
         // GASから直接エラーオブジェクトが返された場合
-        if (responseObject.error) {
-          console.error('[meter_reading] Server returned an error:', responseObject.error);
-          throw new Error(responseObject.error);
+        if (actualDataPayload.error) {
+          console.error('[meter_reading] Server returned an error:', actualDataPayload.error);
+          throw new Error(actualDataPayload.error);
         }
 
         // 実際の検針データとデバッグ情報を抽出
-        const readings = responseObject.readings;
-        const debugInfo = responseObject.debugInfo;
+        const readings = actualDataPayload.readings;
+        const debugInfo = actualDataPayload.debugInfo;
 
         // サーバーからのデバッグ情報をコンソールと画面に出力
         if (debugInfo) {
