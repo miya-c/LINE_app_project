@@ -113,6 +113,7 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
   } else if (action == 'getMeterReadings') { // ★★★ 検針データを取得する処理 ★★★
+    console.log("--- [物件.gs] getMeterReadings action received ---"); // ★★★ この行を追加 ★★★
     try {
       const roomId = e.parameter.roomId;
       const propertyId = e.parameter.propertyId; // 物件IDも取得
@@ -199,6 +200,9 @@ function doGet(e) {
             status: getDateValue(statusColIndex)
             // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLは返さない
           };
+          
+          // ★★★ 追加: 作成された readingObject の内容をログに出力 ★★★
+          console.log(`[物件.gs] getMeterReadings - Constructed readingObject (filteredIndex ${filteredIndex}): date=${readingObject.date}, current=${readingObject.currentReading}, prev=${readingObject.previousReading}, prevPrev=${readingObject.previousPreviousReading}, threePrev=${readingObject.threeTimesPrevious}, usage=${readingObject.usage}, status=${readingObject.status}`);
           
           // ★★★ 「今回の指示数」セルからコメントを取得（正確な行番号を計算）★★★
           try {
