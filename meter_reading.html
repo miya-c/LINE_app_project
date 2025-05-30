@@ -556,13 +556,13 @@
 
           // 初回検針用のテンプレート行を作成
           const row = tableBody.insertRow();
-          row.classList.add('initial-reading-row'); // 初回検針行であることを示すクラスを追加
-            // 検針日時（現在の日時を表示）
+          row.classList.add('initial-reading-row'); // 初回検針行であることを示すクラスを追加          // 検針日時（現在の日時を表示）
           const currentDate = new Date();
           const year = currentDate.getFullYear();
           const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
           const day = currentDate.getDate().toString().padStart(2, '0');
           const formattedCurrentDate = `${year}年${month}月${day}日`; // 年月日表示
+          const dateForDataAttribute = `${year}/${month}/${day}`; // data-date用の形式
           
           const dateCell = row.insertCell();
           dateCell.textContent = formattedCurrentDate;
@@ -575,7 +575,7 @@
           currentReadingInput.type = 'number';
           currentReadingInput.value = '';
           currentReadingInput.placeholder = '初回指示数を入力';
-          currentReadingInput.setAttribute('data-date', currentDate.toISOString());
+          currentReadingInput.setAttribute('data-date', dateForDataAttribute);
           currentReadingInput.setAttribute('data-original-value', '');
           currentReadingInput.setAttribute('pattern', '[0-9]*');
           currentReadingInput.setAttribute('inputmode', 'numeric');
@@ -611,16 +611,15 @@
           statusCell.setAttribute('data-label', '状態');
           statusCell.style.color = '#007bff';
           statusCell.style.fontWeight = 'bold';
-          
-          // 写真欄
+            // 写真欄
           const photoCell = row.insertCell();
-          photoCell.setAttribute('data-date-photo', currentDate.toISOString());
+          photoCell.setAttribute('data-date-photo', dateForDataAttribute);
           photoCell.setAttribute('data-label', '写真');
 
           // カメラボタンの作成
           const cameraButton = document.createElement('button');
           cameraButton.textContent = '撮影';
-          cameraButton.setAttribute('data-date-button', currentDate.toISOString());
+          cameraButton.setAttribute('data-date-button', dateForDataAttribute);
           cameraButton.addEventListener('click', async (event) => {
             const debugInfoDiv = document.getElementById('debug-info');
             debugInfoDiv.innerHTML = 'カメラボタンクリック時のデバッグ情報:<br>';
