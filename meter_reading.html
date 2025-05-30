@@ -418,8 +418,8 @@
             let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
             prevPrevReadingCell.setAttribute('data-label', '前々回');
 
-            // 前々々回指示数を取得 (サーバーから渡される想定、キーは 'previousPreviousPreviousReading' と仮定)
-            const prevPrevPrevReadingText = reading.previousPreviousPreviousReading || 'N/A';
+            // 前々々回指示数を取得 (サーバーから渡される想定、キーは 'threeTimesPrevious' に修正)
+            const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
 
             // --- ここからデバッグログ追加 ---
             console.log(`[meter_reading] 差分計算前データ確認 (日付: ${reading.date}):`);
