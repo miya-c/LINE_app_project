@@ -485,7 +485,7 @@
             console.log(`  parseFloat(reading.threeTimesPrevious) -> prevPrevPrev: ${prevPrevPrev}`);
 
             // 前々回と前々々回の差分計算と表示
-            if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+            if (prevPrevReadingText !== 'N/A' && (prevPrevPrevReadingText !== 'N/A') && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
               const diff = prevPrev - prevPrevPrev;
               prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
               console.log(`  前々回と前々々回の差分計算結果: diff=${diff}, 更新後prevPrevReadingText=${prevPrevReadingText}`);
