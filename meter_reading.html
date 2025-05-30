@@ -352,38 +352,38 @@
         if (!response.ok) {
           throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
         }
-        const readings = await response.json();
+        const responseObject = await response.json(); // サーバーからの応答全体を取得
 
         if (loadingElement) loadingElement.style.display = 'none';
 
-        if (readings.error) {
-          throw new Error(readings.error);
+        // GASから直接エラーオブジェクトが返された場合
+        if (responseObject.error) {
+          console.error('[meter_reading] Server returned an error:', responseObject.error);
+          throw new Error(responseObject.error);
+        }
+
+        // 実際の検針データとデバッグ情報を抽出
+        const readings = responseObject.readings;
+        const debugInfo = responseObject.debugInfo;
+
+        // サーバーからのデバッグ情報をコンソールと画面に出力
+        if (debugInfo) {
+          console.log('[meter_reading] Server Debug Info:', debugInfo);
+          const debugInfoDiv = document.getElementById('debug-info');
+          if (debugInfoDiv) {
+            debugInfoDiv.innerHTML += `<p><strong>Server Debug Info:</strong><br>
+              Detected Headers: ${JSON.stringify(debugInfo.detectedHeaders || [])}<br>
+              ThreeTimesPrevious Index: ${debugInfo.threeTimesPreviousIndex !== undefined ? debugInfo.threeTimesPreviousIndex : 'N/A'}<br>
+              Message: ${debugInfo.message || ''}</p>`;
+          }
         }
         
-        console.log('[meter_reading] Fetched meter readings:', readings);
+        console.log('[meter_reading] Fetched meter readings:', readings); // readings 配列をログに出力
 
         if (Array.isArray(readings) && readings.length > 0) {
           tableElement.style.display = '';
           document.getElementById('update-readings-button').style.display = 'block';
           noDataMessageElement.style.display = 'none';
-          tableBody.innerHTML = '';
-
-          readings.forEach(reading => {
-            const row = tableBody.insertRow();
-            
-            // 日付フォーマット処理
-            let formattedDate = 'N/A';
-            if (reading.date) {
-              try {
-                const dateObj = new Date(reading.date);
-                const year = dateObj.getFullYear();
-                const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                const day = dateObj.getDate().toString().padStart(2, '0');
-                if (!isNaN(year) && !isNaN(parseInt(month)) && !isNaN(parseInt(day))) {
-                  formattedDate = `${year}年${month}月${day}日`;
-                } else {
-                  formattedDate = reading.date; 
-                }
               } catch (e) {
                 console.warn('[meter_reading] 日付のフォーマットに失敗しました:', reading.date, e);
                 formattedDate = reading.date;
@@ -452,7 +452,7 @@
             }
 
             // 前回と前々回の差分計算と表示
-            if (prevReadingText !== 'N/A' && prevPrevReadingText.split(' ')[0] !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
+            if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
               const diff = prev - prevPrev;
               prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
             }
