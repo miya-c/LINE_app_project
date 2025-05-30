@@ -158,9 +158,7 @@ function doGet(e) {
       const threeTimesPreviousReadingColIndex = headers.indexOf('前々々回指示数'); // ★ 「前々々回指示数」の列インデックスを取得
       const usageColIndex = headers.indexOf('今回使用量');
       const statusColIndex = headers.indexOf('警告フラグ');
-      // const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URL列は使用しない
-
-      // 必須ヘッダーの存在チェック
+      // const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URL列は使用しない      // 必須ヘッダーの存在チェック (前々々回指示数はオプション)
       let missingHeaders = [];
       if (propertyNameColIndex === -1) missingHeaders.push('物件名'); // 物件名を必須チェックに追加
       if (propertyIdColIndex === -1) missingHeaders.push('物件ID'); // 物件IDを必須チェックに追加
@@ -169,9 +167,24 @@ function doGet(e) {
       if (currentReadingColIndex === -1) missingHeaders.push('今回の指示数');
       if (previousReadingColIndex === -1) missingHeaders.push('前回指示数');
       if (previousPreviousReadingColIndex === -1) missingHeaders.push('前々回指示数'); // ★ チェック対象に追加
-      if (threeTimesPreviousReadingColIndex === -1) missingHeaders.push('前々々回指示数'); // ★ チェック対象に追加
+      // 前々々回指示数はオプションなので必須チェックから除外
       if (usageColIndex === -1) missingHeaders.push('今回使用量');
       if (statusColIndex === -1) missingHeaders.push('警告フラグ');
+      
+      // ★★★ 前々々回指示数列の状況をログ出力 ★★★
+      console.log(`[物件.gs] getMeterReadings - 前々々回指示数列の状況:`);
+      console.log(`  列インデックス: ${threeTimesPreviousReadingColIndex}`);
+      console.log(`  列が存在するか: ${threeTimesPreviousReadingColIndex !== -1}`);
+      if (threeTimesPreviousReadingColIndex !== -1) {
+        console.log(`  列の位置: ${threeTimesPreviousReadingColIndex + 1}番目`);
+        console.log(`  ヘッダー値: "${headers[threeTimesPreviousReadingColIndex]}"`);
+      } else {
+        console.warn(`  前々々回指示数列が見つからないため、threeTimesPreviousはnullになります`);
+        console.log(`  利用可能なヘッダー一覧:`);
+        headers.forEach((header, index) => {
+          console.log(`    [${index}]: "${header}"`);
+        });
+      }
       
       if (missingHeaders.length > 0) {
         const errorMessage = `必須の列ヘッダー（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
@@ -185,17 +198,32 @@ function doGet(e) {
       }      const readings = data.filter(row => 
         String(row[propertyIdColIndex]).trim() == String(propertyId).trim() && // 物件IDでもフィルタリング
         String(row[roomIdColIndex]).trim() == String(roomId).trim()
-      )
-        .map((row, filteredIndex) => {
+      )        .map((row, filteredIndex) => {
           // 各列の値を取得。列が存在しない場合はnullや空文字を適切に処理
           const getDateValue = (index) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
+          
+          // ★★★ 前々々回指示数の詳細処理ログ ★★★
+          let threeTimesPreviousValue = null;
+          if (threeTimesPreviousReadingColIndex !== -1) {
+            const rawValue = row[threeTimesPreviousReadingColIndex];
+            console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}の前々々回指示数 raw: ${rawValue} (type: ${typeof rawValue})`);
+            
+            if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
+              threeTimesPreviousValue = String(rawValue).trim();
+              console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}の前々々回指示数 processed: "${threeTimesPreviousValue}"`);
+            } else {
+              console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}の前々々回指示数は空です`);
+            }
+          } else {
+            console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}: 前々々回指示数列が存在しないため、値はnull`);
+          }
           
           let readingObject = {
             date: getDateValue(dateColIndex),
             currentReading: getDateValue(currentReadingColIndex),
             previousReading: getDateValue(previousReadingColIndex),
             previousPreviousReading: getDateValue(previousPreviousReadingColIndex), // ★ 「前々回指示数」のデータを取得
-            threeTimesPrevious: getDateValue(threeTimesPreviousReadingColIndex), // ★ 「前々々回指示数」のデータを取得
+            threeTimesPrevious: threeTimesPreviousValue, // ★ 詳細処理後の値を使用
             usage: getDateValue(usageColIndex),
             status: getDateValue(statusColIndex)
             // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLは返さない
@@ -239,17 +267,34 @@ function doGet(e) {
           
           return readingObject;
         });
-        console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
-      // ★★★ デバッグ用に返すデータ構造を変更 ★★★
+        console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);      // ★★★ デバッグ用に返すデータ構造を強化 ★★★
       const responseObject = {
         readings: readings,
         debugInfo: {
           detectedHeaders: headers,
+          headerCount: headers.length,
           threeTimesPreviousIndex: threeTimesPreviousReadingColIndex,
+          threeTimesPreviousExists: threeTimesPreviousReadingColIndex !== -1,
+          columnMapping: {
+            '物件名': propertyNameColIndex,
+            '物件ID': propertyIdColIndex,
+            '部屋ID': roomIdColIndex,
+            '検針日時': dateColIndex,
+            '今回の指示数': currentReadingColIndex,
+            '前回指示数': previousReadingColIndex,
+            '前々回指示数': previousPreviousReadingColIndex,
+            '前々々回指示数': threeTimesPreviousReadingColIndex,
+            '今回使用量': usageColIndex,
+            '警告フラグ': statusColIndex
+          },
+          totalDataRows: data.length,
+          filteredReadings: readings.length,
           sampleReadingData: readings.length > 0 ? {
             firstReading: readings[0],
-            hasThreeTimesPrevious: readings.some(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined),
-            threeTimesPreviousValues: readings.map(r => r.threeTimesPrevious).filter(v => v !== null && v !== undefined)
+            lastReading: readings[readings.length - 1],
+            hasThreeTimesPrevious: readings.some(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined && r.threeTimesPrevious !== ''),
+            threeTimesPreviousValues: readings.map(r => r.threeTimesPrevious).filter(v => v !== null && v !== undefined && v !== ''),
+            threeTimesPreviousCount: readings.filter(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined && r.threeTimesPrevious !== '').length
           } : null,
           message: "この情報はデバッグ用です。threeTimesPreviousIndexが-1の場合、'前々々回指示数'ヘッダーが見つかっていません。"
         }
@@ -868,3 +913,152 @@ function checkCommentsForPropertyRoom(propertyId, roomId) {
 }
 
 // 使用例: checkCommentsForPropertyRoom('P001', 'R001');
+
+// ★★★ スプレッドシートの構造とサンプルデータを詳細確認する関数 ★★★
+function inspectSpreadsheetStructure() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName('inspection_data');
+    
+    if (!sheet) {
+      console.error("シート 'inspection_data' が見つかりません。");
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0]; // ヘッダー行
+    
+    console.log("=== 📊 スプレッドシート詳細分析 ===");
+    console.log("シート名: inspection_data");
+    console.log("総行数: " + data.length);
+    console.log("総列数: " + headers.length);
+    
+    // ヘッダーの詳細分析
+    console.log("=== ヘッダー分析 ===");
+    headers.forEach((header, index) => {
+      console.log(`列[${index}]: "${header}" (長さ: ${String(header).length}, 型: ${typeof header})`);
+    });
+    
+    // 重要な列のインデックス確認
+    const importantColumns = [
+      '物件名', '物件ID', '部屋ID', '検針日時', 
+      '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数',
+      '今回使用量', '警告フラグ', '写真URL'
+    ];
+    
+    console.log("=== 重要列インデックス確認 ===");
+    importantColumns.forEach(colName => {
+      const index = headers.indexOf(colName);
+      console.log(`「${colName}」: インデックス ${index} ${index === -1 ? '❌ 見つからず' : '✅ 存在'}`);
+    });
+    
+    // サンプルデータの分析（最初の3行）
+    console.log("=== サンプルデータ分析 ===");
+    const sampleRowCount = Math.min(4, data.length); // ヘッダー + 最大3行
+    for (let i = 0; i < sampleRowCount; i++) {
+      console.log(`行${i + 1} ${i === 0 ? '(ヘッダー)' : '(データ)'}:`);
+      const row = data[i];
+      row.forEach((cell, colIndex) => {
+        if (colIndex < 15) { // 最初の15列のみ表示
+          console.log(`  [${colIndex}] "${cell}" (型: ${typeof cell}, 長さ: ${String(cell).length})`);
+        }
+      });
+      console.log("---");
+    }
+    
+    // 前々々回指示数の特別分析
+    const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
+    console.log("=== 前々々回指示数 特別分析 ===");
+    console.log(`列インデックス: ${threeTimesPreviousIndex}`);
+    
+    if (threeTimesPreviousIndex !== -1) {
+      console.log("✅ 前々々回指示数列が存在します");
+      console.log("この列のサンプルデータ（最初の5行）:");
+      for (let i = 1; i < Math.min(6, data.length); i++) { // ヘッダーを除く
+        const value = data[i][threeTimesPreviousIndex];
+        console.log(`  行${i + 1}: "${value}" (型: ${typeof value}, 値: ${value})`);
+      }
+      
+      // 非空の値の数を数える
+      let nonEmptyCount = 0;
+      let numericCount = 0;
+      for (let i = 1; i < data.length; i++) {
+        const value = data[i][threeTimesPreviousIndex];
+        if (value !== null && value !== undefined && String(value).trim() !== '') {
+          nonEmptyCount++;
+          if (!isNaN(parseFloat(value))) {
+            numericCount++;
+          }
+        }
+      }
+      console.log(`非空の値: ${nonEmptyCount}/${data.length - 1}行`);
+      console.log(`数値として解析可能: ${numericCount}/${data.length - 1}行`);
+    } else {
+      console.log("❌ 前々々回指示数列が見つかりません");
+      console.log("類似する列名を検索:");
+      headers.forEach((header, index) => {
+        if (String(header).includes('前') || String(header).includes('回') || String(header).includes('指示')) {
+          console.log(`  [${index}]: "${header}"`);
+        }
+      });
+    }
+    
+    console.log("=== 分析完了 ===");
+    
+  } catch (error) {
+    console.error("スプレッドシート分析中にエラーが発生しました:", error.message, error.stack);
+  }
+}
+
+// ★★★ 特定の物件・部屋のデータを詳細表示する関数 ★★★
+function inspectSpecificData(propertyId = 'P000001', roomId = 'R000003') {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName('inspection_data');
+    
+    if (!sheet) {
+      console.error("シート 'inspection_data' が見つかりません。");
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const propertyIdColIndex = headers.indexOf('物件ID');
+    const roomIdColIndex = headers.indexOf('部屋ID');
+    const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
+    
+    console.log(`=== 物件ID: ${propertyId}, 部屋ID: ${roomId} の詳細データ ===`);
+    console.log(`物件ID列インデックス: ${propertyIdColIndex}`);
+    console.log(`部屋ID列インデックス: ${roomIdColIndex}`);
+    console.log(`前々々回指示数列インデックス: ${threeTimesPreviousIndex}`);
+    
+    let foundRows = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (String(row[propertyIdColIndex]).trim() === String(propertyId).trim() && 
+          String(row[roomIdColIndex]).trim() === String(roomId).trim()) {
+        foundRows++;
+        console.log(`=== 一致する行 ${i + 1} ===`);
+        console.log(`物件ID: "${row[propertyIdColIndex]}"`);
+        console.log(`部屋ID: "${row[roomIdColIndex]}"`);
+        console.log(`検針日時: "${row[headers.indexOf('検針日時')]}"`);
+        console.log(`今回の指示数: "${row[headers.indexOf('今回の指示数')]}"`);
+        console.log(`前回指示数: "${row[headers.indexOf('前回指示数')]}"`);
+        console.log(`前々回指示数: "${row[headers.indexOf('前々回指示数')]}"`);
+        if (threeTimesPreviousIndex !== -1) {
+          const threeTimesPrevValue = row[threeTimesPreviousIndex];
+          console.log(`前々々回指示数: "${threeTimesPrevValue}" (型: ${typeof threeTimesPrevValue})`);
+        } else {
+          console.log(`前々々回指示数: 列が存在しません`);
+        }
+        console.log("---");
+      }
+    }
+    
+    console.log(`総一致行数: ${foundRows}`);
+    
+  } catch (error) {
+    console.error("特定データ分析中にエラーが発生しました:", error.message, error.stack);
+  }
+}

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>検針データ表示テスト</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .debug-info { 
+            background-color: #e8f4fd; 
+            border: 1px solid #bee5eb; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            font-size: 14px;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 20px 0;
+            background-color: white;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #f2f2f2; 
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 検針データ表示テスト</h1>
+    
+    <div class="debug-info" id="debug-info">
+        <strong>デバッグ情報:</strong><br>
+        テスト準備中...
+    </div>
+
+    <button class="test-button" onclick="testWithThreeTimesPrevious()">前々々回指示数ありでテスト</button>
+    <button class="test-button" onclick="testWithoutThreeTimesPrevious()">前々々回指示数なしでテスト</button>
+    <button class="test-button" onclick="testMixedData()">混合データでテスト</button>
+
+    <div id="meter-readings-list">
+        <table id="meter-readings-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>検針日時</th>
+                    <th>今回(㎥)</th>
+                    <th>前回</th>
+                    <th>前々回</th>
+                    <th>今回使用量</th>
+                    <th>状態</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <p id="no-data-message" style="display: none;">データがありません。</p>
+    </div>
+
+    <script>
+        // テスト用のデータセット
+        const testDataWithThreeTimesPrevious = {
+            readings: [
+                {
+                    date: "2025/05/31",
+                    currentReading: "1208",
+                    previousReading: "1186",
+                    previousPreviousReading: "1170",
+                    threeTimesPrevious: "1150",
+                    usage: "22",
+                    status: "正常"
+                },
+                {
+                    date: "2025/04/30",
+                    currentReading: "1186",
+                    previousReading: "1170",
+                    previousPreviousReading: "1150",
+                    threeTimesPrevious: "1130",
+                    usage: "16",
+                    status: "正常"
+                }
+            ],
+            debugInfo: {
+                detectedHeaders: ["記録ID", "物件名", "物件ID", "部屋ID", "部屋名", "検針日時", "警告フラグ", "標準偏差値", "今回使用量", "今回の指示数", "前回指示数", "前々回指示数", "前々々回指示数", "写真URL"],
+                headerCount: 14,
+                threeTimesPreviousIndex: 12,
+                threeTimesPreviousExists: true,
+                columnMapping: {
+                    "物件名": 1,
+                    "物件ID": 2,
+                    "部屋ID": 3,
+                    "検針日時": 5,
+                    "今回の指示数": 9,
+                    "前回指示数": 10,
+                    "前々回指示数": 11,
+                    "前々々回指示数": 12,
+                    "今回使用量": 8,
+                    "警告フラグ": 6
+                },
+                totalDataRows: 2,
+                filteredReadings: 2,
+                sampleReadingData: {
+                    firstReading: {
+                        date: "2025/05/31",
+                        currentReading: "1208",
+                        threeTimesPrevious: "1150"
+                    },
+                    lastReading: {
+                        date: "2025/04/30",
+                        currentReading: "1186",
+                        threeTimesPrevious: "1130"
+                    },
+                    hasThreeTimesPrevious: true,
+                    threeTimesPreviousValues: ["1150", "1130"],
+                    threeTimesPreviousCount: 2
+                },
+                message: "この情報はデバッグ用です。threeTimesPreviousIndexが-1の場合、'前々々回指示数'ヘッダーが見つかっていません。"
+            }
+        };
+
+        const testDataWithoutThreeTimesPrevious = {
+            readings: [
+                {
+                    date: "2025/05/31",
+                    currentReading: "1208",
+                    previousReading: "1186",
+                    previousPreviousReading: "1170",
+                    threeTimesPrevious: null,
+                    usage: "22",
+                    status: "正常"
+                }
+            ],
+            debugInfo: {
+                detectedHeaders: ["記録ID", "物件名", "物件ID", "部屋ID", "部屋名", "検針日時", "警告フラグ", "標準偏差値", "今回使用量", "今回の指示数", "前回指示数", "前々回指示数", "写真URL"],
+                headerCount: 13,
+                threeTimesPreviousIndex: -1,
+                threeTimesPreviousExists: false,
+                totalDataRows: 1,
+                filteredReadings: 1,
+                sampleReadingData: {
+                    hasThreeTimesPrevious: false,
+                    threeTimesPreviousValues: [],
+                    threeTimesPreviousCount: 0
+                },
+                message: "前々々回指示数列が見つかりません。"
+            }
+        };
+
+        function testWithThreeTimesPrevious() {
+            console.log('🧪 前々々回指示数ありでテスト開始');
+            displayTestData(testDataWithThreeTimesPrevious);
+        }
+
+        function testWithoutThreeTimesPrevious() {
+            console.log('🧪 前々々回指示数なしでテスト開始');
+            displayTestData(testDataWithoutThreeTimesPrevious);
+        }
+
+        function testMixedData() {
+            console.log('🧪 混合データでテスト開始');
+            const mixedData = {
+                readings: [
+                    testDataWithThreeTimesPrevious.readings[0],
+                    {
+                        date: "2025/04/30",
+                        currentReading: "1186",
+                        previousReading: "1170",
+                        previousPreviousReading: "1150",
+                        threeTimesPrevious: undefined,
+                        usage: "16",
+                        status: "正常"
+                    }
+                ],
+                debugInfo: testDataWithThreeTimesPrevious.debugInfo
+            };
+            displayTestData(mixedData);
+        }
+
+        function displayTestData(responseObject) {
+            const debugInfoDiv = document.getElementById('debug-info');
+            const tableElement = document.getElementById('meter-readings-table');
+            const tableBody = tableElement.getElementsByTagName('tbody')[0];
+            const noDataMessageElement = document.getElementById('no-data-message');
+
+            // デバッグ情報の表示 (meter_reading.htmlから移植)
+            const readings = responseObject.readings;
+            const debugInfo = responseObject.debugInfo;
+
+            // デバッグ情報を表示
+            if (debugInfo) {
+                console.log('[test] Server Debug Info:', debugInfo);
+                debugInfoDiv.innerHTML = `<p><strong>📊 Server Debug Info:</strong><br>
+                  <strong>ヘッダー情報:</strong><br>
+                  &nbsp;&nbsp;検出されたヘッダー数: ${debugInfo.headerCount || 'N/A'}<br>
+                  &nbsp;&nbsp;ヘッダー一覧: ${JSON.stringify(debugInfo.detectedHeaders || [])}<br>
+                  <strong>前々々回指示数列:</strong><br>
+                  &nbsp;&nbsp;列インデックス: ${debugInfo.threeTimesPreviousIndex !== undefined ? debugInfo.threeTimesPreviousIndex : 'N/A'}<br>
+                  &nbsp;&nbsp;列が存在: ${debugInfo.threeTimesPreviousExists ? 'はい' : 'いいえ'}<br>
+                  <strong>列マッピング:</strong><br>
+                  ${debugInfo.columnMapping ? Object.entries(debugInfo.columnMapping).map(([col, index]) => 
+                    `&nbsp;&nbsp;${col}: ${index !== -1 ? index : '見つからず'}`).join('<br>') : 'マッピング情報なし'}<br>
+                  <strong>データ統計:</strong><br>
+                  &nbsp;&nbsp;総データ行数: ${debugInfo.totalDataRows || 'N/A'}<br>
+                  &nbsp;&nbsp;フィルタ後読み取り数: ${debugInfo.filteredReadings || 'N/A'}<br>
+                  <strong>サンプルデータ分析:</strong><br>
+                  ${debugInfo.sampleReadingData ? `
+                    &nbsp;&nbsp;前々々回指示数を持つ読み取り: ${debugInfo.sampleReadingData.hasThreeTimesPrevious ? 'あり' : 'なし'}<br>
+                    &nbsp;&nbsp;前々々回指示数の値の数: ${debugInfo.sampleReadingData.threeTimesPreviousCount || 0}<br>
+                    &nbsp;&nbsp;前々々回指示数の値: ${JSON.stringify(debugInfo.sampleReadingData.threeTimesPreviousValues || [])}<br>
+                    &nbsp;&nbsp;最初の読み取り: ${JSON.stringify(debugInfo.sampleReadingData.firstReading || {})}<br>
+                    &nbsp;&nbsp;最後の読み取り: ${JSON.stringify(debugInfo.sampleReadingData.lastReading || {})}
+                  ` : '&nbsp;&nbsp;サンプルデータなし'}<br>
+                  <strong>メッセージ:</strong> ${debugInfo.message || ''}</p>`;
+            }
+
+            // 各readingオブジェクトのthreeTimesPreviousの値を詳細ログ出力
+            console.log('[test] 全読書データのthreeTimesPrevious詳細チェック:');
+            if (Array.isArray(readings)) {
+                readings.forEach((reading, index) => {
+                    console.log(`  読書[${index}] - date: ${reading.date}, threeTimesPrevious: ${reading.threeTimesPrevious} (type: ${typeof reading.threeTimesPrevious})`);
+                });
+            }
+
+            if (Array.isArray(readings) && readings.length > 0) {
+                tableElement.style.display = '';
+                noDataMessageElement.style.display = 'none';
+                tableBody.innerHTML = ''; 
+
+                readings.forEach(reading => {
+                    console.log('[test] Processing reading object:', JSON.stringify(reading));
+                    const row = tableBody.insertRow();
+
+                    // 日付セル
+                    const dateCell = row.insertCell();
+                    dateCell.textContent = reading.date;
+
+                    // 今回指示数セル
+                    const currentReadingCell = row.insertCell();
+                    currentReadingCell.textContent = reading.currentReading || 'N/A';
+
+                    const prevReadingCell = row.insertCell();
+                    let prevReadingText = reading.previousReading || 'N/A';
+
+                    const prevPrevReadingCell = row.insertCell();
+                    let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
+
+                    // 前々々回指示数を取得
+                    const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
+
+                    // デバッグログ
+                    console.log(`[test] 差分計算前データ確認 (日付: ${reading.date}):`);
+                    console.log(`  reading.previousReading: ${reading.previousReading}`);
+                    console.log(`  reading.previousPreviousReading: ${reading.previousPreviousReading}`);
+                    console.log(`  reading.threeTimesPrevious: ${reading.threeTimesPrevious}`);
+                    console.log(`  prevPrevReadingText (初期値): ${prevPrevReadingText}`);
+                    console.log(`  prevPrevPrevReadingText: ${prevPrevPrevReadingText}`);
+
+                    if (reading.threeTimesPrevious === undefined) {
+                        console.warn(`[test] 前々々回指示数データが取得できていません。`);
+                    }
+
+                    const prev = parseFloat(reading.previousReading);
+                    const prevPrev = parseFloat(reading.previousPreviousReading);
+                    const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
+
+                    // 追加ログ: parseFloat後の値
+                    console.log(`  parseFloat(reading.previousPreviousReading) -> prevPrev: ${prevPrev}`);
+                    console.log(`  parseFloat(reading.threeTimesPrevious) -> prevPrevPrev: ${prevPrevPrev}`);
+
+                    // 前々回と前々々回の差分計算と表示
+                    if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+                        const diff = prevPrev - prevPrevPrev;
+                        prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+                        console.log(`  前々回と前々々回の差分計算結果: diff=${diff}, 更新後prevPrevReadingText=${prevPrevReadingText}`);
+                    } else {
+                        console.log(`  前々回と前々々回の差分計算スキップ:`);
+                        console.log(`    prevPrevReadingText !== 'N/A': ${prevPrevReadingText !== 'N/A'} (値: ${prevPrevReadingText})`);
+                        console.log(`    prevPrevPrevReadingText !== 'N/A': ${prevPrevPrevReadingText !== 'N/A'} (値: ${prevPrevPrevReadingText})`);
+                        console.log(`    !isNaN(prevPrev): ${!isNaN(prevPrev)} (値: ${prevPrev})`);
+                        console.log(`    !isNaN(prevPrevPrev): ${!isNaN(prevPrevPrev)} (値: ${prevPrevPrev})`);
+                    }
+
+                    // 前回と前々回の差分計算と表示
+                    if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
+                        const diff = prev - prevPrev;
+                        prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+                    }
+
+                    prevReadingCell.textContent = prevReadingText;
+                    prevPrevReadingCell.textContent = prevPrevReadingText;
+
+                    const usageCell = row.insertCell();
+                    usageCell.textContent = reading.usage || 'N/A';
+
+                    const statusCell = row.insertCell();
+                    statusCell.textContent = reading.status || 'N/A';
+                });
+            } else {
+                tableElement.style.display = 'none';
+                noDataMessageElement.style.display = 'block';
+                noDataMessageElement.textContent = '表示するデータがありません。';
+            }
+        }
+
+        // ページ読み込み時に初期テストを実行
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 テストページ読み込み完了');
+            testWithThreeTimesPrevious();
+        });
+    </script>
+</body>
+</html>

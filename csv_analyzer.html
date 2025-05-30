@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV データ構造分析</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .analysis-result { 
+            background-color: #e8f4fd; 
+            border: 1px solid #bee5eb; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            font-size: 14px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .load-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .load-button:hover {
+            background-color: #0056b3;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 20px 0;
+            background-color: white;
+            font-size: 12px;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 4px; 
+            text-align: left;
+        }
+        th { 
+            background-color: #f2f2f2; 
+            position: sticky;
+            top: 0;
+        }
+        .highlight { background-color: #fffacd; }
+    </style>
+</head>
+<body>
+    <h1>📊 CSV データ構造分析</h1>
+    
+    <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom: 10px;">
+    <button class="load-button" onclick="loadAndAnalyzeCSV()">CSVファイルを分析</button>
+    <button class="load-button" onclick="simulateGASProcessing()">GASロジックをシミュレート</button>
+
+    <div class="analysis-result" id="analysis-result">
+        CSVファイルを選択して「CSVファイルを分析」ボタンをクリックしてください。
+    </div>
+
+    <div id="data-table-container" style="max-height: 400px; overflow: auto;">
+        <!-- データテーブルがここに表示されます -->
+    </div>
+
+    <script>
+        let csvData = null;
+        let headers = null;
+
+        function loadAndAnalyzeCSV() {
+            const fileInput = document.getElementById('csvFileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('CSVファイルを選択してください。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvText = e.target.result;
+                analyzeCSVStructure(csvText);
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function analyzeCSVStructure(csvText) {
+            console.log('🔍 CSV構造分析開始');
+            
+            // CSVパース
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            csvData = lines.map(line => {
+                // 簡単なCSVパース（カンマ区切り、引用符は考慮しない）
+                return line.split(',').map(cell => cell.trim());
+            });
+
+            if (csvData.length === 0) {
+                document.getElementById('analysis-result').textContent = 'CSVデータが空です。';
+                return;
+            }
+
+            headers = csvData[0];
+            const dataRows = csvData.slice(1);
+
+            let analysis = `=== 📊 CSV構造分析結果 ===\n`;
+            analysis += `ファイル名: ${document.getElementById('csvFileInput').files[0].name}\n`;
+            analysis += `総行数: ${csvData.length} (ヘッダー1行 + データ${dataRows.length}行)\n`;
+            analysis += `総列数: ${headers.length}\n\n`;
+
+            // ヘッダー分析
+            analysis += `=== ヘッダー分析 ===\n`;
+            headers.forEach((header, index) => {
+                analysis += `列[${index}]: "${header}" (長さ: ${header.length})\n`;
+            });
+
+            // 重要な列のインデックス確認
+            const importantColumns = [
+                '物件名', '物件ID', '部屋ID', '検針日時', 
+                '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数',
+                '今回使用量', '警告フラグ', '写真URL'
+            ];
+
+            analysis += `\n=== 重要列インデックス確認 ===\n`;
+            importantColumns.forEach(colName => {
+                const index = headers.indexOf(colName);
+                analysis += `「${colName}」: インデックス ${index} ${index === -1 ? '❌ 見つからず' : '✅ 存在'}\n`;
+            });
+
+            // 前々々回指示数の特別分析
+            const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
+            analysis += `\n=== 前々々回指示数 特別分析 ===\n`;
+            analysis += `列インデックス: ${threeTimesPreviousIndex}\n`;
+
+            if (threeTimesPreviousIndex !== -1) {
+                analysis += `✅ 前々々回指示数列が存在します\n`;
+                analysis += `この列のサンプルデータ（最初の5行）:\n`;
+                for (let i = 0; i < Math.min(5, dataRows.length); i++) {
+                    const value = dataRows[i][threeTimesPreviousIndex];
+                    analysis += `  行${i + 2}: "${value}" (長さ: ${String(value).length})\n`;
+                }
+
+                // 非空の値の数を数える
+                let nonEmptyCount = 0;
+                let numericCount = 0;
+                for (let i = 0; i < dataRows.length; i++) {
+                    const value = dataRows[i][threeTimesPreviousIndex];
+                    if (value !== null && value !== undefined && String(value).trim() !== '') {
+                        nonEmptyCount++;
+                        if (!isNaN(parseFloat(value))) {
+                            numericCount++;
+                        }
+                    }
+                }
+                analysis += `非空の値: ${nonEmptyCount}/${dataRows.length}行\n`;
+                analysis += `数値として解析可能: ${numericCount}/${dataRows.length}行\n`;
+            } else {
+                analysis += `❌ 前々々回指示数列が見つかりません\n`;
+                analysis += `類似する列名を検索:\n`;
+                headers.forEach((header, index) => {
+                    if (String(header).includes('前') || String(header).includes('回') || String(header).includes('指示')) {
+                        analysis += `  [${index}]: "${header}"\n`;
+                    }
+                });
+            }
+
+            // 特定の物件・部屋のデータ確認
+            const propertyIdIndex = headers.indexOf('物件ID');
+            const roomIdIndex = headers.indexOf('部屋ID');
+            
+            if (propertyIdIndex !== -1 && roomIdIndex !== -1) {
+                analysis += `\n=== P000001, R000003 のデータ確認 ===\n`;
+                const targetRows = dataRows.filter(row => 
+                    String(row[propertyIdIndex]).trim() === 'P000001' && 
+                    String(row[roomIdIndex]).trim() === 'R000003'
+                );
+                
+                analysis += `一致する行数: ${targetRows.length}\n`;
+                targetRows.forEach((row, index) => {
+                    analysis += `行${index + 1}:\n`;
+                    analysis += `  物件ID: "${row[propertyIdIndex]}"\n`;
+                    analysis += `  部屋ID: "${row[roomIdIndex]}"\n`;
+                    if (threeTimesPreviousIndex !== -1) {
+                        analysis += `  前々々回指示数: "${row[threeTimesPreviousIndex]}"\n`;
+                    }
+                    analysis += `---\n`;
+                });
+            }
+
+            document.getElementById('analysis-result').textContent = analysis;
+
+            // データテーブル表示
+            displayDataTable();
+
+            console.log('✅ CSV構造分析完了');
+        }
+
+        function displayDataTable() {
+            if (!csvData || csvData.length === 0) return;
+
+            const container = document.getElementById('data-table-container');
+            const table = document.createElement('table');
+            
+            // ヘッダー行
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headers.forEach((header, index) => {
+                const th = document.createElement('th');
+                th.textContent = `[${index}] ${header}`;
+                if (header === '前々々回指示数') {
+                    th.className = 'highlight';
+                }
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // データ行
+            const tbody = document.createElement('tbody');
+            const dataRows = csvData.slice(1);
+            dataRows.slice(0, 10).forEach((row, rowIndex) => { // 最初の10行のみ表示
+                const tr = document.createElement('tr');
+                row.forEach((cell, cellIndex) => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    if (headers[cellIndex] === '前々々回指示数') {
+                        td.className = 'highlight';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            container.innerHTML = '<h3>📋 データプレビュー（最初の10行）</h3>';
+            container.appendChild(table);
+        }
+
+        function simulateGASProcessing() {
+            if (!csvData || !headers) {
+                alert('まずCSVファイルを読み込んでください。');
+                return;
+            }
+
+            console.log('🎯 GASロジックシミュレーション開始');
+
+            // GASのgetMeterReadingsロジックをシミュレート
+            const propertyId = 'P000001';
+            const roomId = 'R000003';
+
+            const propertyIdColIndex = headers.indexOf('物件ID');
+            const roomIdColIndex = headers.indexOf('部屋ID');
+            const dateColIndex = headers.indexOf('検針日時');
+            const currentReadingColIndex = headers.indexOf('今回の指示数');
+            const previousReadingColIndex = headers.indexOf('前回指示数');
+            const previousPreviousReadingColIndex = headers.indexOf('前々回指示数');
+            const threeTimesPreviousReadingColIndex = headers.indexOf('前々々回指示数');
+            const usageColIndex = headers.indexOf('今回使用量');
+            const statusColIndex = headers.indexOf('警告フラグ');
+
+            let simulation = `=== 🎯 GAS処理シミュレーション ===\n`;
+            simulation += `対象: 物件ID=${propertyId}, 部屋ID=${roomId}\n\n`;
+
+            simulation += `列インデックス確認:\n`;
+            simulation += `  物件ID: ${propertyIdColIndex}\n`;
+            simulation += `  部屋ID: ${roomIdColIndex}\n`;
+            simulation += `  検針日時: ${dateColIndex}\n`;
+            simulation += `  今回の指示数: ${currentReadingColIndex}\n`;
+            simulation += `  前回指示数: ${previousReadingColIndex}\n`;
+            simulation += `  前々回指示数: ${previousPreviousReadingColIndex}\n`;
+            simulation += `  前々々回指示数: ${threeTimesPreviousReadingColIndex}\n`;
+            simulation += `  今回使用量: ${usageColIndex}\n`;
+            simulation += `  警告フラグ: ${statusColIndex}\n\n`;
+
+            // データフィルタリング
+            const dataRows = csvData.slice(1);
+            const filteredData = dataRows.filter(row => 
+                String(row[propertyIdColIndex]).trim() === propertyId && 
+                String(row[roomIdColIndex]).trim() === roomId
+            );
+
+            simulation += `フィルタリング結果: ${filteredData.length}行が一致\n\n`;
+
+            // 各行をreadingObjectに変換
+            const getDateValue = (index, row) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
+
+            const readings = filteredData.map((row, filteredIndex) => {
+                let threeTimesPreviousValue = null;
+                if (threeTimesPreviousReadingColIndex !== -1) {
+                    const rawValue = row[threeTimesPreviousReadingColIndex];
+                    simulation += `行${filteredIndex + 1}の前々々回指示数 raw: "${rawValue}" (型: ${typeof rawValue})\n`;
+                    
+                    if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
+                        threeTimesPreviousValue = String(rawValue).trim();
+                        simulation += `  → 処理後: "${threeTimesPreviousValue}"\n`;
+                    } else {
+                        simulation += `  → 空のため null\n`;
+                    }
+                } else {
+                    simulation += `行${filteredIndex + 1}: 前々々回指示数列が存在しないため null\n`;
+                }
+
+                return {
+                    date: getDateValue(dateColIndex, row),
+                    currentReading: getDateValue(currentReadingColIndex, row),
+                    previousReading: getDateValue(previousReadingColIndex, row),
+                    previousPreviousReading: getDateValue(previousPreviousReadingColIndex, row),
+                    threeTimesPrevious: threeTimesPreviousValue,
+                    usage: getDateValue(usageColIndex, row),
+                    status: getDateValue(statusColIndex, row)
+                };
+            });
+
+            simulation += `\n=== 生成されたreadingオブジェクト ===\n`;
+            readings.forEach((reading, index) => {
+                simulation += `読み取り${index + 1}:\n`;
+                simulation += `  date: "${reading.date}"\n`;
+                simulation += `  currentReading: "${reading.currentReading}"\n`;
+                simulation += `  previousReading: "${reading.previousReading}"\n`;
+                simulation += `  previousPreviousReading: "${reading.previousPreviousReading}"\n`;
+                simulation += `  threeTimesPrevious: "${reading.threeTimesPrevious}"\n`;
+                simulation += `  usage: "${reading.usage}"\n`;
+                simulation += `  status: "${reading.status}"\n`;
+                simulation += `---\n`;
+            });
+
+            // デバッグ情報生成
+            const debugInfo = {
+                detectedHeaders: headers,
+                headerCount: headers.length,
+                threeTimesPreviousIndex: threeTimesPreviousReadingColIndex,
+                threeTimesPreviousExists: threeTimesPreviousReadingColIndex !== -1,
+                totalDataRows: dataRows.length,
+                filteredReadings: readings.length,
+                sampleReadingData: readings.length > 0 ? {
+                    firstReading: readings[0],
+                    lastReading: readings[readings.length - 1],
+                    hasThreeTimesPrevious: readings.some(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined && r.threeTimesPrevious !== ''),
+                    threeTimesPreviousValues: readings.map(r => r.threeTimesPrevious).filter(v => v !== null && v !== undefined && v !== ''),
+                    threeTimesPreviousCount: readings.filter(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined && r.threeTimesPrevious !== '').length
+                } : null
+            };
+
+            simulation += `\n=== 生成されるデバッグ情報 ===\n`;
+            simulation += `hasThreeTimesPrevious: ${debugInfo.sampleReadingData?.hasThreeTimesPrevious}\n`;
+            simulation += `threeTimesPreviousCount: ${debugInfo.sampleReadingData?.threeTimesPreviousCount}\n`;
+            simulation += `threeTimesPreviousValues: ${JSON.stringify(debugInfo.sampleReadingData?.threeTimesPreviousValues)}\n`;
+
+            document.getElementById('analysis-result').textContent = simulation;
+
+            console.log('✅ GAS処理シミュレーション完了');
+            console.log('Generated readings:', readings);
+            console.log('Generated debugInfo:', debugInfo);
+        }
+    </script>
+</body>
+</html>
