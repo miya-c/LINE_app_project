@@ -412,6 +412,7 @@
           noDataMessageElement.style.display = 'none';
           tableBody.innerHTML = ''; 
           readings.forEach(reading => {
+            console.log('[meter_reading] Processing reading object:', JSON.stringify(reading)); // ★ readingオブジェクト全体をログ出力
             const row = tableBody.insertRow();
             let formattedDate = '';
 
