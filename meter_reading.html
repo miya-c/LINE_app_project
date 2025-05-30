@@ -421,6 +421,15 @@
             // 前々々回指示数を取得 (サーバーから渡される想定、キーは 'previousPreviousPreviousReading' と仮定)
             const prevPrevPrevReadingText = reading.previousPreviousPreviousReading || 'N/A';
 
+            // --- ここからデバッグログ追加 ---
+            console.log(`[meter_reading] 差分計算前データ確認 (日付: ${reading.date}):`);
+            console.log(`  reading.previousReading: ${reading.previousReading}`);
+            console.log(`  reading.previousPreviousReading: ${reading.previousPreviousReading}`);
+            console.log(`  reading.previousPreviousPreviousReading: ${reading.previousPreviousPreviousReading}`);
+            console.log(`  prevPrevReadingText: ${prevPrevReadingText}`);
+            console.log(`  prevPrevPrevReadingText: ${prevPrevPrevReadingText}`);
+            // --- ここまでデバッグログ追加 ---
+
             const prev = parseFloat(reading.previousReading);
             const prevPrev = parseFloat(reading.previousPreviousReading);
             const prevPrevPrev = parseFloat(reading.previousPreviousPreviousReading); // サーバーからのデータ
