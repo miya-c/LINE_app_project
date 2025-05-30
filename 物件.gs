@@ -605,9 +605,11 @@ function doPost(e) {
               } else if (colIdx === currentReadingColIndex) {
                 newRowData.push(readingToUpdate.currentReading || '');
               } else if (columnName === '前回指示数') {
-                newRowData.push(''); 
+                newRowData.push('');
               } else if (columnName === '前々回指示数') {
-                newRowData.push(''); 
+                newRowData.push('');
+              } else if (columnName === '前々々回指示数') { // ★ 新しい列の処理を追加
+                newRowData.push(''); // 初期値は空文字列
               } else if (columnName === '今回使用量') {
                 newRowData.push('初回登録'); 
               } else if (columnName === '警告フラグ') {
