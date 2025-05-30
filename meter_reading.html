@@ -417,20 +417,41 @@
             let formattedDate = '';            // 日付のフォーマット処理
             if (reading.date) {
               try {
-                const dateParts = reading.date.split('/');
-                if (dateParts.length === 3) {
-                  // YYYY/MM/DD 形式
-                  const year = dateParts[0];
-                  const month = dateParts[1].padStart(2, '0');
-                  const day = dateParts[2].padStart(2, '0');
-                  formattedDate = `${year}年${month}月${day}日`; // 年月日表示
+                let dateObj;
+                // reading.dateがすでにDateオブジェクトの場合
+                if (reading.date instanceof Date) {
+                  dateObj = reading.date;
+                } else if (typeof reading.date === 'string') {
+                  // 文字列の場合、まずYYYY/MM/DD形式かチェック
+                  const dateParts = reading.date.split('/');
+                  if (dateParts.length === 3) {
+                    // YYYY/MM/DD 形式
+                    const year = dateParts[0];
+                    const month = dateParts[1].padStart(2, '0');
+                    const day = dateParts[2].padStart(2, '0');
+                    formattedDate = `${year}年${month}月${day}日`;
+                  } else {
+                    // その他の文字列形式の場合、Dateオブジェクトに変換してみる
+                    dateObj = new Date(reading.date);
+                  }
                 } else {
-                  // その他の形式はそのまま使用
-                  formattedDate = reading.date;
+                  // その他の型の場合
+                  dateObj = new Date(reading.date);
+                }
+                
+                // dateObjが設定されている場合、年月日形式にフォーマット
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                  const year = dateObj.getFullYear();
+                  const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                  const day = dateObj.getDate().toString().padStart(2, '0');
+                  formattedDate = `${year}年${month}月${day}日`;
+                } else if (!formattedDate) {
+                  // フォーマットできない場合は元の値を使用
+                  formattedDate = String(reading.date);
                 }
               } catch (e) {
                 console.warn('[meter_reading] 日付のフォーマットに失敗しました:', reading.date, e);
-                formattedDate = reading.date;
+                formattedDate = String(reading.date);
               }
             }
             const dateCell = row.insertCell();
