@@ -425,14 +425,14 @@
             console.log(`[meter_reading] 差分計算前データ確認 (日付: ${reading.date}):`);
             console.log(`  reading.previousReading: ${reading.previousReading}`);
             console.log(`  reading.previousPreviousReading: ${reading.previousPreviousReading}`);
-            console.log(`  reading.previousPreviousPreviousReading: ${reading.previousPreviousPreviousReading}`);
+            console.log(`  reading.threeTimesPrevious: ${reading.threeTimesPrevious}`); // 修正箇所
             console.log(`  prevPrevReadingText: ${prevPrevReadingText}`);
             console.log(`  prevPrevPrevReadingText: ${prevPrevPrevReadingText}`);
             // --- ここまでデバッグログ追加 ---
 
             const prev = parseFloat(reading.previousReading);
             const prevPrev = parseFloat(reading.previousPreviousReading);
-            const prevPrevPrev = parseFloat(reading.previousPreviousPreviousReading); // サーバーからのデータ
+            const prevPrevPrev = parseFloat(reading.threeTimesPrevious); // 修正箇所
 
             // 前々回と前々々回の差分計算と表示
             if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
