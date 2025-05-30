@@ -414,9 +414,7 @@
           readings.forEach(reading => {
             console.log('[meter_reading] Processing reading object:', JSON.stringify(reading)); // ★ readingオブジェクト全体をログ出力
             const row = tableBody.insertRow();
-            let formattedDate = '';
-
-            // 日付のフォーマット処理
+            let formattedDate = '';            // 日付のフォーマット処理
             if (reading.date) {
               try {
                 const dateParts = reading.date.split('/');
@@ -424,8 +422,8 @@
                   // YYYY/MM/DD 形式
                   const year = dateParts[0];
                   const month = dateParts[1].padStart(2, '0');
-                  const day = dateParts[2].padStart(2, '0'); // 日を再度含める
-                  formattedDate = `${year}年${month}月${day}日`; // 年月日表示に戻す
+                  const day = dateParts[2].padStart(2, '0');
+                  formattedDate = `${year}年${month}月${day}日`; // 年月日表示
                 } else {
                   // その他の形式はそのまま使用
                   formattedDate = reading.date;
@@ -559,13 +557,12 @@
           // 初回検針用のテンプレート行を作成
           const row = tableBody.insertRow();
           row.classList.add('initial-reading-row'); // 初回検針行であることを示すクラスを追加
-          
-          // 検針日時（現在の日時を表示）
+            // 検針日時（現在の日時を表示）
           const currentDate = new Date();
           const year = currentDate.getFullYear();
           const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = currentDate.getDate().toString().padStart(2, '0'); // 日を再度含める
-          const formattedCurrentDate = `${year}年${month}月${day}日`; // 年月日表示に戻す
+          const day = currentDate.getDate().toString().padStart(2, '0');
+          const formattedCurrentDate = `${year}年${month}月${day}日`; // 年月日表示
           
           const dateCell = row.insertCell();
           dateCell.textContent = formattedCurrentDate;
