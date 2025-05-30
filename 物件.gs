@@ -200,9 +200,15 @@ function doGet(e) {
             status: getDateValue(statusColIndex)
             // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLは返さない
           };
-          
-          // ★★★ 追加: 作成された readingObject の内容をログに出力 ★★★
+            // ★★★ 追加: 作成された readingObject の内容をログに出力 ★★★
           console.log(`[物件.gs] getMeterReadings - Constructed readingObject (filteredIndex ${filteredIndex}): date=${readingObject.date}, current=${readingObject.currentReading}, prev=${readingObject.previousReading}, prevPrev=${readingObject.previousPreviousReading}, threePrev=${readingObject.threeTimesPrevious}, usage=${readingObject.usage}, status=${readingObject.status}`);
+          
+          // ★★★ 前々々回指示数の詳細デバッグ情報を追加 ★★★
+          console.log(`[物件.gs] getMeterReadings - threeTimesPrevious詳細 (filteredIndex ${filteredIndex}):`);
+          console.log(`  threeTimesPreviousReadingColIndex: ${threeTimesPreviousReadingColIndex}`);
+          console.log(`  row[${threeTimesPreviousReadingColIndex}] (raw): ${row[threeTimesPreviousReadingColIndex]}`);
+          console.log(`  row[${threeTimesPreviousReadingColIndex}] (type): ${typeof row[threeTimesPreviousReadingColIndex]}`);
+          console.log(`  getDateValue result: ${readingObject.threeTimesPrevious}`);
           
           // ★★★ 「今回の指示数」セルからコメントを取得（正確な行番号を計算）★★★
           try {
@@ -233,14 +239,18 @@ function doGet(e) {
           
           return readingObject;
         });
-      
-      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
+        console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);
       // ★★★ デバッグ用に返すデータ構造を変更 ★★★
       const responseObject = {
         readings: readings,
         debugInfo: {
           detectedHeaders: headers,
           threeTimesPreviousIndex: threeTimesPreviousReadingColIndex,
+          sampleReadingData: readings.length > 0 ? {
+            firstReading: readings[0],
+            hasThreeTimesPrevious: readings.some(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined),
+            threeTimesPreviousValues: readings.map(r => r.threeTimesPrevious).filter(v => v !== null && v !== undefined)
+          } : null,
           message: "この情報はデバッグ用です。threeTimesPreviousIndexが-1の場合、'前々々回指示数'ヘッダーが見つかっていません。"
         }
       };

@@ -387,9 +387,7 @@
 
         // 実際の検針データとデバッグ情報を抽出
         const readings = actualDataPayload.readings;
-        const debugInfo = actualDataPayload.debugInfo;
-
-        // サーバーからのデバッグ情報をコンソールと画面に出力
+        const debugInfo = actualDataPayload.debugInfo;        // サーバーからのデバッグ情報をコンソールと画面に出力
         if (debugInfo) {
           console.log('[meter_reading] Server Debug Info:', debugInfo);
           const debugInfoDiv = document.getElementById('debug-info');
@@ -397,8 +395,21 @@
             debugInfoDiv.innerHTML += `<p><strong>Server Debug Info:</strong><br>
               Detected Headers: ${JSON.stringify(debugInfo.detectedHeaders || [])}<br>
               ThreeTimesPrevious Index: ${debugInfo.threeTimesPreviousIndex !== undefined ? debugInfo.threeTimesPreviousIndex : 'N/A'}<br>
-              Message: ${debugInfo.message || ''}</p>`;
+              Message: ${debugInfo.message || ''}<br>
+              Sample Data: ${debugInfo.sampleReadingData ? `
+                Has ThreeTimesPrevious: ${debugInfo.sampleReadingData.hasThreeTimesPrevious}<br>
+                ThreeTimesPrevious Values: ${JSON.stringify(debugInfo.sampleReadingData.threeTimesPreviousValues)}<br>
+                First Reading: ${JSON.stringify(debugInfo.sampleReadingData.firstReading)}
+              ` : 'No sample data'}</p>`;
           }
+        }
+        
+        // ★★★ 各readingオブジェクトのthreeTimesPreviousの値を詳細ログ出力 ★★★
+        console.log('[meter_reading] 全読書データのthreeTimesPrevious詳細チェック:');
+        if (Array.isArray(readings)) {
+          readings.forEach((reading, index) => {
+            console.log(`  読書[${index}] - date: ${reading.date}, threeTimesPrevious: ${reading.threeTimesPrevious} (type: ${typeof reading.threeTimesPrevious})`);
+          });
         }
         
         console.log('[meter_reading] Fetched meter readings:', readings); // readings 配列をログに出力
@@ -481,9 +492,7 @@
             
             const prevPrevReadingCell = row.insertCell();
             let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
-            prevPrevReadingCell.setAttribute('data-label', '前々回');
-
-            // 前々々回指示数を取得 (サーバーから渡される想定、キーは 'threeTimesPrevious' に修正)
+            prevPrevReadingCell.setAttribute('data-label', '前々回');            // 前々々回指示数を取得 (サーバーから渡される想定、キーは 'threeTimesPrevious' に修正)
             const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
 
             // --- ここからデバッグログ追加 ---
@@ -493,6 +502,11 @@
             console.log(`  reading.threeTimesPrevious: ${reading.threeTimesPrevious}`);
             console.log(`  prevPrevReadingText (初期値): ${prevPrevReadingText}`);
             console.log(`  prevPrevPrevReadingText: ${prevPrevPrevReadingText}`);
+            
+            // 前々々回指示数列の存在チェック
+            if (reading.threeTimesPrevious === undefined) {
+              console.warn(`[meter_reading] 前々々回指示数データが取得できていません。スプレッドシートに「前々々回指示数」列が存在しない可能性があります。`);
+            }
             // --- ここまでデバッグログ追加 ---
 
             const prev = parseFloat(reading.previousReading);
