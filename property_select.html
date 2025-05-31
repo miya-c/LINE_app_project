@@ -1,216 +1,220 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>物件選択</title>
+  <title>物件選択 (React)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- WOFF SDKの読み込み (LINE WORKS用) -->
   <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* 簡単な見た目のためのCSS（後でちゃんと作る） */
     body { font-family: sans-serif; margin: 10px; }
-    #search-box { margin-bottom: 10px; padding: 8px; width: calc(100% - 20px); }
-    #property-list button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; }
+    #search-box { margin-bottom: 10px; padding: 8px; width: calc(100% - 20px); box-sizing: border-box; }
+    .property-button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; background-color: #f0f0f0; border: 1px solid #ccc; cursor: pointer; }
+    .property-button:hover { background-color: #e0e0e0; }
+    .loading, .error { text-align: center; padding: 20px; }
+    h1 { font-size: 1.5em; margin-bottom: 0.5em;}
   </style>
+  {/* ReactとReactDOMのCDN */}
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  {/* BabelのCDN (JSXをブラウザで変換するため) */}
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <h1>物件選択</h1>
+  <div id="root"></div>
 
-  <input type="text" id="search-box" placeholder="物件IDまたは物件名で検索...">
+  <script type="text/babel">
+    const App = () => {
+      const [properties, setProperties] = React.useState([]);
+      const [searchTerm, setSearchTerm] = React.useState('');
+      const [loading, setLoading] = React.useState(true);
+      const [error, setError] = React.useState(null);
+      const [woffInitialized, setWoffInitialized] = React.useState(false);
 
-  <div id="property-list">
-    <!-- ここにJavaScriptで物件ボタンが追加される -->
-    <p>物件情報を読み込み中です...</p>
-  </div>
-
-  <script>
-    // WOFFアプリが初期化されたら実行される関数
-    window.addEventListener('DOMContentLoaded', (event) => {
-      initializeWoff();
-    });
-
-    async function initializeWoff() { // 関数名を initializeLiff から initializeWoff に変更
-      try {
-        // WOFF IDとGAS Web App URLは外部ファイルや環境変数から読み込むことを推奨
-        const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A"; // WOFF アプリIDに変更
-        
-        // ★★★ デバッグ用に追加: woffIdForWorks の値をアラートで表示 ★★★
-        // alert("WOFF アプリID の確認:\\n" + woffIdForWorks + "\\n\\nこの値がLINE WORKS Developer Consoleで発行されたWOFFアプリIDと一致しているか確認してください。");
-
-        console.log('[property_select] woff.init with woffId:', woffIdForWorks);
-        await woff.init({ woffId: woffIdForWorks }); // SDKのエラーメッセージに従い、キーを woffId に戻す
-        console.log('[property_select] woff.init successful.');
-        if (!woff.isLoggedIn()) {
-          // ログインしていなければログインを促す（WOFFでは通常自動ログインされることが多い）
-          console.log("[property_select] ログインしていません。"); // ログイン処理を一旦コメントアウト
-          // try {
-          //   await woff.login(); // ログイン処理を実行
-          //   console.log("[property_select] ログイン成功、または既にログイン済みのため処理を継続します。");
-          //   // ログイン後に再度ユーザー情報を確認したり、UIを更新する処理が必要な場合はここに追加
-          // } catch (loginError) {
-          //   console.error("[property_select] woff.login() でエラーが発生しました:", loginError);
-          //   // ログイン失敗時のユーザーへの通知やエラーハンドリング
-          //   document.getElementById('property-list').innerHTML = '<p>ログインに失敗しました。アプリを再度開いてお試しください。</p>';
-          //   return; // ログイン失敗時は処理を中断
-          // }
-        }
-        // LIFFの初期化が成功したら、アプリのメイン処理を開始
-        fetchProperties();
-        setupSearch();
-      } catch (initError) {
-        console.error('[property_select] WOFFの初期化に失敗しました:', initError); // エラーメッセージを WOFF に変更
-        console.error('[property_select] WOFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError))); // エラーメッセージを WOFF に変更
-        // ユーザーにエラーを通知する処理（例: アラート表示など）
-        document.getElementById('property-list').innerHTML = '<p>アプリの起動に失敗しました。開発者コンソールでエラーを確認してください。</p>';
-      }
-    }
-
-    // GASから物件リストを取得して表示する関数
-    async function fetchProperties() {
-      const propertyListDiv = document.getElementById('property-list');
-      propertyListDiv.innerHTML = '<p>物件情報を読み込み中です...</p>'; 
-
-      // ★★★ 修正版物件.gsデプロイ後に新しいURLに更新してください ★★★
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
+      const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
-      try {
-        const response = await fetch(`${gasWebAppUrl}?action=getProperties`); // ← action=getProperties を追加
-        if (!response.ok) {
-          throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+      React.useEffect(() => {
+        const initializeWoff = async () => {
+          try {
+            console.log('[ReactApp] woff.init with woffId:', woffIdForWorks);
+            await woff.init({ woffId: woffIdForWorks });
+            console.log('[ReactApp] woff.init successful.');
+            setWoffInitialized(true);
+          } catch (initError) {
+            console.error('[ReactApp] WOFF initialization failed:', initError);
+            console.error('[ReactApp] WOFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError)));
+            setError('アプリの起動に失敗しました。WOFF SDKの初期化エラー。');
+            setLoading(false);
+          }
+        };
+        initializeWoff();
+      }, [woffIdForWorks]); // woffIdForWorksは実際には不変なので、空の依存配列でも良いが、明示的に記述
+
+      React.useEffect(() => {
+        if (!woffInitialized) return;
+
+        const fetchProperties = async () => {
+          setLoading(true);
+          setError(null);
+          try {
+            console.log('[ReactApp] Fetching properties from:', `${gasWebAppUrl}?action=getProperties`);
+            const response = await fetch(`${gasWebAppUrl}?action=getProperties`);
+            if (!response.ok) {
+              throw new Error(`Network response was not ok. Status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log('[ReactApp] GAS Response (properties):', data);
+            if (Array.isArray(data)) {
+              setProperties(data);
+            } else {
+              console.error('[ReactApp] Data from GAS is not an array:', data);
+              throw new Error('物件データの形式が正しくありません。');
+            }
+          } catch (fetchError) {
+            console.error('[ReactApp] Failed to fetch properties:', fetchError);
+            setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        fetchProperties();
+      }, [woffInitialized, gasWebAppUrl]); // gasWebAppUrlも同様に不変だが明示
+
+      const handleSearchChange = (event) => {
+        setSearchTerm(event.target.value);
+      };
+
+      const handlePropertySelect = async (property) => {
+        if (!property || typeof property.id === 'undefined' || typeof property.name === 'undefined') {
+            console.error('[ReactApp] Invalid property data for selection:', property);
+            alert('選択された物件情報が無効です。');
+            return;
         }
-        // ★★★ 物件.gs から直接配列が返されるように変更したため、responseObject.data を参照しない ★★★
-        const properties = await response.json(); // GASから返ってきたJSONデータをJavaScriptのオブジェクトに変換
+        console.log('[ReactApp] Property selected:', property);
+        setLoading(true); // 部屋情報取得中にローディング表示
+        setError(null); // エラーをクリア
+        try {
+          console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id} from URL: ${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`);
+          const roomResponse = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`);
+          
+          console.log('[ReactApp] Room Response Status:', roomResponse.status);
+          if (!roomResponse.ok) {
+            const errorText = await roomResponse.text();
+            console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
+            throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
+          }
+          const rooms = await roomResponse.json();
+          console.log('[ReactApp] Fetched rooms:', rooms);
 
-        // ★★★ デバッグ用に追加: GASからのレスポンス内容と型を確認 ★★★
-        console.log('[property_select] GAS Response (raw array):', properties);
-        console.log('[property_select] Type of properties:', typeof properties);
-        console.log('[property_select] Is properties an array?', Array.isArray(properties));
-
-        propertyListDiv.innerHTML = ''; // 「読み込み中です」を消す
-
-        // propertiesが配列であることを確認してからforEachを実行
-        if (Array.isArray(properties)) {
-          if (properties.length === 0) {
-            propertyListDiv.innerHTML = '<p>登録されている物件がありません。</p>';
+          sessionStorage.setItem('selectedPropertyId', property.id);
+          sessionStorage.setItem('selectedPropertyName', property.name);
+          sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
+          if (gasWebAppUrl) {
+            sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
+            console.log('[ReactApp] gasWebAppUrl saved to sessionStorage:', gasWebAppUrl);
+          } else {
+            console.error('[ReactApp] ★ERROR: gasWebAppUrl is not defined before saving to sessionStorage!');
+            alert('アプリケーションの設定にエラーがあります。(code: RP1)');
+            setLoading(false);
             return;
           }
 
-          properties.forEach(property => {
-            const button = document.createElement('button');
-            // propertyオブジェクトに必要なidとnameがあるか確認
-            if (property && typeof property.id !== 'undefined' && typeof property.name !== 'undefined') {
-                button.textContent = `${property.id}：${property.name}`;
-            } else {
-                button.textContent = '物件情報エラー';
-                console.error('[property_select] Invalid property data:', property);
-            }
-            button.onclick = async function() { // ★★★ async function に変更
-              try {
-                // ★★★ 部屋情報を取得 ★★★
-                // console.log(`[property_select] Fetching rooms for propertyId: ${property.id} from URL: ${gasRoomWebAppUrl}?action=getRooms&propertyId=${property.id}`);
-                // const roomResponse = await fetch(`${gasRoomWebAppUrl}?action=getRooms&propertyId=${property.id}`);
-                console.log(`[property_select] Fetching rooms for propertyId: ${property.id} from URL: ${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`);
-                const roomResponse = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`);
-                
-                console.log('[property_select] Room Response Status:', roomResponse.status);
-                console.log('[property_select] Room Response Headers:', roomResponse.headers.get('Content-Type'));
-
-                if (!roomResponse.ok) {
-                  const errorText = await roomResponse.text();
-                  console.error('[property_select] 部屋情報の取得に失敗しました:', roomResponse.status, errorText);
-                  alert(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. Error: ${errorText}`);
-                  return;
-                }
-                const rooms = await roomResponse.json();
-                console.log('[property_select] Fetched rooms:', rooms);
-
-                // ★★★ sessionStorageに物件情報と部屋情報を保存 ★★★
-                sessionStorage.setItem('selectedPropertyId', property.id);
-                sessionStorage.setItem('selectedPropertyName', property.name);
-                sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
-                // gasWebAppUrl を sessionStorage に保存
-                if (gasWebAppUrl) {
-                  sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
-                  console.log('[property_select] onclick: gasWebAppUrlをsessionStorageに保存しました:', gasWebAppUrl);
-                } else {
-                  console.error('[property_select] onclick: ★エラー: gasWebAppUrlが定義されていません！');
-                  alert('アプリケーションの設定にエラーがあります。(code: P3)');
-                  return; // 遷移を中止
-                }
-
-                // room_select.html に画面遷移
-                if (woff.isInClient()) {
-                  woff.openWindow({
-                    url: `room_select.html`, // クエリパラメータは不要
-                    external: false
-                  });
-                } else {
-                  window.location.href = `room_select.html`; // クエリパラメータは不要
-                }
-              } catch (error) {
-                console.error('[property_select] 部屋情報の取得または画面遷移中にエラー:', error);
-                alert('部屋情報の処理中にエラーが発生しました。');
-              }
-            };
-            propertyListDiv.appendChild(button);
-          });
-        } else {
-          // propertiesが配列でない場合の処理
-          console.error('[property_select] GASから返されたデータが配列ではありません。', properties);
-          propertyListDiv.innerHTML = '<p>物件データの形式が正しくありません。開発者コンソールを確認してください。</p>';
-        }
-      } catch (error) {
-        console.error('物件情報の取得に失敗しました:', error);
-        propertyListDiv.innerHTML = '<p>物件情報の取得に失敗しました。時間をおいて再度お試しください。</p>';
-      }
-    }
-
-    // 検索機能のセットアップ関数
-    function setupSearch() {
-      const searchBox = document.getElementById('search-box');
-      const propertyListDiv = document.getElementById('property-list');
-
-      searchBox.addEventListener('input', function() {
-        const searchTerm = searchBox.value.toLowerCase(); // 入力された文字を小文字に変換
-        const buttons = propertyListDiv.getElementsByTagName('button'); // 物件ボタンのリストを取得
-
-        for (let i = 0; i < buttons.length; i++) {
-          const button = buttons[i];
-          const buttonText = button.textContent.toLowerCase(); // ボタンのテキストも小文字に変換
-
-          // ボタンのテキストに検索キーワードが含まれていれば表示、そうでなければ非表示
-          if (buttonText.includes(searchTerm)) {
-            button.style.display = 'block';
+          const targetUrl = 'room_select.html';
+          if (woff.isInClient()) {
+            console.log(`[ReactApp] Opening window in client: ${targetUrl}`);
+            woff.openWindow({
+              url: targetUrl,
+              external: false
+            });
           } else {
-            button.style.display = 'none';
+            console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
+            window.location.href = targetUrl;
           }
+          // 画面遷移が成功した場合、ローディング状態は解除不要
+        } catch (error) {
+          console.error('[ReactApp] Error fetching rooms or navigating:', error);
+          setError(`部屋情報の処理中にエラーが発生しました: ${error.message}`);
+          // alert(`部屋情報の処理中にエラーが発生しました: ${error.message}`); // エラーは画面に表示するのでアラートは重複
+          setLoading(false); // エラー時はローディング解除
         }
+      };
+
+      const filteredProperties = properties.filter(property => {
+        const propertyIdString = String(property.id != null ? property.id : ''); 
+        const propertyNameString = String(property.name != null ? property.name : '');
+        return propertyIdString.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               propertyNameString.toLowerCase().includes(searchTerm.toLowerCase());
       });
-    }
-
-    function selectProperty(property) {
-      console.log('[property_select] 物件が選択されました:', property);
-      if (!gasWebAppUrl) {
-        console.error('[property_select] ★エラー: gasWebAppUrlが定義されていません！');
-        alert('アプリケーションの設定にエラーがあります。管理者に連絡してください。(code: P1)');
-        return;
+      
+      // WOFF SDK初期化前、または初期化エラー時
+      if (!woffInitialized && loading) {
+        return <div className="loading">アプリを初期化中です...</div>;
       }
-      try {
-        sessionStorage.setItem('selectedProperty', JSON.stringify(property));
-        sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
-        console.log('[property_select] gasWebAppUrlをsessionStorageに保存しました:', sessionStorage.getItem('gasWebAppUrl'));
-      } catch (e) {
-        console.error('[property_select] ★エラー: sessionStorageへの保存に失敗しました:', e);
-        alert('データの保存に失敗しました。ブラウザのシークレットモード等を利用している場合は解除してみてください。(code: P2)');
-        return;
+      if (!woffInitialized && error) {
+         return <div className="error">{error}</div>;
       }
-      window.location.href = 'room_select.html';
-    }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      initializeWoff();
-    });
+      // 物件データ取得中の初期ローディング
+      if (loading && properties.length === 0 && woffInitialized) {
+        return (
+          <div>
+            <h1>物件選択</h1>
+            <input type="text" id="search-box" placeholder="物件IDまたは物件名で検索..." value={searchTerm} onChange={handleSearchChange} disabled />
+            <div className="loading">物件情報を読み込み中です...</div>
+          </div>
+        );
+      }
+      
+      // 物件データ取得エラー (初期ロード時)
+      if (error && properties.length === 0 && woffInitialized) {
+        return (
+          <div>
+            <h1>物件選択</h1>
+            <input type="text" id="search-box" placeholder="物件IDまたは物件名で検索..." value={searchTerm} onChange={handleSearchChange} disabled />
+            <div className="error">{error}</div>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <h1>物件選択</h1>
+          <input
+            type="text"
+            id="search-box"
+            placeholder="物件IDまたは物件名で検索..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            disabled={!woffInitialized || (loading && properties.length === 0)} // 初期化中または初期ロード中は無効
+          />
+          {/* 操作中のローディング表示やエラー表示 */}
+          {loading && properties.length > 0 && <p className="loading" style={{fontSize: '0.9em', padding: '5px'}}>処理中...</p>}
+          {error && <p className="error" style={{color: 'red', padding: '5px'}}>{error}</p>}
+
+          {woffInitialized && !loading && properties.length === 0 && !error && (
+            <p>登録されている物件がありません。</p>
+          )}
+          {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
+            <p>該当する物件が見つかりません。</p>
+          )}
+
+          {woffInitialized && filteredProperties.map(property => (
+            <button
+              key={property.id}
+              className="property-button"
+              onClick={() => handlePropertySelect(property)}
+              disabled={loading} // 何らかの処理中はボタンを無効化
+            >
+              {property.id != null ? property.id : 'IDなし'}：{property.name != null ? property.name : '名称なし'}
+            </button>
+          ))}
+        </div>
+      );
+    };
+
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
