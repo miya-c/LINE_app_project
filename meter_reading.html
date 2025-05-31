@@ -978,12 +978,11 @@
                             prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
                           }
                           
-                          const initialUsageDisplay = calculateUsageDisplay(reading.currentReading, reading.previousReading);
-
-                          return (
+                          const initialUsageDisplay = calculateUsageDisplay(reading.currentReading, reading.previousReading);                          return (
                             <tr key={index}>
                               <td data-label="検針日時">{formattedDate}</td>
-                              <td data-label="今回(㎥)">                                <input
+                              <td data-label="今回(㎥)">
+                                <input
                                   type="number"
                                   step="any" /* Allows decimal inputs */
                                   defaultValue={reading.currentReading || ''}
@@ -1015,7 +1014,8 @@
                               </td>
                               <td data-label="前回">{prevReadingText}</td>
                               <td data-label="前々回">{prevPrevReadingText}</td>
-                              <td data-label="前々々回">{prevPrevPrevReadingText}</td>                              <td data-label="今回使用量">
+                              <td data-label="前々々回">{prevPrevPrevReadingText}</td>
+                              <td data-label="今回使用量">
                                 {usageStates[dateForDataAttribute] !== undefined 
                                   ? `${usageStates[dateForDataAttribute]}㎥` 
                                   : `${calculateUsageDisplay(reading.currentReading, reading.previousReading) || '0'}㎥`}
@@ -1061,7 +1061,8 @@
                   <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)'}}>
                     <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
                     <div className="mantine-stack">
-                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>                        <div className="mantine-alert info">
+                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>
+                        <div className="mantine-alert info">
                           <div>
                             <h3 className="mantine-text weight-600">初回検針</h3>
                             <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
@@ -1096,7 +1097,8 @@
                           className="mantine-button variant-filled"
                           style={{ fontSize: '0.75rem', padding: '4px 8px' }}
                           data-date-button={new Date().toISOString().split('T')[0]}
-                          onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}                        >
+                          onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
+                        >
                           写真を追加 📸
                         </button>
                       </div>
@@ -1111,10 +1113,10 @@
                   <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={hidePhotoModal}
-                      className="modal-close"
-                    >
+                      className="modal-close"                    >
                       &times;
-                    </button>                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
+                    </button>
+                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
                   </div>
                 </div>
               )}
@@ -1126,17 +1128,17 @@
               <button
                 className="fab-button"
                 onClick={handleUpdateReadings}
-                disabled={updating}
-                title="指示数を更新"
-              >                {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
+                disabled={updating}                title="指示数を更新"
+              >
+                {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
               </button>
             </div>
           )}
 
-          {/* トースト通知 */}
-          <div className={`toast-notification ${showToast ? 'show' : ''}`}>
+          {/* トースト通知 */}          <div className={`toast-notification ${showToast ? 'show' : ''}`}>
             {toastMessage}
-          </div>        </div> 
+          </div>
+        </div>
       </div>
     );
   };
