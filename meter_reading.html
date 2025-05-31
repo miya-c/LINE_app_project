@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>検針情報</title>
+  <title>検針情報 (React)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
@@ -112,7 +112,7 @@
         font-weight: bold !important;
       }
     }
-    
+
     /* デスクトップサイズでの通常テーブル表示 */
     @media (min-width: 768px) {
       #meter-readings-table { 
@@ -165,9 +165,10 @@
         width: 80px;
       }
     }
+    
     /* モーダルのスタイル */
-    #photo-modal {
-      display: none; /* 初めは非表示 */
+    .photo-modal {
+      display: none;
       position: fixed;
       z-index: 1000;
       left: 0;
@@ -175,10 +176,10 @@
       width: 100%;
       height: 100%;
       overflow: auto;
-      background-color: rgba(0,0,0,0.8); /* 半透明の黒 */
+      background-color: rgba(0,0,0,0.8);
     }
 
-    #modal-content {
+    .modal-content {
       position: relative;
       margin: 15% auto;
       padding: 20px;
@@ -188,7 +189,7 @@
       border-radius: 8px;
     }
 
-    #modal-image {
+    .modal-image {
       width: 100%;
       height: auto;
       border-radius: 4px;
@@ -203,787 +204,679 @@
       font-size: 18px;
       cursor: pointer;
     }
+
+    .loading, .error { text-align: center; padding: 20px; }
+    .back-button { margin-bottom: 10px; padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .back-button:hover { background-color: #5a6268; }
+    .update-button { margin-top: 10px; padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .update-button:hover { background-color: #0056b3; }
+    .update-button:disabled { background-color: #6c757d; cursor: not-allowed; }
   </style>
+  {/* ReactとReactDOMのCDN */}
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  {/* BabelのCDN (JSXをブラウザで変換するため) */}
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <button id="back-button-meter" style="margin-bottom: 10px; padding: 8px 12px;">部屋選択へ戻る</button>
-  <h1>検針情報</h1>
-  <div id="debug-info" style="border: 1px solid red; padding: 10px; margin-top: 10px; white-space: pre-wrap; font-size: 10px; background-color: #f0f0f0; color: black; display: none;">デバッグ情報エリア</div>
+  <div id="root"></div>
 
-  <div class="info-section">
-    <h2>物件・部屋情報</h2>
-    <div class="info-item">
-        <span class="info-label">物件名:</span> <span id="property-name"></span> /
-        <span class="info-label">部屋名:</span> <span id="room-name"></span>
-    </div>
-    <div class="info-item" style="display: none;"><span class="info-label">物件ID:</span> <span id="property-id"></span></div>
-    <div class="info-item" style="display: none;"><span class="info-label">部屋ID:</span> <span id="room-id"></span></div>
-  </div>
+  <script type="text/babel">
+    const MeterReadingApp = () => {
+      const [woffInitialized, setWoffInitialized] = React.useState(false);
+      const [loading, setLoading] = React.useState(true);
+      const [error, setError] = React.useState(null);
+      const [propertyId, setPropertyId] = React.useState('');
+      const [propertyName, setPropertyName] = React.useState('');
+      const [roomId, setRoomId] = React.useState('');
+      const [roomName, setRoomName] = React.useState('');
+      const [meterReadings, setMeterReadings] = React.useState([]);
+      const [debugInfo, setDebugInfo] = React.useState(null);
+      const [showModal, setShowModal] = React.useState(false);
+      const [modalImageSrc, setModalImageSrc] = React.useState('');
+      const [updating, setUpdating] = React.useState(false);
 
-  <div class="info-section">
-    <h2>検針履歴</h2>
-    <div id="meter-readings-list">
-      <p id="loading-message-p">検針データを読み込み中です...</p>
-      <table id="meter-readings-table" style="display:none;">        <thead>
-          <tr>
-            <th>検針日時</th>
-            <th>今回(㎥)</th>
-            <th>前回</th>
-            <th>前々回</th>
-            <th>前々々回</th>
-            <th>今回使用量</th>
-            <th>状態</th>
-            <th>写真</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- ここに検針データが挿入されます -->
-        </tbody>
-      </table>
-      <button id="update-readings-button" style="margin-top: 10px; padding: 8px 12px; display:none;">指示数を更新</button>
-      <p id="no-data-message" style="display:none; color:red;"></p>
-    </div>
-  </div>
+      const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
+      let gasWebAppUrl = '';
 
-  <!-- 写真表示モーダル -->
-  <div id="photo-modal">
-    <div id="modal-content">
-      <button class="close-modal-button">&times;</button>
-      <img id="modal-image" alt="検針写真">
-    </div>
-  </div>
-
-  <script>
-    const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
-    let gasWebAppUrl;
-
-    // モーダル関連の変数をグローバルスコープで宣言
-    let photoModal, modalImage, closeModalButton;
-
-    // 戻るボタンの共通処理
-    function handleBackButton() {
-      window.location.href = 'room_select.html';
-    }
-
-    async function initializeWoff() {
-      try {
-        console.log('[meter_reading] WOFFを初期化します。');
-        const debugInfoDiv = document.getElementById('debug-info');
-        debugInfoDiv.innerHTML = 'WOFF初期化開始...<br>';        // sessionStorageからgasWebAppUrlを取得
-        gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-        if (!gasWebAppUrl) {
-          console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
-          alert('アプリケーションが正常に起動されていません。物件選択画面から再度お試しください。');
-          window.location.href = 'property_select.html';
-          return;
-        }
-        console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
-
-        if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
-          console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
-          document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に必要なコンポーネントが読み込めませんでした。</p>';
-          return;
-        }
-        await woff.init({ woffId: woffIdForWorks });
-        console.log('[meter_reading] WOFFの初期化に成功しました。');
-        debugInfoDiv.innerHTML += 'WOFF初期化成功。<br>';
-
-        // WOFF初期化成功直後のwoffオブジェクトの状態を確認
-        console.log('[meter_reading] WOFF初期化成功直後のwoffオブジェクト全体:', woff);
-        debugInfoDiv.innerHTML += '<b>WOFF初期化直後:</b><br>';
-        if (woff) {
-            console.log('[meter_reading] woffのプロパティ一覧:', Object.keys(woff));
-            debugInfoDiv.innerHTML += 'woffオブジェクトのプロパティ: ' + JSON.stringify(Object.keys(woff)) + '<br>';
-            console.log('[meter_reading] WOFF初期化成功直後のwoff.media:', woff.media);
-            debugInfoDiv.innerHTML += 'woff.media: ' + String(woff.media) + '<br>';
-            if (woff.media) {
-                debugInfoDiv.innerHTML += 'woff.mediaのプロパティ: ' + JSON.stringify(Object.keys(woff.media)) + '<br>';
-            } else {
-                debugInfoDiv.innerHTML += 'woff.media は undefined または null です。<br>';
-            }
-        } else {
-            debugInfoDiv.innerHTML += 'woff オブジェクト自体が undefined または null です。<br>';
-        }
-
-        await loadMeterReadings();
-      } catch (error) {
-        console.error('[meter_reading] WOFFの初期化に失敗しました:', error);
-        const debugInfoDiv = document.getElementById('debug-info');
-        if (debugInfoDiv) {
-            debugInfoDiv.innerHTML += '<b>WOFF初期化失敗:</b> ' + error.toString() + '<br>';
-        }
-        document.getElementById('meter-readings-list').innerHTML = '<p>アプリの起動に失敗しました。WOFFの初期化を確認してください。</p>';
-      }
-    }
-
-    async function loadMeterReadings() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const propertyId = urlParams.get('propertyId');
-      const propertyName = urlParams.get('propertyName');
-      const roomId = urlParams.get('roomId');
-      const roomName = urlParams.get('roomName');
-
-      document.getElementById('property-id').textContent = propertyId || 'N/A';
-      document.getElementById('property-name').textContent = propertyName || 'N/A';
-      document.getElementById('room-id').textContent = roomId || 'N/A';
-      document.getElementById('room-name').textContent = roomName || 'N/A';
-
-      const loadingElement = document.getElementById('loading-message-p');
-      const tableElement = document.getElementById('meter-readings-table');
-      const tableBody = tableElement.getElementsByTagName('tbody')[0];
-      const noDataMessageElement = document.getElementById('no-data-message');
-
-      if (loadingElement) loadingElement.style.display = 'block';
-      tableElement.style.display = 'none';
-      noDataMessageElement.style.display = 'none';
-
-      if (!propertyId || !roomId) {
-        console.error('[meter_reading] 物件IDまたは部屋IDがURLパラメータにありません。');
-        if (loadingElement) loadingElement.style.display = 'none';
-        noDataMessageElement.textContent = '物件情報または部屋情報が不足しているため、検針データを取得できません。';
-        noDataMessageElement.style.display = 'block';
-        tableElement.style.display = 'none';
-        return;
-      }
-
-      try {
-        const fetchUrl = `${gasWebAppUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`;
-        console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl); // リクエストURLをログ出力
-        const response = await fetch(fetchUrl);
-        if (!response.ok) {
-          throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
-        }
-        const responseObject = await response.json(); // サーバーからの応答全体を取得
-        console.log('[meter_reading] Received responseObject from server:', responseObject);        let actualDataPayload;
-        
-        // サーバーからの応答構造を正しく処理
-        if (typeof responseObject === 'object' && responseObject !== null && 'readings' in responseObject) {
-            // 期待される構造: {readings: [], debugInfo: {}}
-            console.log('[meter_reading] Server response has expected structure with readings property.');
-            actualDataPayload = responseObject;        } else if (Array.isArray(responseObject)) {
-            // 直接的な配列の場合（フォールバック）
-            console.warn('[meter_reading] Server response is a direct array. Creating wrapper structure.');
+      React.useEffect(() => {
+        const initializeWoff = async () => {
+          try {
+            console.log('[meter_reading] WOFFを初期化します。');
             
+            // sessionStorageからgasWebAppUrlを取得
+            gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+            if (!gasWebAppUrl) {
+              console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
+              alert('アプリケーションが正常に起動されていません。物件選択画面から再度お試しください。');
+              window.location.href = 'property_select.html';
+              return;
+            }
+            console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
+
+            if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
+              console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
+              setError('アプリの起動に必要なコンポーネントが読み込めませんでした。');
+              setLoading(false);
+              return;
+            }
+            
+            await woff.init({ woffId: woffIdForWorks });
+            console.log('[meter_reading] WOFFの初期化に成功しました。');
+
+            if (!woff.isLoggedIn()) {
+              console.log("[meter_reading] Not logged in.");
+            } else {
+              console.log("[meter_reading] Logged in. OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
+            }
+
+            setWoffInitialized(true);
+          } catch (error) {
+            console.error('[meter_reading] WOFFの初期化に失敗しました:', error);
+            setError('アプリの起動に失敗しました。WOFFの初期化を確認してください。');
+            setLoading(false);
+          }
+        };
+
+        initializeWoff();
+      }, []);
+
+      React.useEffect(() => {
+        if (!woffInitialized) return;
+
+        const loadUrlParams = () => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const propId = urlParams.get('propertyId');
+          const propName = urlParams.get('propertyName');
+          const rId = urlParams.get('roomId');
+          const rName = urlParams.get('roomName');
+
+          setPropertyId(propId || 'N/A');
+          setPropertyName(propName || 'N/A');
+          setRoomId(rId || 'N/A');
+          setRoomName(rName || 'N/A');
+
+          if (!propId || !rId) {
+            console.error('[meter_reading] 物件IDまたは部屋IDがURLパラメータにありません。');
+            setError('物件情報または部屋情報が不足しているため、検針データを取得できません。');
+            setLoading(false);
+            return;
+          }
+
+          loadMeterReadings(propId, rId);
+        };
+
+        loadUrlParams();
+      }, [woffInitialized]);
+
+      const loadMeterReadings = async (propId, rId) => {
+        try {
+          gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+          const fetchUrl = `${gasWebAppUrl}?action=getMeterReadings&propertyId=${propId}&roomId=${rId}`;
+          console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl);
+          
+          const response = await fetch(fetchUrl);
+          if (!response.ok) {
+            throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+          }
+
+          const responseObject = await response.json();
+          console.log('[meter_reading] Received responseObject from server:', responseObject);
+          
+          let actualDataPayload;
+          if (typeof responseObject === 'object' && responseObject !== null && 'readings' in responseObject) {
+            console.log('[meter_reading] Server response has expected structure with readings property.');
+            actualDataPayload = responseObject;
+          } else if (Array.isArray(responseObject)) {
+            console.warn('[meter_reading] Server response is a direct array. Creating wrapper structure.');
             actualDataPayload = { 
-                readings: responseObject, 
-                debugInfo: { 
-                    message: "Response was a direct array, wrapper created on client-side",
-                    clientSideProcessing: true
-                } 
+              readings: responseObject, 
+              debugInfo: { 
+                message: "Response was a direct array, wrapper created on client-side",
+                clientSideProcessing: true
+              } 
             };
-        } else {
+          } else {
             console.error('[meter_reading] Unrecognized server response structure:', responseObject);
             throw new Error('サーバーからの応答の形式が認識できません。');
-        }
-
-        if (loadingElement) loadingElement.style.display = 'none';
-
-        // GASから直接エラーオブジェクトが返された場合
-        if (actualDataPayload.error) {
-          console.error('[meter_reading] Server returned an error:', actualDataPayload.error);
-          throw new Error(actualDataPayload.error);
-        }
-
-        // 実際の検針データとデバッグ情報を抽出
-        const readings = actualDataPayload.readings;
-        const debugInfo = actualDataPayload.debugInfo;        // サーバーからのデバッグ情報をコンソールと画面に出力
-        if (debugInfo) {
-          console.log('[meter_reading] Server Debug Info:', debugInfo);
-          const debugInfoDiv = document.getElementById('debug-info');
-          if (debugInfoDiv) {
-            debugInfoDiv.innerHTML += `<p><strong>📊 Server Debug Info:</strong><br>
-              <strong>ヘッダー情報:</strong><br>
-              &nbsp;&nbsp;検出されたヘッダー数: ${debugInfo.headerCount || 'N/A'}<br>
-              &nbsp;&nbsp;ヘッダー一覧: ${JSON.stringify(debugInfo.detectedHeaders || [])}<br>
-              <strong>前々々回指示数列:</strong><br>
-              &nbsp;&nbsp;列インデックス: ${debugInfo.threeTimesPreviousIndex !== undefined ? debugInfo.threeTimesPreviousIndex : 'N/A'}<br>
-              &nbsp;&nbsp;列が存在: ${debugInfo.threeTimesPreviousExists ? 'はい' : 'いいえ'}<br>
-              <strong>列マッピング:</strong><br>
-              ${debugInfo.columnMapping ? Object.entries(debugInfo.columnMapping).map(([col, index]) => 
-                `&nbsp;&nbsp;${col}: ${index !== -1 ? index : '見つからず'}`).join('<br>') : 'マッピング情報なし'}<br>
-              <strong>データ統計:</strong><br>
-              &nbsp;&nbsp;総データ行数: ${debugInfo.totalDataRows || 'N/A'}<br>
-              &nbsp;&nbsp;フィルタ後読み取り数: ${debugInfo.filteredReadings || 'N/A'}<br>
-              <strong>サンプルデータ分析:</strong><br>
-              ${debugInfo.sampleReadingData ? `
-                &nbsp;&nbsp;前々々回指示数を持つ読み取り: ${debugInfo.sampleReadingData.hasThreeTimesPrevious ? 'あり' : 'なし'}<br>
-                &nbsp;&nbsp;前々々回指示数の値の数: ${debugInfo.sampleReadingData.threeTimesPreviousCount || 0}<br>
-                &nbsp;&nbsp;前々々回指示数の値: ${JSON.stringify(debugInfo.sampleReadingData.threeTimesPreviousValues || [])}<br>
-                &nbsp;&nbsp;最初の読み取り: ${JSON.stringify(debugInfo.sampleReadingData.firstReading || {})}<br>
-                &nbsp;&nbsp;最後の読み取り: ${JSON.stringify(debugInfo.sampleReadingData.lastReading || {})}
-              ` : '&nbsp;&nbsp;サンプルデータなし'}<br>
-              <strong>メッセージ:</strong> ${debugInfo.message || ''}</p>`;
           }
+
+          if (actualDataPayload.error) {
+            console.error('[meter_reading] Server returned an error:', actualDataPayload.error);
+            throw new Error(actualDataPayload.error);
+          }
+
+          const readings = actualDataPayload.readings;
+          const debugInfoData = actualDataPayload.debugInfo;
+
+          if (debugInfoData) {
+            console.log('[meter_reading] Server Debug Info:', debugInfoData);
+            setDebugInfo(debugInfoData);
+          }
+
+          console.log('[meter_reading] Fetched meter readings:', readings);
+          setMeterReadings(Array.isArray(readings) ? readings : []);
+          setLoading(false);
+        } catch (error) {
+          console.error('[meter_reading] fetchMeterReadings error:', error);
+          setError(`検針データの取得に失敗しました: ${error.message}`);
+          setLoading(false);
         }
+      };
+
+      const handleBackButton = () => {
+        window.location.href = 'room_select.html';
+      };
+
+      const formatDate = (dateValue) => {
+        if (!dateValue) return '';
         
-        // ★★★ 各readingオブジェクトのthreeTimesPreviousの値を詳細ログ出力 ★★★
-        console.log('[meter_reading] 全読書データのthreeTimesPrevious詳細チェック:');
-        if (Array.isArray(readings)) {
-          readings.forEach((reading, index) => {
-            console.log(`  読書[${index}] - date: ${reading.date}, threeTimesPrevious: ${reading.threeTimesPrevious} (type: ${typeof reading.threeTimesPrevious})`);
-          });
-        }
-        
-        console.log('[meter_reading] Fetched meter readings:', readings); // readings 配列をログに出力
-
-        console.log('[meter_reading] Extracted readings variable:', readings); // readings変数をログ出力
-        console.log('[meter_reading] readings.length:', Array.isArray(readings) ? readings.length : 'not an array'); // readings.lengthをログ出力
-
-        if (Array.isArray(readings) && readings.length > 0) {
-          tableElement.style.display = '';
-          document.getElementById('update-readings-button').style.display = 'block';
-          noDataMessageElement.style.display = 'none';
-          tableBody.innerHTML = ''; 
-          readings.forEach(reading => {
-            console.log('[meter_reading] Processing reading object:', JSON.stringify(reading)); // ★ readingオブジェクト全体をログ出力
-            const row = tableBody.insertRow();
-            let formattedDate = '';            // 日付のフォーマット処理
-            if (reading.date) {
-              try {
-                let dateObj;
-                // reading.dateがすでにDateオブジェクトの場合
-                if (reading.date instanceof Date) {
-                  dateObj = reading.date;
-                } else if (typeof reading.date === 'string') {
-                  // 文字列の場合、まずYYYY/MM/DD形式かチェック
-                  const dateParts = reading.date.split('/');
-                  if (dateParts.length === 3) {
-                    // YYYY/MM/DD 形式
-                    const year = dateParts[0];
-                    const month = dateParts[1].padStart(2, '0');
-                    const day = dateParts[2].padStart(2, '0');
-                    formattedDate = `${year}年${month}月${day}日`;
-                  } else {
-                    // その他の文字列形式の場合、Dateオブジェクトに変換してみる
-                    dateObj = new Date(reading.date);
-                  }
-                } else {
-                  // その他の型の場合
-                  dateObj = new Date(reading.date);
-                }
-                
-                // dateObjが設定されている場合、年月日形式にフォーマット
-                if (dateObj && !isNaN(dateObj.getTime())) {
-                  const year = dateObj.getFullYear();
-                  const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                  const day = dateObj.getDate().toString().padStart(2, '0');
-                  formattedDate = `${year}年${month}月${day}日`;
-                } else if (!formattedDate) {
-                  // フォーマットできない場合は元の値を使用
-                  formattedDate = String(reading.date);
-                }
-              } catch (e) {
-                console.warn('[meter_reading] 日付のフォーマットに失敗しました:', reading.date, e);
-                formattedDate = String(reading.date);
-              }
-            }
-            const dateCell = row.insertCell();
-            dateCell.textContent = formattedDate;
-            dateCell.setAttribute('data-label', '検針日時');
-            
-            // 今回指示数を入力フィールドに変更
-            const currentReadingCell = row.insertCell();
-            currentReadingCell.setAttribute('data-label', '今回(㎥)');
-            const currentReadingInput = document.createElement('input');
-            currentReadingInput.type = 'number';
-            currentReadingInput.value = reading.currentReading || '';
-            currentReadingInput.setAttribute('data-date', reading.date);
-            currentReadingInput.setAttribute('data-original-value', reading.currentReading || ''); // 元の値を保存
-            currentReadingInput.setAttribute('pattern', '[0-9]*');
-            currentReadingInput.setAttribute('inputmode', 'numeric');
-
-            currentReadingInput.addEventListener('input', function(e) {
-              e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            });
-
-            currentReadingCell.appendChild(currentReadingInput);            const prevReadingCell = row.insertCell();
-            let prevReadingText = reading.previousReading || 'N/A';
-            prevReadingCell.setAttribute('data-label', '前回');
-            
-            const prevPrevReadingCell = row.insertCell();
-            let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
-            prevPrevReadingCell.setAttribute('data-label', '前々回');
-            
-            // 前々々回指示数セルを追加
-            const prevPrevPrevReadingCell = row.insertCell();
-            let prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
-            prevPrevPrevReadingCell.setAttribute('data-label', '前々々回');
-
-            // --- ここからデバッグログ追加 ---
-            console.log(`[meter_reading] 差分計算前データ確認 (日付: ${reading.date}):`);
-            console.log(`  reading.previousReading: ${reading.previousReading}`);
-            console.log(`  reading.previousPreviousReading: ${reading.previousPreviousReading}`);
-            console.log(`  reading.threeTimesPrevious: ${reading.threeTimesPrevious}`);
-            console.log(`  prevPrevReadingText (初期値): ${prevPrevReadingText}`);
-            console.log(`  prevPrevPrevReadingText: ${prevPrevPrevReadingText}`);
-            
-            // 前々々回指示数列の存在チェック
-            if (reading.threeTimesPrevious === undefined) {
-              console.warn(`[meter_reading] 前々々回指示数データが取得できていません。スプレッドシートに「前々々回指示数」列が存在しない可能性があります。`);
-            }
-            // --- ここまでデバッグログ追加 ---
-
-            const prev = parseFloat(reading.previousReading);
-            const prevPrev = parseFloat(reading.previousPreviousReading);
-            const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
-
-            // 追加ログ: parseFloat後の値
-            console.log(`  parseFloat(reading.previousPreviousReading) -> prevPrev: ${prevPrev}`);
-            console.log(`  parseFloat(reading.threeTimesPrevious) -> prevPrevPrev: ${prevPrevPrev}`);
-
-            // 前々回と前々々回の差分計算と表示
-            if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
-              const diff = prevPrev - prevPrevPrev;
-              prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
-              console.log(`  前々回と前々々回の差分計算結果: diff=${diff}, 更新後prevPrevReadingText=${prevPrevReadingText}`);
+        try {
+          let dateObj;
+          if (dateValue instanceof Date) {
+            dateObj = dateValue;
+          } else if (typeof dateValue === 'string') {
+            const dateParts = dateValue.split('/');
+            if (dateParts.length === 3) {
+              const year = dateParts[0];
+              const month = dateParts[1].padStart(2, '0');
+              const day = dateParts[2].padStart(2, '0');
+              return `${year}年${month}月${day}日`;
             } else {
-              console.log(`  前々回と前々々回の差分計算スキップ:`);
-              console.log(`    prevPrevReadingText !== 'N/A': ${prevPrevReadingText !== 'N/A'} (値: ${prevPrevReadingText})`);
-              console.log(`    prevPrevPrevReadingText !== 'N/A': ${prevPrevPrevReadingText !== 'N/A'} (値: ${prevPrevPrevReadingText})`);
-              console.log(`    !isNaN(prevPrev): ${!isNaN(prevPrev)} (値: ${prevPrev})`);
-              console.log(`    !isNaN(prevPrevPrev): ${!isNaN(prevPrevPrev)} (値: ${prevPrevPrev})`);
+              dateObj = new Date(dateValue);
             }
+          } else {
+            dateObj = new Date(dateValue);
+          }
+          
+          if (dateObj && !isNaN(dateObj.getTime())) {
+            const year = dateObj.getFullYear();
+            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+            const day = dateObj.getDate().toString().padStart(2, '0');
+            return `${year}年${month}月${day}日`;
+          } else {
+            return String(dateValue);
+          }
+        } catch (e) {
+          console.warn('[meter_reading] 日付のフォーマットに失敗しました:', dateValue, e);
+          return String(dateValue);
+        }
+      };
 
-            // 前回と前々回の差分計算と表示
-            if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
-              const diff = prev - prevPrev;
-              prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
-            }            prevReadingCell.textContent = prevReadingText;
-            prevPrevReadingCell.textContent = prevPrevReadingText;
-            prevPrevPrevReadingCell.textContent = prevPrevPrevReadingText;
+      const handleFileSelection = (event, date) => {
+        const file = event.target.files[0];
+        if (file) {
+          console.log('[meter_reading] ファイルが選択されました:', file.name, 'for date:', date);
+          
+          const reader = new FileReader();
+          reader.onload = (readerEvent) => {
+            const base64PhotoData = readerEvent.target.result;
             
-            const usageCell = row.insertCell();
-            usageCell.textContent = reading.usage || 'N/A';
-            usageCell.setAttribute('data-label', '今回使用量');
-              const statusCell = row.insertCell();
-            statusCell.textContent = reading.status || 'N/A';
-            statusCell.setAttribute('data-label', '状態');
-              const photoCell = row.insertCell();
-            photoCell.setAttribute('data-date-photo', reading.date);
-            photoCell.setAttribute('data-label', '写真');
-
-            // カメラボタンの作成
-            const cameraButton = document.createElement('button');
-            cameraButton.textContent = '撮影';
-            cameraButton.setAttribute('data-date-button', reading.date);
-            cameraButton.addEventListener('click', async (event) => {
-              const debugInfoDiv = document.getElementById('debug-info');
-              debugInfoDiv.innerHTML = 'カメラボタンクリック時のデバッグ情報:<br>';
-              try {
-                const date = event.target.getAttribute('data-date-button');
-                console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
-                debugInfoDiv.innerHTML += 'カメラボタンクリック (HTML Media Capture): date=' + date + '<br>';
-
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.accept = 'image/*';
-                fileInput.capture = 'environment'; 
-                fileInput.style.display = 'none';
-
-                fileInput.onchange = (e) => handleFileSelection(e, date, debugInfoDiv);
-                
-                document.body.appendChild(fileInput);
-                fileInput.click();
-              } catch (error) {
-                console.error('[meter_reading] 写真の取得または処理に失敗しました (HTML Media Capture):', error);
-                debugInfoDiv.innerHTML += '<span style="color: red;">写真処理エラー: ' + error.toString() + '</span><br>';
-                alert('写真の処理中に予期せぬエラーが発生しました。');
-                const orphanInput = document.querySelector('input[type="file"][style*="display: none"]');
-                if (orphanInput && orphanInput.parentElement === document.body) {
-                    document.body.removeChild(orphanInput);
-                }
-              }            });
-            photoCell.appendChild(cameraButton);
-          });
-        } else {
-          // データがない場合は初回検針データ登録用のテンプレート行を表示
-          tableElement.style.display = '';
-          document.getElementById('update-readings-button').style.display = 'block'; // 更新ボタンを表示
-          noDataMessageElement.style.display = 'none';
-          tableBody.innerHTML = '';
-
-          // 初回検針用のテンプレート行を作成
-          const row = tableBody.insertRow();
-          row.classList.add('initial-reading-row'); // 初回検針行であることを示すクラスを追加          // 検針日時（現在の日時を表示）
-          const currentDate = new Date();
-          const year = currentDate.getFullYear();
-          const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = currentDate.getDate().toString().padStart(2, '0');
-          const formattedCurrentDate = `${year}年${month}月${day}日`; // 年月日表示
-          const dateForDataAttribute = `${year}/${month}/${day}`; // data-date用の形式
-          
-          const dateCell = row.insertCell();
-          dateCell.textContent = formattedCurrentDate;
-          dateCell.setAttribute('data-label', '検針日時');
-          
-          // 今回指示数入力フィールド
-          const currentReadingCell = row.insertCell();
-          currentReadingCell.setAttribute('data-label', '今回(㎥)');
-          const currentReadingInput = document.createElement('input');
-          currentReadingInput.type = 'number';
-          currentReadingInput.value = '';
-          currentReadingInput.placeholder = '初回指示数を入力';
-          currentReadingInput.setAttribute('data-date', dateForDataAttribute);
-          currentReadingInput.setAttribute('data-original-value', '');
-          currentReadingInput.setAttribute('pattern', '[0-9]*');
-          currentReadingInput.setAttribute('inputmode', 'numeric');
-          currentReadingInput.setAttribute('min', '0'); // 最小値を設定
-          currentReadingInput.required = true; // 必須フィールドとして設定
-
-          currentReadingInput.addEventListener('input', function(e) {
-            e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            // 入力時にエラー表示をクリア
-            e.target.style.borderColor = '';
-          });
-
-          currentReadingCell.appendChild(currentReadingInput);          // 前回指示数（初回なので N/A）
-          const prevReadingCell = row.insertCell();
-          prevReadingCell.textContent = 'N/A';
-          prevReadingCell.setAttribute('data-label', '前回');
-          
-          // 前々回指示数（初回なので N/A）
-          const prevPrevReadingCell = row.insertCell();
-          prevPrevReadingCell.textContent = 'N/A';
-          prevPrevReadingCell.setAttribute('data-label', '前々回');
-          
-          // 前々々回指示数（初回なので N/A）
-          const prevPrevPrevReadingCell = row.insertCell();
-          prevPrevPrevReadingCell.textContent = 'N/A';
-          prevPrevPrevReadingCell.setAttribute('data-label', '前々々回');
-          
-          // 今回使用量（初回なので計算不可）
-          const usageCell = row.insertCell();
-          usageCell.textContent = '初回登録';
-          usageCell.setAttribute('data-label', '今回使用量');
-          
-          // 状態
-          const statusCell = row.insertCell();
-          statusCell.textContent = '初回検針';
-          statusCell.setAttribute('data-label', '状態');
-          statusCell.style.color = '#007bff';
-          statusCell.style.fontWeight = 'bold';
-            // 写真欄
-          const photoCell = row.insertCell();
-          photoCell.setAttribute('data-date-photo', dateForDataAttribute);
-          photoCell.setAttribute('data-label', '写真');
-
-          // カメラボタンの作成
-          const cameraButton = document.createElement('button');
-          cameraButton.textContent = '撮影';
-          cameraButton.setAttribute('data-date-button', dateForDataAttribute);
-          cameraButton.addEventListener('click', async (event) => {
-            const debugInfoDiv = document.getElementById('debug-info');
-            debugInfoDiv.innerHTML = 'カメラボタンクリック時のデバッグ情報:<br>';
-            try {
-              const date = event.target.getAttribute('data-date-button');
-              console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
-              debugInfoDiv.innerHTML += 'カメラボタンクリック (HTML Media Capture): date=' + date + '<br>';
-
-              const fileInput = document.createElement('input');
-              fileInput.type = 'file';
-              fileInput.accept = 'image/*';
-              fileInput.capture = 'environment'; 
-              fileInput.style.display = 'none';
-
-              fileInput.onchange = (e) => handleFileSelection(e, date, debugInfoDiv);
+            // 該当する入力フィールドにphotoDataを設定
+            const inputElement = document.querySelector(`input[data-date="${date}"]`);
+            if (inputElement) {
+              inputElement.setAttribute('data-new-photo', base64PhotoData);
+              console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
               
-              document.body.appendChild(fileInput);
-              fileInput.click();
-            } catch (error) {
-              console.error('[meter_reading] 写真の取得または処理に失敗しました (HTML Media Capture):', error);
-              debugInfoDiv.innerHTML += '<span style="color: red;">写真処理エラー: ' + error.toString() + '</span><br>';
-              alert('写真の処理中に予期せぬエラーが発生しました。');
-              const orphanInput = document.querySelector('input[type="file"][style*="display: none"]');
-              if (orphanInput && orphanInput.parentElement === document.body) {
-                  document.body.removeChild(orphanInput);
-              }
+              // プレビュー表示の更新（簡易実装）
+              updatePhotoPreview(date, base64PhotoData);
+            } else {
+              console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
+              alert('写真データを紐付ける入力フィールドが見つかりませんでした。');
             }
-          });
-          photoCell.appendChild(cameraButton);
+          };
+          reader.onerror = () => {
+            console.error('[meter_reading] File reading error');
+            alert('ファイルの読み込み中にエラーが発生しました。');
+          };
+          reader.readAsDataURL(file);
         }
-      } catch (error) {
-        console.error('[meter_reading] fetchMeterReadings error:', error);
-        if (loadingElement) loadingElement.style.display = 'none';
-        noDataMessageElement.textContent = `検針データの取得に失敗しました: ${error.message}`;
-        noDataMessageElement.style.display = 'block';
-        tableElement.style.display = 'none';
-        document.getElementById('update-readings-button').style.display = 'none';
-      }
-    }
-
-    // 指示数更新ボタンの処理
-    async function handleUpdateReadings() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const propertyId = urlParams.get('propertyId');
-      const roomId = urlParams.get('roomId');
-
-      if (!propertyId || !roomId) {
-        alert('物件IDまたは部屋IDが取得できませんでした。');
-        return;
-      }
-
-      const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
-      const updatedReadings = [];
-      let hasValidationErrors = false;
-      
-      inputs.forEach(input => {
-        const date = input.getAttribute('data-date');
-        const newPhotoData = input.getAttribute('data-new-photo');
-        const originalValue = input.getAttribute('data-original-value') || '';
-        const currentValue = input.value || '';
         
-        // 初回検針の場合（originalValueが空）の入力バリデーション
-        if (originalValue === '' && currentValue.trim() === '') {
-          input.style.borderColor = 'red';
-          hasValidationErrors = true;
+        // input要素を削除
+        if (event.target.parentElement === document.body) {
+          document.body.removeChild(event.target);
+        }
+      };
+
+      const updatePhotoPreview = (date, base64Data) => {
+        const photoCell = document.querySelector(`td[data-date-photo="${date}"]`);
+        if (photoCell) {
+          let previewImg = photoCell.querySelector('img.temp-preview');
+          if (!previewImg) {
+            previewImg = document.createElement('img');
+            previewImg.className = 'temp-preview';
+            previewImg.style.width = '60px';
+            previewImg.style.height = '60px';
+            previewImg.style.objectFit = 'cover';
+            previewImg.style.margin = '5px';
+            previewImg.style.cursor = 'pointer';
+            previewImg.addEventListener('click', () => showPhotoModal(base64Data));
+            photoCell.appendChild(previewImg);
+          }
+          previewImg.src = base64Data;
+          
+          // 削除ボタンの追加
+          let deleteBtn = photoCell.querySelector('button.delete-photo-btn');
+          if (!deleteBtn) {
+            deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '削除';
+            deleteBtn.className = 'delete-photo-btn';
+            deleteBtn.style.backgroundColor = '#dc3545';
+            deleteBtn.style.color = 'white';
+            deleteBtn.style.border = 'none';
+            deleteBtn.style.padding = '2px 6px';
+            deleteBtn.style.marginRight = '5px';
+            deleteBtn.style.fontSize = '12px';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.style.borderRadius = '3px';
+            
+            deleteBtn.addEventListener('click', () => {
+              const currentReadingInput = document.querySelector(`input[data-date="${date}"]`);
+              if (currentReadingInput) {
+                currentReadingInput.removeAttribute('data-new-photo');
+              }
+              if (previewImg) previewImg.remove();
+              if (deleteBtn) deleteBtn.remove();
+              const cameraBtn = photoCell.querySelector('button[data-date-button]');
+              if (cameraBtn) cameraBtn.textContent = '撮影';
+            });
+            
+            const cameraBtn = photoCell.querySelector('button[data-date-button]');
+            if (cameraBtn) {
+              photoCell.insertBefore(deleteBtn, cameraBtn);
+            } else {
+              photoCell.appendChild(deleteBtn);
+            }
+          }
+          
+          // カメラボタンのテキストを変更
+          const cameraBtn = photoCell.querySelector('button[data-date-button]');
+          if (cameraBtn) cameraBtn.textContent = '変更';
+        }
+      };
+
+      const handleCameraClick = (date) => {
+        console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
+        
+        try {
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = 'image/*';
+          fileInput.capture = 'environment';
+          fileInput.style.display = 'none';
+          
+          fileInput.onchange = (e) => handleFileSelection(e, date);
+          
+          document.body.appendChild(fileInput);
+          fileInput.click();
+        } catch (error) {
+          console.error('[meter_reading] 写真の取得または処理に失敗しました:', error);
+          alert('写真の処理中に予期せぬエラーが発生しました。');
+        }
+      };
+
+      const showPhotoModal = (imageData) => {
+        setModalImageSrc(imageData);
+        setShowModal(true);
+      };
+
+      const hidePhotoModal = () => {
+        setShowModal(false);
+        setModalImageSrc('');
+      };
+
+      const handleUpdateReadings = async () => {
+        if (!propertyId || !roomId) {
+          alert('物件IDまたは部屋IDが取得できませんでした。');
           return;
-        } else {
-          input.style.borderColor = ''; // エラー表示をクリア
         }
+
+        const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
+        const updatedReadings = [];
+        let hasValidationErrors = false;
         
-        // 指示数が変更されたか、新しい写真が撮影された場合のみ更新対象に含める
-        if (currentValue !== originalValue || newPhotoData) {
-          // 数値の妥当性チェック
-          const numericValue = parseFloat(currentValue);
-          if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
+        inputs.forEach(input => {
+          const date = input.getAttribute('data-date');
+          const newPhotoData = input.getAttribute('data-new-photo');
+          const originalValue = input.getAttribute('data-original-value') || '';
+          const currentValue = input.value || '';
+          
+          // 初回検針の場合の入力バリデーション
+          if (originalValue === '' && currentValue.trim() === '') {
             input.style.borderColor = 'red';
             hasValidationErrors = true;
             return;
+          } else {
+            input.style.borderColor = '';
           }
           
-          updatedReadings.push({
-            date: date,
-            currentReading: currentValue,
-            photoData: newPhotoData || null
-          });
-        }
-      });
-
-      if (hasValidationErrors) {
-        alert('入力値に誤りがあります。初回検針では指示数の入力が必須です。また、指示数は0以上の数値を入力してください。');
-        return;
-      }
-
-      if (updatedReadings.length === 0) {
-        alert('更新するデータがありません。');
-        return;
-      }
-
-      console.log('[meter_reading] 更新する指示数:', updatedReadings);
-      console.log('[meter_reading] 送信先URL:', gasWebAppUrl);
-
-      try {
-        const response = await fetch(gasWebAppUrl, { 
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8', 
-          },
-          body: JSON.stringify({
-            action: 'updateMeterReadings', // アクションタイプを追加
-            propertyId: propertyId,       // 物件IDを追加
-            roomId: roomId,               // 部屋IDを追加
-            readings: updatedReadings
-          }),
+          // 指示数が変更されたか、新しい写真が撮影された場合のみ更新対象に含める
+          if (currentValue !== originalValue || newPhotoData) {
+            const numericValue = parseFloat(currentValue);
+            if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
+              input.style.borderColor = 'red';
+              hasValidationErrors = true;
+              return;
+            }
+            
+            updatedReadings.push({
+              date: date,
+              currentReading: currentValue,
+              photoData: newPhotoData || null
+            });
+          }
         });
 
-        console.log('[meter_reading] Update response status:', response.status);
-
-        const resultText = await response.text(); 
-        console.log('[meter_reading] Update result text:', resultText);
-
-        if (!response.ok) {
-          throw new Error(resultText || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+        if (hasValidationErrors) {
+          alert('入力値に誤りがあります。初回検針では指示数の入力が必須です。また、指示数は0以上の数値を入力してください。');
+          return;
         }
-        
+
+        if (updatedReadings.length === 0) {
+          alert('更新するデータがありません。');
+          return;
+        }
+
+        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        console.log('[meter_reading] 送信先URL:', gasWebAppUrl);
+
+        setUpdating(true);
         try {
+          gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+          const response = await fetch(gasWebAppUrl, { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8', 
+            },
+            body: JSON.stringify({
+              action: 'updateMeterReadings',
+              propertyId: propertyId,
+              roomId: roomId,
+              readings: updatedReadings
+            }),
+          });
+
+          console.log('[meter_reading] Update response status:', response.status);
+          const resultText = await response.text(); 
+          console.log('[meter_reading] Update result text:', resultText);
+
+          if (!response.ok) {
+            throw new Error(resultText || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+          }
+          
+          try {
             const result = JSON.parse(resultText); 
             if (result.success) {
-              // 初回検針データかどうかを判定
-              const isInitialReading = inputs.length > 0 && 
-                inputs[0].getAttribute('data-original-value') === '';
+              const isInitialReading = inputs.length > 0 && inputs[0].getAttribute('data-original-value') === '';
               
               if (isInitialReading) {
                 alert('初回検針データを正常に登録しました。次回からは使用量も計算されます。');
               } else {
                 alert('指示数と検針日時を更新しました。');
               }
-              await loadMeterReadings(); 
+              
+              // データを再読み込み
+              await loadMeterReadings(propertyId, roomId);
             } else {
               throw new Error(result.error || '指示数の更新に失敗しました。');
             }
-        } catch (e) {
+          } catch (e) {
             throw new Error('サーバーからの応答形式が不正です: ' + resultText);
-        }
-
-      } catch (error) {
-        console.error('[meter_reading] handleUpdateReadings error:', error);
-        alert(`指示数の更新中にエラーが発生しました: ${error.message}`);
-      }
-    }
-
-    // ファイル選択ハンドラ（削除ボタン機能を含む）
-    function handleFileSelection(e, date, debugInfoDiv) {
-        const file = e.target.files[0];
-
-        if (file) {
-            console.log('[meter_reading] ファイルが選択されました (handleFileSelection):', file.name, 'for date:', date);
-            if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル選択 (handleFileSelection): ' + file.name + ' for date: ' + date + '<br>';
-            
-            const reader = new FileReader();
-            reader.onload = (readerEvent) => {
-                const base64PhotoData = readerEvent.target.result;
-                if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル読み込み完了 (base64): ' + base64PhotoData.substring(0, 30) + '...<br>';
-
-                const currentReadingInput = document.querySelector(`#meter-readings-table input[type="number"][data-date="${date}"]`);
-                if (currentReadingInput) {
-                    currentReadingInput.setAttribute('data-new-photo', base64PhotoData);
-                    console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
-                } else {
-                    console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
-                    if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">エラー: 対応する指示数入力フィールドが見つかりません for date: ' + date + '</span><br>';
-                    alert('写真データを紐付ける入力フィールドが見つかりませんでした。');
-                    if (e.target.parentElement === document.body) {
-                        document.body.removeChild(e.target);
-                    }
-                    return;
-                }                const photoCell = document.querySelector(`td[data-date-photo="${date}"]`);
-                if (photoCell) {
-                    let previewImg = photoCell.querySelector('img.temp-preview');
-                    if (!previewImg) {
-                        previewImg = document.createElement('img');
-                        previewImg.classList.add('temp-preview');
-                        previewImg.alt = '撮影プレビュー';
-                        previewImg.style.maxWidth = '50px';
-                        previewImg.style.maxHeight = '50px';
-                        previewImg.style.marginRight = '5px';
-                        previewImg.style.cursor = 'pointer';
-                        const cameraBtn = photoCell.querySelector('button[data-date-button]');
-                        if (cameraBtn) {
-                            photoCell.insertBefore(previewImg, cameraBtn);
-                        } else {
-                            photoCell.appendChild(previewImg); // Fallback
-                        }
-                    }
-                    previewImg.src = base64PhotoData;
-                    previewImg.onclick = () => showPhotoModal(base64PhotoData);
-
-                    // 削除ボタンの作成・表示
-                    let deleteBtn = photoCell.querySelector('button.delete-photo-btn');
-                    if (!deleteBtn) {
-                        deleteBtn = document.createElement('button');
-                        deleteBtn.classList.add('delete-photo-btn');
-                        deleteBtn.textContent = '削除';
-                        deleteBtn.style.backgroundColor = '#dc3545';
-                        deleteBtn.style.color = 'white';
-                        deleteBtn.style.border = 'none';
-                        deleteBtn.style.padding = '2px 6px';
-                        deleteBtn.style.marginRight = '5px';
-                        deleteBtn.style.fontSize = '12px';
-                        deleteBtn.style.cursor = 'pointer';
-                        deleteBtn.style.borderRadius = '3px';
-                        
-                        deleteBtn.addEventListener('click', () => {
-                            // Actual delete logic: remove photo data, preview, and delete button
-                            if (currentReadingInput) {
-                                currentReadingInput.removeAttribute('data-new-photo');
-                            }
-                            if (previewImg) previewImg.remove();
-                            if (deleteBtn) deleteBtn.remove();
-                            const cameraBtn = photoCell.querySelector('button[data-date-button]');
-                            if (cameraBtn) cameraBtn.textContent = '撮影'; // Reset camera button text
-
-                            if(debugInfoDiv) debugInfoDiv.innerHTML += '写真削除完了 for date: ' + date + '<br>';
-                        });
-                        const cameraBtn = photoCell.querySelector('button[data-date-button]');
-                        if (cameraBtn) {
-                            photoCell.insertBefore(deleteBtn, cameraBtn);
-                        } else {
-                            photoCell.appendChild(deleteBtn); // Fallback
-                        }
-                    }
-                    // Update camera button text to "変更"
-                    const cameraBtn = photoCell.querySelector('button[data-date-button]');
-                    if (cameraBtn) cameraBtn.textContent = '変更';
-
-                    if(debugInfoDiv) debugInfoDiv.innerHTML += '写真プレビュー表示、削除ボタン追加、ボタンテキスト更新完了 for date: ' + date + '<br>';
-                }
-            };
-            reader.onerror = (errorEvent) => {
-                console.error('[meter_reading] File reading error:', errorEvent);
-                if(debugInfoDiv) debugInfoDiv.innerHTML += '<span style="color: red;">ファイル読み込みエラーが発生しました。</span><br>';
-                alert('ファイルの読み込み中にエラーが発生しました。');
-            };
-            reader.readAsDataURL(file);
-        } else {
-            // ファイルが選択されなかった場合（キャンセルなど）
-            console.log('[meter_reading] ファイル選択がキャンセルされました。');
-            if(debugInfoDiv) debugInfoDiv.innerHTML += 'ファイル選択がキャンセルされました。<br>';
-            // input要素が残っていれば削除
-            if (e.target.parentElement === document.body) {
-                document.body.removeChild(e.target);
-            }
-        }
-    }
-
-    // 写真をモーダルで表示する関数
-    function showPhotoModal(imageData) {
-      if (!photoModal) photoModal = document.getElementById('photo-modal');
-      if (!modalImage) modalImage = document.getElementById('modal-image');
-
-      if (photoModal && modalImage) {
-        modalImage.src = imageData;
-        photoModal.style.display = 'block';
-      } else {
-        console.error('[meter_reading] モーダル要素が見つかりません。');
-      }
-    }
-
-    // モーダルを閉じる関数
-    function hidePhotoModal() {
-      if (!photoModal) photoModal = document.getElementById('photo-modal');
-      if (photoModal) {
-        photoModal.style.display = 'none';
-        if (modalImage) {
-            modalImage.src = '';
-        }
-      }
-    }
-
-    // DOMContentLoaded ですべての初期化とイベントリスナー設定を行う
-    document.addEventListener('DOMContentLoaded', async () => {
-      // モーダル関連の要素をここで取得・初期化
-      photoModal = document.getElementById('photo-modal');
-      modalImage = document.getElementById('modal-image');
-      closeModalButton = document.querySelector('.close-modal-button');
-
-      if (closeModalButton) {
-        closeModalButton.addEventListener('click', hidePhotoModal);
-      }
-
-      if (photoModal) {
-        // モーダルの背景クリックで閉じる
-        photoModal.addEventListener('click', function(event) {
-          if (event.target === photoModal) {
-            hidePhotoModal();
           }
-        });
+        } catch (error) {
+          console.error('[meter_reading] handleUpdateReadings error:', error);
+          alert(`指示数の更新中にエラーが発生しました: ${error.message}`);
+        } finally {
+          setUpdating(false);
+        }
+      };
+
+      // WOFF SDK初期化前のローディング
+      if (!woffInitialized && loading) {
+        return <div className="loading">アプリを初期化中です...</div>;
       }
 
-      // 戻るボタンのイベントリスナーを一度だけ設定
-      const backButton = document.getElementById('back-button-meter');
-      if (backButton) {
-        backButton.addEventListener('click', handleBackButton);
+      // WOFF SDK初期化エラー
+      if (!woffInitialized && error) {
+        return <div className="error">{error}</div>;
       }
 
-      // 更新ボタンのイベントリスナーを設定
-      const updateButton = document.getElementById('update-readings-button');
-      if (updateButton) {
-        updateButton.addEventListener('click', handleUpdateReadings);
+      // データ読み込み中
+      if (loading && woffInitialized) {
+        return (
+          <div>
+            <button className="back-button" onClick={handleBackButton}>部屋選択へ戻る</button>
+            <h1>検針情報</h1>
+            <div className="loading">検針データを読み込み中です...</div>
+          </div>
+        );
       }
 
-      // WOFFの初期化を実行
-      await initializeWoff();
-    });
+      // エラー時の表示
+      if (error) {
+        return (
+          <div>
+            <button className="back-button" onClick={handleBackButton}>部屋選択へ戻る</button>
+            <h1>検針情報</h1>
+            <div className="error">{error}</div>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <button className="back-button" onClick={handleBackButton}>部屋選択へ戻る</button>
+          <h1>検針情報</h1>
+          
+          {/* デバッグ情報表示エリア（非表示） */}
+          <div id="debug-info" style={{border: '1px solid red', padding: '10px', marginTop: '10px', whiteSpace: 'pre-wrap', fontSize: '10px', backgroundColor: '#f0f0f0', color: 'black', display: 'none'}}>
+            デバッグ情報エリア
+            {debugInfo && (
+              <div>
+                <p><strong>📊 Server Debug Info:</strong><br/>
+                  <strong>ヘッダー情報:</strong><br/>
+                  &nbsp;&nbsp;検出されたヘッダー数: {debugInfo.headerCount || 'N/A'}<br/>
+                  &nbsp;&nbsp;ヘッダー一覧: {JSON.stringify(debugInfo.detectedHeaders || [])}<br/>
+                  <strong>前々々回指示数列:</strong><br/>
+                  &nbsp;&nbsp;列インデックス: {debugInfo.threeTimesPreviousIndex !== undefined ? debugInfo.threeTimesPreviousIndex : 'N/A'}<br/>
+                  &nbsp;&nbsp;列が存在: {debugInfo.threeTimesPreviousExists ? 'はい' : 'いいえ'}<br/>
+                  <strong>列マッピング:</strong><br/>
+                  {debugInfo.columnMapping ? Object.entries(debugInfo.columnMapping).map(([col, index]) => 
+                    `&nbsp;&nbsp;${col}: ${index !== -1 ? index : '見つからず'}`).join('<br/>') : 'マッピング情報なし'}<br/>
+                  <strong>データ統計:</strong><br/>
+                  &nbsp;&nbsp;総データ行数: {debugInfo.totalDataRows || 'N/A'}<br/>
+                  &nbsp;&nbsp;フィルタ後読み取り数: {debugInfo.filteredReadings || 'N/A'}<br/>
+                  <strong>メッセージ:</strong> {debugInfo.message || ''}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="info-section">
+            <h2>物件・部屋情報</h2>
+            <div className="info-item">
+                <span className="info-label">物件名:</span> {propertyName} /
+                <span className="info-label">部屋名:</span> {roomName}
+            </div>
+            <div className="info-item" style={{display: 'none'}}><span className="info-label">物件ID:</span> {propertyId}</div>
+            <div className="info-item" style={{display: 'none'}}><span className="info-label">部屋ID:</span> {roomId}</div>
+          </div>
+
+          <div className="info-section">
+            <h2>検針履歴</h2>
+            <div id="meter-readings-list">
+              {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                <div>
+                  <table id="meter-readings-table" style={{display: ''}}>
+                    <thead>
+                      <tr>
+                        <th>検針日時</th>
+                        <th>今回(㎥)</th>
+                        <th>前回</th>
+                        <th>前々回</th>
+                        <th>前々々回</th>
+                        <th>今回使用量</th>
+                        <th>状態</th>
+                        <th>写真</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {meterReadings.map((reading, index) => {
+                        const formattedDate = formatDate(reading.date);
+                        const dateForDataAttribute = reading.date;
+                        
+                        // 差分計算
+                        let prevReadingText = reading.previousReading || 'N/A';
+                        let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
+                        const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
+                        
+                        const prev = parseFloat(reading.previousReading);
+                        const prevPrev = parseFloat(reading.previousPreviousReading);
+                        const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
+                        
+                        // 前々回と前々々回の差分計算
+                        if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+                          const diff = prevPrev - prevPrevPrev;
+                          prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+                        }
+                        
+                        // 前回と前々回の差分計算
+                        if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
+                          const diff = prev - prevPrev;
+                          prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+                        }
+                        
+                        return (
+                          <tr key={index}>
+                            <td data-label="検針日時">{formattedDate}</td>
+                            <td data-label="今回(㎥)">
+                              <input
+                                type="number"
+                                defaultValue={reading.currentReading || ''}
+                                data-date={dateForDataAttribute}
+                                data-original-value={reading.currentReading || ''}
+                                pattern="[0-9]*"
+                                inputMode="numeric"
+                                onInput={(e) => {
+                                  e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                                }}
+                              />
+                            </td>
+                            <td data-label="前回">{prevReadingText}</td>
+                            <td data-label="前々回">{prevPrevReadingText}</td>
+                            <td data-label="前々々回">{prevPrevPrevReadingText}</td>
+                            <td data-label="今回使用量">{reading.usage || 'N/A'}</td>
+                            <td data-label="状態">{reading.status || 'N/A'}</td>
+                            <td data-label="写真" data-date-photo={dateForDataAttribute}>
+                              <button
+                                data-date-button={dateForDataAttribute}
+                                onClick={() => handleCameraClick(dateForDataAttribute)}
+                              >
+                                撮影
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <button 
+                    className="update-button" 
+                    onClick={handleUpdateReadings}
+                    disabled={updating}
+                  >
+                    {updating ? '更新中...' : '指示数を更新'}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {/* 初回検針用のテンプレート行 */}
+                  <table id="meter-readings-table" style={{display: ''}}>
+                    <thead>
+                      <tr>
+                        <th>検針日時</th>
+                        <th>今回(㎥)</th>
+                        <th>前回</th>
+                        <th>前々回</th>
+                        <th>前々々回</th>
+                        <th>今回使用量</th>
+                        <th>状態</th>
+                        <th>写真</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const currentDate = new Date();
+                        const year = currentDate.getFullYear();
+                        const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+                        const day = currentDate.getDate().toString().padStart(2, '0');
+                        const formattedCurrentDate = `${year}年${month}月${day}日`;
+                        const dateForDataAttribute = `${year}/${month}/${day}`;
+                        
+                        return (
+                          <tr className="initial-reading-row">
+                            <td data-label="検針日時">{formattedCurrentDate}</td>
+                            <td data-label="今回(㎥)">
+                              <input
+                                type="number"
+                                defaultValue=""
+                                placeholder="初回指示数を入力"
+                                data-date={dateForDataAttribute}
+                                data-original-value=""
+                                pattern="[0-9]*"
+                                inputMode="numeric"
+                                min="0"
+                                required
+                                onInput={(e) => {
+                                  e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                                  e.target.style.borderColor = '';
+                                }}
+                              />
+                            </td>
+                            <td data-label="前回">N/A</td>
+                            <td data-label="前々回">N/A</td>
+                            <td data-label="前々々回">N/A</td>
+                            <td data-label="今回使用量">初回登録</td>
+                            <td data-label="状態" style={{color: '#007bff', fontWeight: 'bold'}}>初回検針</td>
+                            <td data-label="写真" data-date-photo={dateForDataAttribute}>
+                              <button
+                                data-date-button={dateForDataAttribute}
+                                onClick={() => handleCameraClick(dateForDataAttribute)}
+                              >
+                                撮影
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                  <button 
+                    className="update-button" 
+                    onClick={handleUpdateReadings}
+                    disabled={updating}
+                  >
+                    {updating ? '更新中...' : '指示数を更新'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 写真表示モーダル */}
+          {showModal && (
+            <div className="photo-modal" style={{display: 'block'}}>
+              <div className="modal-content">
+                <button className="close-modal-button" onClick={hidePhotoModal}>&times;</button>
+                <img className="modal-image" src={modalImageSrc} alt="検針写真" />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.render(<MeterReadingApp />, document.getElementById('root'));
   </script>
 </body>
 </html>
