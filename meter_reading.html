@@ -298,12 +298,49 @@
       }
       
       .mantine-table {
-        font-size: 0.75rem;
+        border: 0;
+      }
+
+      .mantine-table thead {
+        display: none; /* テーブルヘッダーを非表示に */
+      }
+
+      .mantine-table tr {
+        display: block; /* 各行をブロック要素に */
+        margin-bottom: .625em;
+        border-bottom: 2px solid var(--mantine-color-gray-3);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        padding: .5em;
       }
       
-      .mantine-table th,
       .mantine-table td {
-        padding: var(--mantine-spacing-xs);
+        display: block; /* 各セルをブロック要素に */
+        text-align: right; /* テキストを右寄せに */
+        font-size: .9em;
+        border-bottom: 1px dotted var(--mantine-color-gray-3);
+      }
+
+      .mantine-table td:last-child {
+        border-bottom: 0;
+      }
+      
+      .mantine-table td::before {
+        content: attr(data-label); /* data-label属性の内容を表示 */
+        float: left; /* ラベルを左寄せに */
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .mantine-table td input[type="number"],
+      .mantine-table td .mantine-button {
+        width: 100%; /* 入力フィールドとボタンを幅いっぱいに */
+        box-sizing: border-box; /* paddingとborderを幅に含める */
+        margin-top: 5px;
+      }
+       .mantine-table td .usage-highlight {
+        display: block; /* 使用量もブロック表示 */
+        text-align: right; /* 右寄せ */
+        margin-top: 5px;
       }
     }
   </style>
@@ -821,8 +858,8 @@
 
                           return (
                             <tr key={index}>
-                              <td>{formattedDate}</td>
-                              <td>
+                              <td data-label="検針日時">{formattedDate}</td>
+                              <td data-label="今回(㎥)">
                                 <input
                                   type="number"
                                   defaultValue={reading.currentReading || ''}
@@ -850,15 +887,15 @@
                                   }}
                                 />
                               </td>
-                              <td>{prevReadingText}</td>
-                              <td>{prevPrevReadingText}</td>
-                              <td>{prevPrevPrevReadingText}</td>
-                              <td>
+                              <td data-label="前回">{prevReadingText}</td>
+                              <td data-label="前々回">{prevPrevReadingText}</td>
+                              <td data-label="前々々回">{prevPrevPrevReadingText}</td>
+                              <td data-label="今回使用量">
                                 <span className="usage-highlight">
                                   {usageStates[dateForDataAttribute] || '0'}㎥
                                 </span>
                               </td>
-                              <td>
+                              <td data-label="状態">
                                 <span style={{
                                   display: 'inline-block',
                                   padding: '2px 8px',
@@ -871,7 +908,7 @@
                                   {reading.status || 'N/A'}
                                 </span>
                               </td>
-                              <td>
+                              <td data-label="写真">
                                 <button
                                   className="mantine-button variant-filled"
                                   style={{ fontSize: '0.75rem', padding: '4px 8px' }}
