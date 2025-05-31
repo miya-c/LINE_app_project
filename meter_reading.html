@@ -724,8 +724,7 @@
                       {meterReadings.map((reading, index) => {
                         const formattedDate = formatDate(reading.date);
                         const dateForDataAttribute = reading.date;
-                        
-                        // 差分計算
+                          // 差分計算
                         let prevReadingText = reading.previousReading || 'N/A';
                         let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
                         const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
@@ -745,8 +744,18 @@
                           const diff = prev - prevPrev;
                           prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
                         }
-                        
-                        return (
+
+                        // リアルタイム使用量計算用の関数
+                        const calculateUsage = (currentValue, previousValue) => {
+                          const current = parseFloat(currentValue);
+                          const previous = parseFloat(previousValue);
+                          if (!isNaN(current) && !isNaN(previous)) {
+                            const usage = current - previous;
+                            return usage >= 0 ? usage : 0;
+                          }
+                          return 0;
+                        };
+                          return (
                           <tr key={index}>
                             <td data-label="検針日時">{formattedDate}</td>
                             <td data-label="今回(㎥)">
@@ -755,17 +764,33 @@
                                 defaultValue={reading.currentReading || ''}
                                 data-date={dateForDataAttribute}
                                 data-original-value={reading.currentReading || ''}
+                                data-previous-reading={reading.previousReading || ''}
                                 pattern="[0-9]*"
                                 inputMode="numeric"
                                 onInput={(e) => {
                                   e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                                  // リアルタイム使用量計算
+                                  const currentValue = e.target.value;
+                                  const previousValue = e.target.getAttribute('data-previous-reading');
+                                  const usageCell = e.target.closest('tr').querySelector('td[data-label="今回使用量"]');
+                                  
+                                  if (currentValue && previousValue && previousValue !== 'N/A' && usageCell) {
+                                    const usage = calculateUsage(currentValue, previousValue);
+                                    usageCell.textContent = usage + '㎥';
+                                    usageCell.style.color = '#007bff';
+                                    usageCell.style.fontWeight = 'bold';
+                                  } else if (usageCell) {
+                                    usageCell.textContent = reading.usage || '0㎥';
+                                    usageCell.style.color = '';
+                                    usageCell.style.fontWeight = '';
+                                  }
                                 }}
                               />
                             </td>
                             <td data-label="前回">{prevReadingText}</td>
                             <td data-label="前々回">{prevPrevReadingText}</td>
                             <td data-label="前々々回">{prevPrevPrevReadingText}</td>
-                            <td data-label="今回使用量">{reading.usage || 'N/A'}</td>
+                            <td data-label="今回使用量">{reading.usage || '0㎥'}</td>
                             <td data-label="状態">{reading.status || 'N/A'}</td>
                             <td data-label="写真" data-date-photo={dateForDataAttribute}>
                               <button
@@ -812,8 +837,7 @@
                         const day = currentDate.getDate().toString().padStart(2, '0');
                         const formattedCurrentDate = `${year}年${month}月${day}日`;
                         const dateForDataAttribute = `${year}/${month}/${day}`;
-                        
-                        return (
+                          return (
                           <tr className="initial-reading-row">
                             <td data-label="検針日時">{formattedCurrentDate}</td>
                             <td data-label="今回(㎥)">
@@ -823,6 +847,7 @@
                                 placeholder="初回指示数を入力"
                                 data-date={dateForDataAttribute}
                                 data-original-value=""
+                                data-previous-reading=""
                                 pattern="[0-9]*"
                                 inputMode="numeric"
                                 min="0"
@@ -830,13 +855,20 @@
                                 onInput={(e) => {
                                   e.target.value = e.target.value.replace(/[^0-9]/g, '');
                                   e.target.style.borderColor = '';
+                                  // 初回検針では使用量は常に0㎥
+                                  const usageCell = e.target.closest('tr').querySelector('td[data-label="今回使用量"]');
+                                  if (usageCell) {
+                                    usageCell.textContent = '0㎥';
+                                    usageCell.style.color = '#007bff';
+                                    usageCell.style.fontWeight = 'bold';
+                                  }
                                 }}
                               />
                             </td>
                             <td data-label="前回">N/A</td>
                             <td data-label="前々回">N/A</td>
                             <td data-label="前々々回">N/A</td>
-                            <td data-label="今回使用量">初回登録</td>
+                            <td data-label="今回使用量">0㎥</td>
                             <td data-label="状態" style={{color: '#007bff', fontWeight: 'bold'}}>初回検針</td>
                             <td data-label="写真" data-date-photo={dateForDataAttribute}>
                               <button
