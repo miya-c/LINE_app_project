@@ -113,7 +113,7 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
   } else if (action == 'getMeterReadings') { // ★★★ 検針データを取得する処理 ★★★
-    console.log("--- [物件.gs] getMeterReadings action received ---"); // ★★★ この行を追加 ★★★
+    console.log("--- [物件.gs] getMeterReadings action received ---");
     try {
       const roomId = e.parameter.roomId;
       const propertyId = e.parameter.propertyId; // 物件IDも取得
@@ -130,192 +130,160 @@ function doGet(e) {
       console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを取得開始`);
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const sheetName = 'inspection_data'; // ★★★ 検針データのシート名を 'inspection_data' に変更 ★★★
+      const sheetName = 'inspection_data'; 
       const sheet = spreadsheet.getSheetByName(sheetName);
 
       if (!sheet) {
         console.error(`[物件.gs] getMeterReadings - シート '${sheetName}' が見つかりません。`);
         return ContentService.createTextOutput(JSON.stringify({ error: `シート '${sheetName}' が見つかりません。` }))
           .setMimeType(ContentService.MimeType.JSON);
-      }      const data = sheet.getDataRange().getValues();
+      }
+      const data = sheet.getDataRange().getValues();
+      
+      const debugInfoBase = { // デバッグ情報を格納するオブジェクトのベース
+        message: "",
+        detectedHeaders: [],
+        headerCount: 0,
+        threeTimesPreviousIndex: -1,
+        threeTimesPreviousExists: false,
+        totalDataRows: 0,
+        filteredReadingsCount: 0,
+        columnMapping: {}
+      };
+
       if (data.length <= 1) { // ヘッダー行のみ、または空の場合
-        console.warn(`[物件.gs] getMeterReadings - シート '${sheetName}' にデータがありません（ヘッダー行を除く）。`);
-        // ★★★ 修正: 空の場合でも responseObject 構造で返す ★★★
-        const emptyResponseObject = {
-          readings: [],
-          debugInfo: {
-            message: "データが存在しません（ヘッダー行のみ）",
-            detectedHeaders: data.length > 0 ? data[0] : [],
-            headerCount: data.length > 0 ? data[0].length : 0,
-            threeTimesPreviousIndex: -1,
-            threeTimesPreviousExists: false,
-            totalDataRows: 0,
-            filteredReadings: 0
-          }
-        };
+        console.warn(`[物件.gs] getMeterReadings - シート \'${sheetName}\' にデータがありません（ヘッダー行を除く）。`);
+        debugInfoBase.message = "データが存在しません（ヘッダー行のみ）";
+        if (data.length > 0) {
+          debugInfoBase.detectedHeaders = data[0];
+          debugInfoBase.headerCount = data[0].length;
+        }
+        const emptyResponseObject = { readings: [], debugInfo: debugInfoBase };
         return ContentService.createTextOutput(JSON.stringify(emptyResponseObject))
           .setMimeType(ContentService.MimeType.JSON);
       }
 
       const headers = data.shift(); // ヘッダー行を取得
-      console.log(`[物件.gs] getMeterReadings - シート '${sheetName}' から読み込んだヘッダー: ${JSON.stringify(headers)}`);      // 列インデックスの取得（列名が完全に一致している必要があります）
-      const propertyNameColIndex = headers.indexOf('物件名'); // 物件名列のインデックスを追加
-      const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
+      console.log(`[物件.gs] getMeterReadings - シート \'${sheetName}\' から読み込んだヘッダー: ${JSON.stringify(headers)}`);
+      
+      debugInfoBase.detectedHeaders = headers;
+      debugInfoBase.headerCount = headers.length;
+      debugInfoBase.totalDataRows = data.length; // ヘッダーを除いたデータ行数
+
+      // 列インデックスの取得
+      const propertyNameColIndex = headers.indexOf('物件名');
+      const propertyIdColIndex = headers.indexOf('物件ID');
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
       const currentReadingColIndex = headers.indexOf('今回の指示数');
       const previousReadingColIndex = headers.indexOf('前回指示数');
-      const previousPreviousReadingColIndex = headers.indexOf('前々回指示数'); // ★ 「前々回指示数」の列インデックスを取得
-      const threeTimesPreviousReadingColIndex = headers.indexOf('前々々回指示数'); // ★ 「前々々回指示数」の列インデックスを取得
+      const previousPreviousReadingColIndex = headers.indexOf('前々回指示数');
+      const threeTimesPreviousReadingColIndex = headers.indexOf('前々々回指示数');
       const usageColIndex = headers.indexOf('今回使用量');
       const statusColIndex = headers.indexOf('警告フラグ');
-      // const photoUrlColIndex = headers.indexOf('写真URL'); // 写真URL列は使用しない      // 必須ヘッダーの存在チェック (前々々回指示数はオプション)
+
+      debugInfoBase.threeTimesPreviousIndex = threeTimesPreviousReadingColIndex;
+      debugInfoBase.threeTimesPreviousExists = threeTimesPreviousReadingColIndex !== -1;
+      debugInfoBase.columnMapping = {
+        '物件名': propertyNameColIndex, '物件ID': propertyIdColIndex, '部屋ID': roomIdColIndex,
+        '検針日時': dateColIndex, '今回の指示数': currentReadingColIndex, '前回指示数': previousReadingColIndex,
+        '前々回指示数': previousPreviousReadingColIndex, '前々々回指示数': threeTimesPreviousReadingColIndex,
+        '今回使用量': usageColIndex, '警告フラグ': statusColIndex
+      };
+      
+      console.log(`[物件.gs] getMeterReadings - 前々々回指示数列インデックス: ${threeTimesPreviousReadingColIndex}`);
+
       let missingHeaders = [];
-      if (propertyNameColIndex === -1) missingHeaders.push('物件名'); // 物件名を必須チェックに追加
-      if (propertyIdColIndex === -1) missingHeaders.push('物件ID'); // 物件IDを必須チェックに追加
+      if (propertyNameColIndex === -1) missingHeaders.push('物件名');
+      if (propertyIdColIndex === -1) missingHeaders.push('物件ID');
       if (roomIdColIndex === -1) missingHeaders.push('部屋ID');
       if (dateColIndex === -1) missingHeaders.push('検針日時');
       if (currentReadingColIndex === -1) missingHeaders.push('今回の指示数');
       if (previousReadingColIndex === -1) missingHeaders.push('前回指示数');
-      if (previousPreviousReadingColIndex === -1) missingHeaders.push('前々回指示数'); // ★ チェック対象に追加
+      if (previousPreviousReadingColIndex === -1) missingHeaders.push('前々回指示数');
       // 前々々回指示数はオプションなので必須チェックから除外
       if (usageColIndex === -1) missingHeaders.push('今回使用量');
       if (statusColIndex === -1) missingHeaders.push('警告フラグ');
       
-      // ★★★ 前々々回指示数列の状況をログ出力 ★★★
-      console.log(`[物件.gs] getMeterReadings - 前々々回指示数列の状況:`);
-      console.log(`  列インデックス: ${threeTimesPreviousReadingColIndex}`);
-      console.log(`  列が存在するか: ${threeTimesPreviousReadingColIndex !== -1}`);
-      if (threeTimesPreviousReadingColIndex !== -1) {
-        console.log(`  列の位置: ${threeTimesPreviousReadingColIndex + 1}番目`);
-        console.log(`  ヘッダー値: "${headers[threeTimesPreviousReadingColIndex]}"`);
-      } else {
-        console.warn(`  前々々回指示数列が見つからないため、threeTimesPreviousはnullになります`);
-        console.log(`  利用可能なヘッダー一覧:`);
-        headers.forEach((header, index) => {
-          console.log(`    [${index}]: "${header}"`);
-        });
-      }
-      
       if (missingHeaders.length > 0) {
         const errorMessage = `必須の列ヘッダー（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
-        console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);        return ContentService.createTextOutput(JSON.stringify({ 
-          error: errorMessage,
-          expectedHeaders: ['物件名', '物件ID', '部屋ID', '検針日時', '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数', '今回使用量', '警告フラグ'], // 物件名を追加
-          foundHeaders: headers,
-          sheetName: sheetName
-        }))
+        console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);
+        debugInfoBase.message = errorMessage;
+        return ContentService.createTextOutput(JSON.stringify({ error: errorMessage, debugInfo: debugInfoBase }))
           .setMimeType(ContentService.MimeType.JSON);
-      }      const readings = data.filter(row => 
-        String(row[propertyIdColIndex]).trim() == String(propertyId).trim() && // 物件IDでもフィルタリング
+      }
+
+      const readings = data.filter(row => 
+        String(row[propertyIdColIndex]).trim() == String(propertyId).trim() &&
         String(row[roomIdColIndex]).trim() == String(roomId).trim()
-      )        .map((row, filteredIndex) => {
-          // 各列の値を取得。列が存在しない場合はnullや空文字を適切に処理
+      )
+      .map((row, filteredIndex) => {
           const getDateValue = (index) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
           
-          // ★★★ 前々々回指示数の詳細処理ログ ★★★
           let threeTimesPreviousValue = null;
           if (threeTimesPreviousReadingColIndex !== -1) {
             const rawValue = row[threeTimesPreviousReadingColIndex];
-            console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}の前々々回指示数 raw: ${rawValue} (type: ${typeof rawValue})`);
-            
             if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
               threeTimesPreviousValue = String(rawValue).trim();
-              console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}の前々々回指示数 processed: "${threeTimesPreviousValue}"`);
-            } else {
-              console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}の前々々回指示数は空です`);
             }
-          } else {
-            console.log(`[物件.gs] getMeterReadings - 行${filteredIndex}: 前々々回指示数列が存在しないため、値はnull`);
           }
           
           let readingObject = {
             date: getDateValue(dateColIndex),
             currentReading: getDateValue(currentReadingColIndex),
             previousReading: getDateValue(previousReadingColIndex),
-            previousPreviousReading: getDateValue(previousPreviousReadingColIndex), // ★ 「前々回指示数」のデータを取得
-            threeTimesPrevious: threeTimesPreviousValue, // ★ 詳細処理後の値を使用
+            previousPreviousReading: getDateValue(previousPreviousReadingColIndex),
+            threeTimesPrevious: threeTimesPreviousValue,
             usage: getDateValue(usageColIndex),
-            status: getDateValue(statusColIndex)
-            // photoUrl: photoUrlColIndex !== -1 ? getDateValue(photoUrlColIndex) : null // 写真URLは返さない
+            status: getDateValue(statusColIndex),
+            photoUrl: null // 初期値
           };
-            // ★★★ 追加: 作成された readingObject の内容をログに出力 ★★★
-          console.log(`[物件.gs] getMeterReadings - Constructed readingObject (filteredIndex ${filteredIndex}): date=${readingObject.date}, current=${readingObject.currentReading}, prev=${readingObject.previousReading}, prevPrev=${readingObject.previousPreviousReading}, threePrev=${readingObject.threeTimesPrevious}, usage=${readingObject.usage}, status=${readingObject.status}`);
           
-          // ★★★ 前々々回指示数の詳細デバッグ情報を追加 ★★★
-          console.log(`[物件.gs] getMeterReadings - threeTimesPrevious詳細 (filteredIndex ${filteredIndex}):`);
-          console.log(`  threeTimesPreviousReadingColIndex: ${threeTimesPreviousReadingColIndex}`);
-          console.log(`  row[${threeTimesPreviousReadingColIndex}] (raw): ${row[threeTimesPreviousReadingColIndex]}`);
-          console.log(`  row[${threeTimesPreviousReadingColIndex}] (type): ${typeof row[threeTimesPreviousReadingColIndex]}`);
-          console.log(`  getDateValue result: ${readingObject.threeTimesPrevious}`);
-          
-          // ★★★ 「今回の指示数」セルからコメントを取得（正確な行番号を計算）★★★
+          // コメントから写真URL取得
           try {
-            // data配列内での元のインデックスを見つける
-            const originalRowIndex = data.findIndex(dataRow => dataRow === row);
+            const originalRowIndex = data.findIndex(dataRow => dataRow === row); // data は既に shift() されているので注意
             if (originalRowIndex !== -1) {
-              // スプレッドシートの行番号（1始まり、ヘッダー行+1）
-              const sheetRowNumber = originalRowIndex + 2;
+              const sheetRowNumber = originalRowIndex + 2; // ヘッダー行が1行目、データは2行目からなので +2
               const currentReadingCell = sheet.getRange(sheetRowNumber, currentReadingColIndex + 1);
               const comment = currentReadingCell.getComment();
-              
-              console.log(`[物件.gs] getMeterReadings - 行 ${sheetRowNumber} のコメント確認: "${comment}"`);
-              
               if (comment && comment.startsWith("写真: ")) {
                 readingObject.photoUrl = comment.substring("写真: ".length);
-                console.log(`[物件.gs] getMeterReadings - 写真URL取得成功: ${readingObject.photoUrl}`);
-              } else {
-                readingObject.photoUrl = null;
               }
-            } else {
-              console.warn(`[物件.gs] getMeterReadings - 行インデックスが見つかりません`);
-              readingObject.photoUrl = null;
             }
           } catch (commentError) {
-            console.error(`[物件.gs] getMeterReadings - コメント取得エラー:`, commentError.message);
-            readingObject.photoUrl = null;
+            console.error(`[物件.gs] getMeterReadings - コメント取得エラー (行 ${filteredIndex}):`, commentError.message);
           }
           
           return readingObject;
         });
-        console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データをソート後返却: ${JSON.stringify(readings)}`);      // ★★★ デバッグ用に返すデータ構造を強化 ★★★
+      
+      debugInfoBase.filteredReadingsCount = readings.length;
+      if (readings.length > 0) {
+        debugInfoBase.message = "検針データを取得しました。";
+      } else {
+        debugInfoBase.message = "該当する検針データが見つかりませんでした。";
+      }
+      
+      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを返却: ${readings.length}件`);
+      
       const responseObject = {
         readings: readings,
-        debugInfo: {
-          detectedHeaders: headers,
-          headerCount: headers.length,
-          threeTimesPreviousIndex: threeTimesPreviousReadingColIndex,
-          threeTimesPreviousExists: threeTimesPreviousReadingColIndex !== -1,
-          columnMapping: {
-            '物件名': propertyNameColIndex,
-            '物件ID': propertyIdColIndex,
-            '部屋ID': roomIdColIndex,
-            '検針日時': dateColIndex,
-            '今回の指示数': currentReadingColIndex,
-            '前回指示数': previousReadingColIndex,
-            '前々回指示数': previousPreviousReadingColIndex,
-            '前々々回指示数': threeTimesPreviousReadingColIndex,
-            '今回使用量': usageColIndex,
-            '警告フラグ': statusColIndex
-          },
-          totalDataRows: data.length,
-          filteredReadings: readings.length,
-          sampleReadingData: readings.length > 0 ? {
-            firstReading: readings[0],
-            lastReading: readings[readings.length - 1],
-            hasThreeTimesPrevious: readings.some(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined && r.threeTimesPrevious !== ''),
-            threeTimesPreviousValues: readings.map(r => r.threeTimesPrevious).filter(v => v !== null && v !== undefined && v !== ''),
-            threeTimesPreviousCount: readings.filter(r => r.threeTimesPrevious !== null && r.threeTimesPrevious !== undefined && r.threeTimesPrevious !== '').length
-          } : null,
-          message: "この情報はデバッグ用です。threeTimesPreviousIndexが-1の場合、'前々々回指示数'ヘッダーが見つかっていません。"
-        }
+        debugInfo: debugInfoBase // 本番用に調整したデバッグ情報
       };
       return ContentService.createTextOutput(JSON.stringify(responseObject))
         .setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
       console.error("[物件.gs] getMeterReadingsで予期せぬエラー:", error.message, error.stack, e.parameter ? JSON.stringify(e.parameter) : "no params");
-      return ContentService.createTextOutput(JSON.stringify({ error: "検針データの取得中にサーバー側でエラーが発生しました。", details: error.message }))
+      const errorResponse = {
+        error: "検針データの取得中にサーバー側でエラーが発生しました。",
+        details: error.message,
+        debugInfo: { // エラー時にも基本的なデバッグ情報を提供
+          message: "サーバーエラー発生",
+          params: e.parameter ? JSON.stringify(e.parameter) : "no params"
+        }
+      };
+      return ContentService.createTextOutput(JSON.stringify(errorResponse))
         .setMimeType(ContentService.MimeType.JSON);
     }
   } else {
