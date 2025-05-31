@@ -398,11 +398,74 @@
         margin-left: .5em;
       }
     }
+
+    /* フローティングアクションボタン (FAB) のスタイル */
+    .fab-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+
+    .fab-button {
+      background-color: var(--mantine-color-blue-6);
+      color: white;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px; /* アイコンサイズ */
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .fab-button:hover {
+      background-color: var(--mantine-color-blue-7);
+    }
+
+    .fab-button:disabled {
+      background-color: var(--mantine-color-gray-3);
+      cursor: not-allowed;
+    }
+    
+    /* トースト通知のスタイル */
+    .toast-notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--mantine-color-gray-8);
+      color: white;
+      padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+      border-radius: var(--mantine-radius-sm);
+      z-index: 2000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out, top 0.5s ease-in-out;
+      visibility: hidden;
+    }
+
+    .toast-notification.show {
+      opacity: 1;
+      top: 40px;
+      visibility: visible;
+    }
+    
+    /* インラインエラーメッセージ */
+    .inline-error {
+      color: var(--mantine-color-red-6);
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
-    <script type="text/babel">
+  <script type="text/babel">
     const MeterReadingApp = () => {
       const [woffInitialized, setWoffInitialized] = React.useState(false);
       const [loading, setLoading] = React.useState(true);
@@ -417,6 +480,10 @@
       const [modalImageSrc, setModalImageSrc] = React.useState('');
       const [updating, setUpdating] = React.useState(false);
       const [usageStates, setUsageStates] = React.useState({});
+      const [toastMessage, setToastMessage] = React.useState('');
+      const [showToast, setShowToast] = React.useState(false);
+      const [inputErrors, setInputErrors] = React.useState({});
+
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
       let gasWebAppUrl = '';
@@ -594,31 +661,28 @@
           reader.onload = (readerEvent) => {
             const base64PhotoData = readerEvent.target.result;
             
-            // 該当する入力フィールドにphotoDataを設定
             const inputElement = document.querySelector(`input[data-date="${date}"]`);
             if (inputElement) {
               inputElement.setAttribute('data-new-photo', base64PhotoData);
               console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
               
-              // 撮影ボタンのテキストを変更
               const cameraBtn = document.querySelector(`button[data-date-button="${date}"]`);
               if (cameraBtn) {
-                cameraBtn.textContent = '変更';
-                cameraBtn.style.backgroundColor = '#28a745';
+                cameraBtn.innerHTML = '変更 📸'; // アイコン追加
+                cameraBtn.style.backgroundColor = 'var(--mantine-color-green-6)';
               }
             } else {
               console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
-              alert('写真データを紐付ける入力フィールドが見つかりませんでした。');
+              displayToast('写真データを紐付ける入力フィールドが見つかりませんでした。');
             }
           };
           reader.onerror = () => {
             console.error('[meter_reading] File reading error');
-            alert('ファイルの読み込み中にエラーが発生しました。');
+            displayToast('ファイルの読み込み中にエラーが発生しました。');
           };
           reader.readAsDataURL(file);
         }
         
-        // input要素を削除
         if (event.target.parentElement === document.body) {
           document.body.removeChild(event.target);
         }
@@ -640,30 +704,29 @@
           fileInput.click();
         } catch (error) {
           console.error('[meter_reading] 写真の取得または処理に失敗しました:', error);
-          alert('写真の処理中に予期せぬエラーが発生しました。');
+          displayToast('写真の処理中に予期せぬエラーが発生しました。');
         }
       };
-
-      const showPhotoModal = (imageData) => {
-        setModalImageSrc(imageData);
-        setShowModal(true);
-      };
-
-      const hidePhotoModal = () => {
-        setShowModal(false);
-        setModalImageSrc('');
+      
+      const displayToast = (message) => {
+        setToastMessage(message);
+        setShowToast(true);
+        setTimeout(() => {
+          setShowToast(false);
+          setToastMessage('');
+        }, 3000);
       };
 
       const handleUpdateReadings = async () => {
         if (!propertyId || !roomId) {
-          alert('物件IDまたは部屋IDが取得できませんでした。');
+          displayToast('物件IDまたは部屋IDが取得できませんでした。');
           return;
         }
 
-        // DOMから直接値を取得
         const numberInputs = document.querySelectorAll('input[data-date]');
         const updatedReadings = [];
         let hasValidationErrors = false;
+        const currentInputErrors = {};
         
         numberInputs.forEach(input => {
           const date = input.getAttribute('data-date');
@@ -671,20 +734,21 @@
           const originalValue = input.getAttribute('data-original-value') || '';
           const currentValue = input.value || '';
           
-          // 初回検針の場合の入力バリデーション
+          input.style.borderColor = ''; // Reset border color
+          currentInputErrors[date] = ''; // Reset error for this input
+
           if (originalValue === '' && currentValue.trim() === '') {
-            input.style.borderColor = 'red';
+            input.style.borderColor = 'var(--mantine-color-red-6)';
+            currentInputErrors[date] = '初回検針では指示数の入力が必須です。';
             hasValidationErrors = true;
             return;
-          } else {
-            input.style.borderColor = '';
           }
           
-          // 指示数が変更されたか、新しい写真が撮影された場合のみ更新対象に含める
           if (currentValue !== originalValue || newPhotoData) {
             const numericValue = parseFloat(currentValue);
             if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
-              input.style.borderColor = 'red';
+              input.style.borderColor = 'var(--mantine-color-red-6)';
+              currentInputErrors[date] = '指示数は0以上の数値を入力してください。';
               hasValidationErrors = true;
               return;
             }
@@ -696,20 +760,20 @@
             });
           }
         });
+        
+        setInputErrors(currentInputErrors);
 
         if (hasValidationErrors) {
-          alert('入力値に誤りがあります。初回検針では指示数の入力が必須です。また、指示数は0以上の数値を入力してください。');
+          displayToast('入力値に誤りがあります。各項目のエラーを確認してください。');
           return;
         }
 
         if (updatedReadings.length === 0) {
-          alert('更新するデータがありません。');
+          displayToast('更新するデータがありません。');
           return;
         }
 
         console.log('[meter_reading] 更新する指示数:', updatedReadings);
-        console.log('[meter_reading] 送信先URL:', gasWebAppUrl);
-
         setUpdating(true);
         try {
           gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
@@ -726,10 +790,7 @@
             }),
           });
 
-          console.log('[meter_reading] Update response status:', response.status);
           const resultText = await response.text(); 
-          console.log('[meter_reading] Update result text:', resultText);
-
           if (!response.ok) {
             throw new Error(resultText || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
           }
@@ -737,15 +798,13 @@
           try {
             const result = JSON.parse(resultText); 
             if (result.success) {
-              const isInitialReading = numberInputs.length > 0 && numberInputs[0].getAttribute('data-original-value') === '';
-              
+              const isInitialReading = meterReadings.length === 0 || (numberInputs.length > 0 && numberInputs[0].getAttribute('data-original-value') === '');
               if (isInitialReading) {
-                alert('初回検針データを正常に登録しました。次回からは使用量も計算されます。');
+                displayToast('初回検針データを登録しました。');
               } else {
-                alert('指示数と検針日時を更新しました。');
+                displayToast('指示数を更新しました。');
               }
-              
-              // データを再読み込み
+              setInputErrors({}); // Clear errors on success
               await loadMeterReadings(propertyId, roomId);
             } else {
               throw new Error(result.error || '指示数の更新に失敗しました。');
@@ -755,7 +814,7 @@
           }
         } catch (error) {
           console.error('[meter_reading] handleUpdateReadings error:', error);
-          alert(`指示数の更新中にエラーが発生しました: ${error.message}`);
+          displayToast('更新エラー: ' + error.message);
         } finally {
           setUpdating(false);
         }
@@ -804,7 +863,7 @@
               <div className="mantine-center">
                 <div className="mantine-stack center">
                   <div className="mantine-loader"></div>
-                  <p className="mantine-text">検針データを読み込み中です...</p>
+                  <p className="mantine-text">検針データを読み込んでいます...</p>
                 </div>
               </div>
             </div>
@@ -880,7 +939,6 @@
                           const formattedDate = formatDate(reading.date);
                           const dateForDataAttribute = reading.date;
                           
-                          // 差分計算
                           let prevReadingText = reading.previousReading || 'N/A';
                           let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
                           const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
@@ -889,7 +947,6 @@
                           const prevPrev = parseFloat(reading.previousPreviousReading);
                           const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
                           
-                          // 差分表示の計算
                           if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
                             const diff = prevPrev - prevPrevPrev;
                             prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
@@ -900,7 +957,6 @@
                             prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
                           }
 
-                          // リアルタイム使用量計算用の関数
                           const calculateUsage = (currentValue, previousValue) => {
                             const current = parseFloat(currentValue);
                             const previous = parseFloat(previousValue);
@@ -939,15 +995,20 @@
                                         [dateForDataAttribute]: '0'
                                       }));
                                     }
+                                    setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                    e.target.style.borderColor = '';
                                   }}
                                 />
+                                {inputErrors[dateForDataAttribute] && (
+                                  <div className="inline-error">{inputErrors[dateForDataAttribute]}</div>
+                                )}
                               </td>
                               <td data-label="前回">{prevReadingText}</td>
                               <td data-label="前々回">{prevPrevReadingText}</td>
                               <td data-label="前々々回">{prevPrevPrevReadingText}</td>
                               <td data-label="今回使用量">
                                 <span className="usage-highlight">
-                                  {usageStates[dateForDataAttribute] || '0'}㎥
+                                  {usageStates[dateForDataAttribute] || calculateUsage(reading.currentReading, reading.previousReading) || '0'}㎥
                                 </span>
                               </td>
                               <td data-label="状態">
@@ -970,7 +1031,7 @@
                                   data-date-button={dateForDataAttribute}
                                   onClick={() => handleCameraClick(dateForDataAttribute)}
                                 >
-                                  撮影
+                                  写真を追加 📸
                                 </button>
                               </td>
                             </tr>
@@ -979,25 +1040,56 @@
                       </tbody>
                     </table>
                   </div>
-                  
-                  <button 
-                    className="mantine-button variant-filled"
-                    style={{width: '100%'}}
-                    disabled={updating}
-                    onClick={handleUpdateReadings}
-                  >
-                    {updating ? '更新中...' : '指示数を更新'}
-                  </button>
                 </div>
               ) : (
                 <div className="mantine-stack">
-                  {/* 初回検針用のテンプレート */}
                   <div className="mantine-alert info">
                     <h3 className="mantine-text weight-600">初回検針</h3>
-                    <p className="mantine-text">初回の検針データを入力してください。</p>
+                    <p className="mantine-text">
+                      この部屋の検針データはまだありません。下のフォームから最初の検針データを入力してください。
+                    </p>
                   </div>
-                  
-                  <p className="mantine-text center">検針データがありません。</p>
+                  <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)'}}>
+                    <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
+                    <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>
+                      <div>
+                        <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
+                        <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" />
+                      </div>
+                      <div>
+                        <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
+                        <input
+                          type="number"
+                          id="initialReadingValue"
+                          placeholder="指示数入力"
+                          min="0"
+                          data-date={new Date().toISOString().split('T')[0]} 
+                          data-original-value=""
+                          data-previous-reading=""
+                          className="mantine-input"
+                          onChange={(e) => {
+                            const dateForDataAttribute = new Date().toISOString().split('T')[0];
+                            setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                            e.target.style.borderColor = '';
+                          }}
+                        />
+                         {inputErrors[new Date().toISOString().split('T')[0]] && (
+                            <div className="inline-error">{inputErrors[new Date().toISOString().split('T')[0]]}</div>
+                          )}
+                      </div>
+                       <div>
+                        <label className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>写真:</label>
+                        <button
+                          className="mantine-button variant-filled"
+                          style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                          data-date-button={new Date().toISOString().split('T')[0]}
+                          onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
+                        >
+                          写真を追加 📸
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1010,22 +1102,38 @@
                     onClick={hidePhotoModal}
                     className="modal-close"
                   >
-                    ×
+                    &times;
                   </button>
-                  <img
-                    src={modalImageSrc}
-                    alt="検針写真"
-                    className="modal-image"
-                  />
+                  <img src={modalImageSrc} alt="検針写真" className="modal-image" />
                 </div>
               </div>
             )}
           </div>
+
+          {/* フローティングアクションボタン */}
+          {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
+            <div className="fab-container">
+              <button
+                className="fab-button"
+                onClick={handleUpdateReadings}
+                disabled={updating}
+                title="指示数を更新"
+              >
+                {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
+              </button>
+            </div>
+          )}
+          
+          {/* トースト通知 */}
+          <div className={`toast-notification ${showToast ? 'show' : ''}`}>
+            {toastMessage}
+          </div>
+
         </div>
       );
     };
 
-    ReactDOM.render(<MeterReadingApp />, document.getElementById('root'));
+    ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
   </script>
 </body>
 </html>
