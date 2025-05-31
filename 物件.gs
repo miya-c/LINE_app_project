@@ -113,88 +113,64 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
   } else if (action == 'getMeterReadings') { // ★★★ 検針データを取得する処理 ★★★
-    console.log("--- [物件.gs] getMeterReadings action received ---");
+    // console.log("--- [物件.gs] getMeterReadings action received ---"); // デバッグ用ログ削除
     try {
       const roomId = e.parameter.roomId;
-      const propertyId = e.parameter.propertyId; // 物件IDも取得
+      const propertyId = e.parameter.propertyId;
       if (!roomId) {
-        console.error("[物件.gs] getMeterReadings - 'roomId' パラメータがありません。");
-        return ContentService.createTextOutput(JSON.stringify({ error: "'roomId' パラメータが必要です。" }))
+        // console.error("[物件.gs] getMeterReadings - 'roomId' パラメータがありません。"); // デバッグ用ログ削除
+        return ContentService.createTextOutput(JSON.stringify({ error: "'roomId' パラメータが必要です。", debugInfo: { message: "'roomId' パラメータがありません。" } }))
           .setMimeType(ContentService.MimeType.JSON);
       }
       if (!propertyId) {
-        console.error("[物件.gs] getMeterReadings - 'propertyId' パラメータがありません。");
-        return ContentService.createTextOutput(JSON.stringify({ error: "'propertyId' パラメータが必要です。" }))
+        // console.error("[物件.gs] getMeterReadings - 'propertyId' パラメータがありません。"); // デバッグ用ログ削除
+        return ContentService.createTextOutput(JSON.stringify({ error: "'propertyId' パラメータが必要です。", debugInfo: { message: "'propertyId' パラメータがありません。" } }))
           .setMimeType(ContentService.MimeType.JSON);
       }
-      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを取得開始`);
+      // console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを取得開始`); // デバッグ用ログ削除
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       const sheetName = 'inspection_data'; 
       const sheet = spreadsheet.getSheetByName(sheetName);
 
       if (!sheet) {
-        console.error(`[物件.gs] getMeterReadings - シート '${sheetName}' が見つかりません。`);
-        return ContentService.createTextOutput(JSON.stringify({ error: `シート '${sheetName}' が見つかりません。` }))
+        // console.error(`[物件.gs] getMeterReadings - シート '${sheetName}' が見つかりません。`); // デバッグ用ログ削除
+        return ContentService.createTextOutput(JSON.stringify({ error: `シート '${sheetName}' が見つかりません。`, debugInfo: { message: `シート '${sheetName}' が見つかりません。` } }))
           .setMimeType(ContentService.MimeType.JSON);
       }
       const data = sheet.getDataRange().getValues();
       
-      const debugInfoBase = { // デバッグ情報を格納するオブジェクトのベース
-        message: "",
-        detectedHeaders: [],
-        headerCount: 0,
-        threeTimesPreviousIndex: -1,
-        threeTimesPreviousExists: false,
-        totalDataRows: 0,
-        filteredReadingsCount: 0,
-        columnMapping: {}
-      };
+      // 機能コードに不要な debugInfoBase の初期化を削除
 
       if (data.length <= 1) { // ヘッダー行のみ、または空の場合
-        console.warn(`[物件.gs] getMeterReadings - シート \'${sheetName}\' にデータがありません（ヘッダー行を除く）。`);
-        debugInfoBase.message = "データが存在しません（ヘッダー行のみ）";
-        if (data.length > 0) {
-          debugInfoBase.detectedHeaders = data[0];
-          debugInfoBase.headerCount = data[0].length;
-        }
-        const emptyResponseObject = { readings: [], debugInfo: debugInfoBase };
+        // console.warn(`[物件.gs] getMeterReadings - シート '${sheetName}' にデータがありません（ヘッダー行を除く）。`); // デバッグ用ログ削除
+        const emptyResponseObject = { readings: [], debugInfo: { message: "データが存在しません（ヘッダー行のみ）" } };
         return ContentService.createTextOutput(JSON.stringify(emptyResponseObject))
           .setMimeType(ContentService.MimeType.JSON);
       }
 
       const headers = data.shift(); // ヘッダー行を取得
-      console.log(`[物件.gs] getMeterReadings - シート \'${sheetName}\' から読み込んだヘッダー: ${JSON.stringify(headers)}`);
+      // console.log(`[物件.gs] getMeterReadings - シート '${sheetName}' から読み込んだヘッダー: ${JSON.stringify(headers)}`); // デバッグ用ログ削除
       
-      debugInfoBase.detectedHeaders = headers;
-      debugInfoBase.headerCount = headers.length;
-      debugInfoBase.totalDataRows = data.length; // ヘッダーを除いたデータ行数
+      // 機能コードに不要な debugInfoBase へのヘッダー情報代入を削除
 
       // 列インデックスの取得
-      const propertyNameColIndex = headers.indexOf('物件名');
-      const propertyIdColIndex = headers.indexOf('物件ID');
+      const propertyIdColIndex = headers.indexOf('物件ID'); // 物件ID列のインデックスを追加
       const roomIdColIndex = headers.indexOf('部屋ID');
       const dateColIndex = headers.indexOf('検針日時');
       const currentReadingColIndex = headers.indexOf('今回の指示数');
       const previousReadingColIndex = headers.indexOf('前回指示数');
-      const previousPreviousReadingColIndex = headers.indexOf('前々回指示数');
+      const previousPreviousReadingColIndex = headers.indexOf('前々回指示数'); 
       const threeTimesPreviousReadingColIndex = headers.indexOf('前々々回指示数');
       const usageColIndex = headers.indexOf('今回使用量');
       const statusColIndex = headers.indexOf('警告フラグ');
+      // const propertyNameColIndex = headers.indexOf('物件名'); // 物件名はフィルタリングに直接使用しないため、必須チェックからは除外可能
 
-      debugInfoBase.threeTimesPreviousIndex = threeTimesPreviousReadingColIndex;
-      debugInfoBase.threeTimesPreviousExists = threeTimesPreviousReadingColIndex !== -1;
-      debugInfoBase.columnMapping = {
-        '物件名': propertyNameColIndex, '物件ID': propertyIdColIndex, '部屋ID': roomIdColIndex,
-        '検針日時': dateColIndex, '今回の指示数': currentReadingColIndex, '前回指示数': previousReadingColIndex,
-        '前々回指示数': previousPreviousReadingColIndex, '前々々回指示数': threeTimesPreviousReadingColIndex,
-        '今回使用量': usageColIndex, '警告フラグ': statusColIndex
-      };
-      
-      console.log(`[物件.gs] getMeterReadings - 前々々回指示数列インデックス: ${threeTimesPreviousReadingColIndex}`);
+      // 機能コードに不要な debugInfoBase への列マッピング情報代入を削除
+      // console.log(`[物件.gs] getMeterReadings - 前々々回指示数列インデックス: ${threeTimesPreviousReadingColIndex}`); // デバッグ用ログ削除
 
       let missingHeaders = [];
-      if (propertyNameColIndex === -1) missingHeaders.push('物件名');
+      // if (propertyNameColIndex === -1) missingHeaders.push('物件名'); // 物件名は必須としない
       if (propertyIdColIndex === -1) missingHeaders.push('物件ID');
       if (roomIdColIndex === -1) missingHeaders.push('部屋ID');
       if (dateColIndex === -1) missingHeaders.push('検針日時');
@@ -207,9 +183,8 @@ function doGet(e) {
       
       if (missingHeaders.length > 0) {
         const errorMessage = `必須の列ヘッダー（${missingHeaders.join(', ')}）がシート '${sheetName}' に見つかりません。`;
-        console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`);
-        debugInfoBase.message = errorMessage;
-        return ContentService.createTextOutput(JSON.stringify({ error: errorMessage, debugInfo: debugInfoBase }))
+        // console.error(`[物件.gs] getMeterReadings - ${errorMessage} 実際に読み込んだヘッダー: ${JSON.stringify(headers)}`); // デバッグ用ログ削除
+        return ContentService.createTextOutput(JSON.stringify({ error: errorMessage, debugInfo: { message: errorMessage, foundHeaders: headers } }))
           .setMimeType(ContentService.MimeType.JSON);
       }
 
@@ -217,7 +192,7 @@ function doGet(e) {
         String(row[propertyIdColIndex]).trim() == String(propertyId).trim() &&
         String(row[roomIdColIndex]).trim() == String(roomId).trim()
       )
-      .map((row, filteredIndex) => {
+      .map((row, filteredIndex) => { // filteredIndex はデバッグ以外では不要
           const getDateValue = (index) => (index !== -1 && row[index] !== undefined && row[index] !== null) ? String(row[index]).trim() : null;
           
           let threeTimesPreviousValue = null;
@@ -241,46 +216,51 @@ function doGet(e) {
           
           // コメントから写真URL取得
           try {
-            const originalRowIndex = data.findIndex(dataRow => dataRow === row); // data は既に shift() されているので注意
-            if (originalRowIndex !== -1) {
-              const sheetRowNumber = originalRowIndex + 2; // ヘッダー行が1行目、データは2行目からなので +2
-              const currentReadingCell = sheet.getRange(sheetRowNumber, currentReadingColIndex + 1);
-              const comment = currentReadingCell.getComment();
-              if (comment && comment.startsWith("写真: ")) {
-                readingObject.photoUrl = comment.substring("写真: ".length);
-              }
+            // data は既に shift() されているので、元の行インデックスを見つけるには注意が必要
+            // ただし、このmap処理内のrowは、フィルタリング後のdataの要素そのもの
+            const originalRowIndexInData = data.findIndex(dataRow => dataRow === row);
+
+            if (originalRowIndexInData !== -1) {
+                // スプレッドシートの行番号（1始まり）。ヘッダー行が shift() で削除されているため、
+                // data 配列のインデックスに +2 (ヘッダー行分 + 1行目開始分)
+                const sheetRowNumber = originalRowIndexInData + 2; 
+                const currentReadingCell = sheet.getRange(sheetRowNumber, currentReadingColIndex + 1); // 列番号は1始まり
+                const comment = currentReadingCell.getComment();
+                if (comment && comment.startsWith("写真: ")) {
+                    readingObject.photoUrl = comment.substring("写真: ".length);
+                }
             }
           } catch (commentError) {
-            console.error(`[物件.gs] getMeterReadings - コメント取得エラー (行 ${filteredIndex}):`, commentError.message);
+            // console.error(`[物件.gs] getMeterReadings - コメント取得エラー (行 ${filteredIndex}):`, commentError.message); // デバッグ用ログ削除
+            // エラーが発生しても処理は継続し、photoUrl は null のまま
           }
           
           return readingObject;
         });
       
-      debugInfoBase.filteredReadingsCount = readings.length;
-      if (readings.length > 0) {
-        debugInfoBase.message = "検針データを取得しました。";
-      } else {
-        debugInfoBase.message = "該当する検針データが見つかりませんでした。";
-      }
-      
-      console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを返却: ${readings.length}件`);
+      // 機能コードに不要な debugInfoBase への件数やメッセージ代入を削除
+      // console.log(`[物件.gs] getMeterReadings - propertyId: ${propertyId}, roomId: ${roomId} の検針データを返却: ${readings.length}件`); // デバッグ用ログ削除
       
       const responseObject = {
         readings: readings,
-        debugInfo: debugInfoBase // 本番用に調整したデバッグ情報
+        // debugInfo はエラー時以外は含めないか、最小限にする
+        // debugInfo: { message: readings.length > 0 ? "検針データを取得しました。" : "該当する検針データが見つかりませんでした。" } 
       };
+      if (readings.length === 0) {
+        responseObject.debugInfo = { message: "該当する検針データが見つかりませんでした。" };
+      }
+
       return ContentService.createTextOutput(JSON.stringify(responseObject))
         .setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
-      console.error("[物件.gs] getMeterReadingsで予期せぬエラー:", error.message, error.stack, e.parameter ? JSON.stringify(e.parameter) : "no params");
+      // console.error("[物件.gs] getMeterReadingsで予期せぬエラー:", error.message, error.stack, e.parameter ? JSON.stringify(e.parameter) : "no params"); // デバッグ用ログ削除
       const errorResponse = {
         error: "検針データの取得中にサーバー側でエラーが発生しました。",
-        details: error.message,
-        debugInfo: { // エラー時にも基本的なデバッグ情報を提供
+        details: error.message, // エラー詳細は開発時には有用だが、本番では抑制することも検討
+        debugInfo: { 
           message: "サーバーエラー発生",
-          params: e.parameter ? JSON.stringify(e.parameter) : "no params"
+          // params: e.parameter ? JSON.stringify(e.parameter) : "no params" // パラメータはエラーログには残すが、クライアントには返さないことも検討
         }
       };
       return ContentService.createTextOutput(JSON.stringify(errorResponse))
