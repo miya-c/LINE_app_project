@@ -52,7 +52,7 @@
       line-height: 1.55;
       color: var(--mantine-color-gray-7);
       background-color: var(--mantine-color-gray-0);
-      font-size: 18px; /* 基本フォントサイズを18pxに引き上げ */
+      font-size: 20px; /* 基本フォントサイズを20pxに大幅アップ */
     }
     
     #root {
@@ -78,21 +78,21 @@
     }
     
     .mantine-title {
-      font-size: 2.2rem; /* 少し大きく */
+      font-size: 2.8rem; /* 大幅に大きく */
       font-weight: 700;
       margin: 0;
       color: var(--mantine-color-gray-8);
     }
     
     .mantine-subtitle {
-      font-size: 1.4rem; /* 少し大きく */
+      font-size: 1.8rem; /* 大幅に大きく */
       font-weight: 600;
       margin: 0;
       color: var(--mantine-color-gray-7);
     }
     
     .mantine-text {
-      font-size: 1rem; /* 18px相当に */
+      font-size: 1.1rem; /* 22px相当に */
       color: var(--mantine-color-gray-6);
       margin: 0;
       line-height: 1.6;
@@ -111,10 +111,10 @@
       align-items: center;
       justify-content: center;
       gap: var(--mantine-spacing-xs);
-      padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+      padding: var(--mantine-spacing-md) var(--mantine-spacing-lg); /* パディングも調整 */
       border-radius: var(--mantine-radius-sm);
       border: 1px solid transparent;
-      font-size: 0.875rem;
+      font-size: 1rem; /* 20px相当に */
       font-weight: 600;
       line-height: 1;
       text-decoration: none;
@@ -208,7 +208,7 @@
       border: 1px solid var(--mantine-color-gray-3);
       padding: var(--mantine-spacing-sm);
       text-align: left;
-      font-size: 0.9rem; /* 約16px相当に */
+      font-size: 1rem; /* 20px相当に */
     }
     
     .mantine-table th {
@@ -223,10 +223,10 @@
     
     .mantine-input {
       width: 100%;
-      padding: var(--mantine-spacing-sm);
+      padding: var(--mantine-spacing-md); /* パディング調整 */
       border: 1px solid var(--mantine-color-gray-3);
       border-radius: var(--mantine-radius-sm);
-      font-size: 0.9rem; /* 約16px相当に */
+      font-size: 1rem; /* 20px相当に */
       transition: border-color 0.15s ease;
     }
     
@@ -285,28 +285,20 @@
       background-color: var(--mantine-color-gray-1);
     }    @media (max-width: 768px) {
       .mantine-container {
-        padding: var(--mantine-spacing-sm);
+        padding: var(--mantine-spacing-xs); /* モバイルではパディングを少し詰める */
       }
-      
+
       .mantine-title {
-        font-size: 1.8rem; /* モバイルでも少し大きく */
+        font-size: 2.2rem; /* モバイルでも非常に大きく */
       }
 
       .mantine-subtitle {
-        font-size: 1.2rem; /* モバイルでも少し大きく */
-      }
-      
-      .mantine-table {
-        border: 0;
-      }
-
-      .mantine-table thead {
-        display: none; /* テーブルヘッダーを非表示に */
+        font-size: 1.6rem; /* モバイルでも非常に大きく */
       }
 
       .mantine-table tr {
         display: block; /* ブロック要素として設定 */
-        margin-bottom: 1em; /* 各行の間に余白 */
+        margin-bottom: 1.5em; /* 各行の間に余白をしっかり取る */
         border-bottom: 2px solid var(--mantine-color-gray-3);
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         padding: .5em;
@@ -317,12 +309,13 @@
       
       .mantine-table td {
         display: block;
-        padding: .3em 0;
+        padding: .5em 0; /* パディング調整 */
         border: none;
         text-align: left;
-        margin-bottom: .3em;
+        margin-bottom: .5em;
         position: relative;
-        font-size: 1rem; /* モバイルでのフォントサイズを18px相当に */
+        font-size: 1.3rem; /* モバイルでのフォントサイズを極めて大きく (26px相当) */
+        line-height: 1.4; /* 行間も調整 */
       }
       
       /* 2列レイアウトのためのコンテナ作成 */
@@ -384,22 +377,21 @@
         font-weight: bold;
         color: var(--mantine-color-gray-7);
         display: block;
-        margin-bottom: 0.2em;
-        font-size: 0.95rem; /* モバイルでのラベルフォントサイズを約17px相当に */
+        margin-bottom: 0.25em;
+        font-size: 1.1rem; /* モバイルでのラベルフォントサイズも大きく (22px相当) */
       }
 
       .mantine-table td input[type="number"],
       .mantine-table td .mantine-button {
         width: 100%;
         box-sizing: border-box;
-        margin-top: 5px;
-        font-size: 1rem; /* モバイルでの入力フォントサイズを18px相当に */
+        margin-top: 8px;
+        font-size: 1.2rem; /* モバイルでの入力フォントサイズも非常に大きく (24px相当) */
+        padding: var(--mantine-spacing-sm); /* 入力フィールドのパディングも確保 */
       }
-       
-      .mantine-table td .usage-highlight {
-        display: inline-block;
-        padding: 2px 4px;
-        margin-left: .5em;
+
+      .mantine-table td .mantine-button {
+        padding: var(--mantine-spacing-md); /* ボタンのパディングも大きく */
       }
     }
 
@@ -414,15 +406,15 @@
     .fab-button {
       background-color: var(--mantine-color-blue-6);
       color: white;
-      width: 60px;
-      height: 60px;
+      width: 70px; /* FABサイズも少し大きく */
+      height: 70px; /* FABサイズも少し大きく */
       border-radius: 50%;
       border: none;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px; /* アイコンサイズ */
+      font-size: 30px; /* アイコンサイズも大きく */
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
@@ -444,13 +436,14 @@
       transform: translateX(-50%);
       background-color: var(--mantine-color-gray-8);
       color: white;
-      padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+      padding: var(--mantine-spacing-md) var(--mantine-spacing-lg); /* トーストのパディングも調整 */
       border-radius: var(--mantine-radius-sm);
       z-index: 2000;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       opacity: 0;
       transition: opacity 0.5s ease-in-out, top 0.5s ease-in-out;
       visibility: hidden;
+      font-size: 1rem; /* トーストのフォントサイズ (20px相当) */
     }
 
     .toast-notification.show {
@@ -462,8 +455,8 @@
     /* インラインエラーメッセージ */
     .inline-error {
       color: var(--mantine-color-red-6);
-      font-size: 0.9rem; /* 約16px相当に */
-      margin-top: 4px;
+      font-size: 1rem; /* エラーメッセージも大きく (20px相当) */
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -922,6 +915,7 @@
             <div className="mantine-paper">
               <h3 className="mantine-subtitle">検針履歴</h3>
               
+
               {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
                 <div className="mantine-stack">
                   <div style={{ overflowX: 'auto' }}>
@@ -943,6 +937,7 @@
                           const formattedDate = formatDate(reading.date);
                           const dateForDataAttribute = reading.date;
                           
+
                           let prevReadingText = reading.previousReading || 'N/A';
                           let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
                           const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
