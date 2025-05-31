@@ -272,9 +272,8 @@
         debugInfoDiv.innerHTML = 'WOFF初期化開始...<br>';        // sessionStorageからgasWebAppUrlを取得
         gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
         if (!gasWebAppUrl) {
-          console.warn('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。デバッグ用URLを使用します。');
-          // ★★★ デバッグ用: 固定URLを設定（必要に応じて新しいURLに更新） ★★★
-          gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxeG4o_oSyEyTp9TrDIZkThtd_PYbFUyJuSh9ZpfFFGyO3FC_HSshA87-GheJvDAnh0QQ/exec';
+          console.warn('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。デバッグ用URLを使用します。');          // ★★★ デバッグ用: 固定URLを設定（修正版物件.gsデプロイ後に新しいURLに更新） ★★★
+          gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxK0J0flRSGNdM9mi8AIRImmYqRNoWS9hS9alZUYlvvDgMFMyjeuvc2XQxOkYuP_3B3XQ/exec';
         }
         console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
 
