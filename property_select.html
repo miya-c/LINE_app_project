@@ -1,33 +1,261 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>物件選択 (React)</title>
+  <title>物件選択 (React + Mantine)</title>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
-  
-  <!-- Mantine CSS -->
-  <link href="https://unpkg.com/@mantine/core@7.0.0/styles.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- WOFF SDK -->
+  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
   
   <!-- ReactとReactDOMのCDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   
-  <!-- Mantine Core (UMD) -->
-  <script src="https://unpkg.com/@mantine/core@7.0.0/umd/mantine-core.min.js"></script>
-  
   <!-- BabelのCDN (JSXをブラウザで変換するため) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>  
   <style>
-    body { margin: 0; padding: 0; }
-    #root { min-height: 100vh; }
+    :root {
+      --mantine-color-blue-6: #228be6;
+      --mantine-color-blue-7: #1c7ed6;
+      --mantine-color-blue-8: #1971c2;
+      --mantine-color-blue-light: #e7f5ff;
+      --mantine-color-gray-0: #f8f9fa;
+      --mantine-color-gray-1: #f1f3f4;
+      --mantine-color-gray-2: #e9ecef;
+      --mantine-color-gray-3: #dee2e6;
+      --mantine-color-gray-6: #868e96;
+      --mantine-color-gray-7: #495057;
+      --mantine-color-red-6: #fa5252;
+      --mantine-color-red-light: #fff5f5;
+      --mantine-radius-sm: 4px;
+      --mantine-radius-md: 8px;
+      --mantine-spacing-xs: 10px;
+      --mantine-spacing-sm: 12px;
+      --mantine-spacing-md: 16px;
+      --mantine-spacing-lg: 20px;
+      --mantine-spacing-xl: 32px;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      line-height: 1.55;
+      color: var(--mantine-color-gray-7);
+      background-color: var(--mantine-color-gray-0);
+    }
+    
+    #root {
+      min-height: 100vh;
+    }
+    
+    .mantine-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--mantine-spacing-md);
+    }
+    
+    .mantine-stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--mantine-spacing-md);
+    }
+    
+    .mantine-title {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin: 0;
+      color: var(--mantine-color-gray-7);
+    }
+    
+    .mantine-text-input {
+      position: relative;
+    }
+    
+    .mantine-text-input input {
+      width: 100%;
+      padding: var(--mantine-spacing-sm);
+      border: 1px solid var(--mantine-color-gray-3);
+      border-radius: var(--mantine-radius-sm);
+      font-size: 14px;
+      line-height: 1.55;
+      background-color: white;
+      transition: border-color 0.15s ease;
+    }
+    
+    .mantine-text-input input:focus {
+      outline: none;
+      border-color: var(--mantine-color-blue-6);
+      box-shadow: 0 0 0 2px rgba(34, 139, 230, 0.15);
+    }
+    
+    .mantine-text-input input:disabled {
+      background-color: var(--mantine-color-gray-1);
+      color: var(--mantine-color-gray-6);
+      cursor: not-allowed;
+    }
+    
+    .mantine-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+      border: none;
+      border-radius: var(--mantine-radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    
+    .mantine-button.variant-filled {
+      background-color: var(--mantine-color-blue-6);
+      color: white;
+    }
+    
+    .mantine-button.variant-filled:hover {
+      background-color: var(--mantine-color-blue-7);
+    }
+    
+    .mantine-button.variant-filled:active {
+      background-color: var(--mantine-color-blue-8);
+    }
+    
+    .mantine-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .mantine-paper {
+      background-color: white;
+      border: 1px solid var(--mantine-color-gray-2);
+      border-radius: var(--mantine-radius-md);
+      padding: var(--mantine-spacing-md);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    
+    .mantine-paper:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-color: var(--mantine-color-gray-3);
+      transform: translateY(-1px);
+    }
+    
+    .mantine-paper.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .mantine-paper.disabled:hover {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+      border-color: var(--mantine-color-gray-2);
+      transform: none;
+    }
+    
+    .mantine-loader {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--mantine-color-gray-2);
+      border-radius: 50%;
+      border-top-color: var(--mantine-color-blue-6);
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    .mantine-loader.size-sm {
+      width: 24px;
+      height: 24px;
+      border-width: 2px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .mantine-alert {
+      padding: var(--mantine-spacing-md);
+      border-radius: var(--mantine-radius-sm);
+      border-left: 4px solid var(--mantine-color-red-6);
+      background-color: var(--mantine-color-red-light);
+      color: var(--mantine-color-gray-7);
+    }
+    
+    .mantine-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--mantine-spacing-xl);
+    }
+    
+    .mantine-grid {
+      display: grid;
+      gap: var(--mantine-spacing-md);
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+    
+    .property-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      font: inherit;
+    }
+    
+    .property-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .property-id {
+      font-size: 12px;
+      color: var(--mantine-color-gray-6);
+      font-weight: 500;
+    }
+    
+    .property-name {
+      font-size: 16px;
+      color: var(--mantine-color-gray-7);
+      font-weight: 600;
+    }
+    
+    .property-arrow {
+      width: 20px;
+      height: 20px;
+      color: var(--mantine-color-gray-6);
+      flex-shrink: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .mantine-container {
+        padding: 0 var(--mantine-spacing-sm);
+      }
+      
+      .mantine-title {
+        font-size: 1.5rem;
+      }
+      
+      .mantine-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { MantineProvider, AppShell, Text, Container, Stack, TextInput, Button, Loader, Alert, Title } = window.MantineCore;
-
+  <div id="root"></div>  <script type="text/babel">
     const App = () => {
       const [properties, setProperties] = React.useState([]);
       const [searchTerm, setSearchTerm] = React.useState('');
@@ -53,7 +281,7 @@
           }
         };
         initializeWoff();
-      }, [woffIdForWorks]); // woffIdForWorksは実際には不変なので、空の依存配列でも良いが、明示的に記述
+      }, [woffIdForWorks]);
 
       React.useEffect(() => {
         if (!woffInitialized) return;
@@ -150,129 +378,154 @@
         const propertyNameString = String(property.name != null ? property.name : '');
         return propertyIdString.toLowerCase().includes(searchTerm.toLowerCase()) ||
                propertyNameString.toLowerCase().includes(searchTerm.toLowerCase());
-      });
-      
-      // WOFF SDK初期化前、または初期化エラー時
+      });        // WOFF SDK初期化前、または初期化エラー時
       if (!woffInitialized && loading) {
         return (
-          <MantineProvider>
-            <Container size="md" p="md">
-              <Stack align="center" gap="md">
-                <Loader size="lg" />
-                <Text>アプリを初期化中です...</Text>
-              </Stack>
-            </Container>
-          </MantineProvider>
+          <div className="mantine-center">
+            <div className="mantine-stack">
+              <div className="mantine-center">
+                <div className="mantine-loader"></div>
+              </div>
+              <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
+                アプリを初期化中です...
+              </p>
+            </div>
+          </div>
         );
       }
       if (!woffInitialized && error) {
         return (
-          <MantineProvider>
-            <Container size="md" p="md">
-              <Alert color="red" title="エラー">
-                {error}
-              </Alert>
-            </Container>
-          </MantineProvider>
+          <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
+            <div style={{maxWidth: '400px', margin: '0 auto', marginTop: 'var(--mantine-spacing-xl)'}}>
+              <div className="mantine-alert">
+                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
+                <p style={{margin: 0}}>{error}</p>
+              </div>
+            </div>
+          </div>
         );
-      }
-
-      // 物件データ取得中の初期ローディング
+      }      // 物件データ取得中の初期ローディング
       if (loading && properties.length === 0 && woffInitialized) {
         return (
-          <MantineProvider>
-            <Container size="md" p="md">
-              <Stack gap="md">
-                <Title order={1}>物件選択</Title>
-                <TextInput
+          <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
+            <div style={{maxWidth: '400px', margin: '0 auto'}}>
+              <h1 className="mantine-title" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>物件選択</h1>
+              <div className="mantine-text-input" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>
+                <input
+                  type="text"
                   placeholder="物件IDまたは物件名で検索..."
                   value={searchTerm}
                   onChange={handleSearchChange}
                   disabled
                 />
-                <Stack align="center" gap="md">
-                  <Loader size="lg" />
-                  <Text>物件情報を読み込み中です...</Text>
-                </Stack>
-              </Stack>
-            </Container>
-          </MantineProvider>
+              </div>
+              <div className="mantine-center">
+                <div className="mantine-stack">
+                  <div className="mantine-center">
+                    <div className="mantine-loader"></div>
+                  </div>
+                  <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
+                    物件情報を読み込み中です...
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         );
       }
-      
-      // 物件データ取得エラー (初期ロード時)
+        // 物件データ取得エラー (初期ロード時)
       if (error && properties.length === 0 && woffInitialized) {
         return (
-          <MantineProvider>
-            <Container size="md" p="md">
-              <Stack gap="md">
-                <Title order={1}>物件選択</Title>
-                <TextInput
+          <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
+            <div style={{maxWidth: '400px', margin: '0 auto'}}>
+              <h1 className="mantine-title" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>物件選択</h1>
+              <div className="mantine-text-input" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>
+                <input
+                  type="text"
                   placeholder="物件IDまたは物件名で検索..."
                   value={searchTerm}
                   onChange={handleSearchChange}
                   disabled
                 />
-                <Alert color="red" title="エラー">
-                  {error}
-                </Alert>
-              </Stack>
-            </Container>
-          </MantineProvider>
+              </div>
+              <div className="mantine-alert">
+                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
+                <p style={{margin: 0}}>{error}</p>
+              </div>
+            </div>
+          </div>
         );
-      }
-
-      return (
-        <MantineProvider>
-          <Container size="md" p="md">
-            <Stack gap="md">
-              <Title order={1}>物件選択</Title>
-              <TextInput
+      }      return (
+        <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)', minHeight: '100vh'}}>
+          <div style={{maxWidth: '400px', margin: '0 auto'}}>
+            <h1 className="mantine-title" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>物件選択</h1>
+            
+            <div className="mantine-text-input" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>
+              <input
+                type="text"
                 placeholder="物件IDまたは物件名で検索..."
                 value={searchTerm}
                 onChange={handleSearchChange}
-                disabled={!woffInitialized || (loading && properties.length === 0)} // 初期化中または初期ロード中は無効
+                disabled={!woffInitialized || (loading && properties.length === 0)}
               />
-              
-              {/* 操作中のローディング表示やエラー表示 */}
-              {loading && properties.length > 0 && (
-                <Stack align="center" gap="xs">
-                  <Loader size="sm" />
-                  <Text size="sm">処理中...</Text>
-                </Stack>
-              )}
-              {error && (
-                <Alert color="red" title="エラー">
-                  {error}
-                </Alert>
-              )}
+            </div>
+            
+            {/* 操作中のローディング表示やエラー表示 */}
+            {loading && properties.length > 0 && (
+              <div className="mantine-center" style={{marginBottom: 'var(--mantine-spacing-md)'}}>
+                <div className="mantine-stack">
+                  <div className="mantine-center">
+                    <div className="mantine-loader size-sm"></div>
+                  </div>
+                  <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)', fontSize: '14px', margin: 0}}>
+                    処理中...
+                  </p>
+                </div>
+              </div>
+            )}
+            {error && (
+              <div className="mantine-alert" style={{marginBottom: 'var(--mantine-spacing-md)'}}>
+                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
+                <p style={{margin: 0}}>{error}</p>
+              </div>
+            )}
 
-              {woffInitialized && !loading && properties.length === 0 && !error && (
-                <Text ta="center">登録されている物件がありません。</Text>
-              )}
-              {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
-                <Text ta="center">該当する物件が見つかりません。</Text>
-              )}
+            {woffInitialized && !loading && properties.length === 0 && !error && (
+              <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
+                登録されている物件がありません。
+              </p>
+            )}
+            {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
+              <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
+                該当する物件が見つかりません。
+              </p>
+            )}
 
-              <Stack gap="xs">
-                {woffInitialized && filteredProperties.map(property => (
-                  <Button
-                    key={property.id}
-                    variant="light"
-                    size="md"
-                    fullWidth
-                    leftSection={React.createElement(Text, { weight: 500 }, `${property.id != null ? property.id : 'IDなし'}`)}
-                    onClick={() => handlePropertySelect(property)}
-                    disabled={loading} // 何らかの処理中はボタンを無効化
-                    style={{ textAlign: 'left', justifyContent: 'flex-start' }}
-                  >
-                    {property.name != null ? property.name : '名称なし'}
-                  </Button>
-                ))}
-              </Stack>
-            </Stack>
-          </Container>
-        </MantineProvider>
+            <div className="mantine-stack">
+              {woffInitialized && filteredProperties.map(property => (
+                <div 
+                  key={property.id} 
+                  className={`mantine-paper ${loading ? 'disabled' : ''}`}
+                  onClick={() => !loading && handlePropertySelect(property)}
+                >
+                  <div className="property-card">
+                    <div className="property-info">
+                      <span className="property-id">
+                        ID: {property.id != null ? property.id : 'IDなし'}
+                      </span>
+                      <div className="property-name">
+                        {property.name != null ? property.name : '名称なし'}
+                      </div>
+                    </div>
+                    <svg className="property-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       );
     };
 
