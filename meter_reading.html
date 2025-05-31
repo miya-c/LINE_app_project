@@ -296,6 +296,10 @@
         font-size: 1.6rem; /* モバイルでも非常に大きく */
       }
 
+      .mantine-table thead {
+        display: none; /* モバイルサイズではテーブルヘッダーを非表示に */
+      }
+
       .mantine-table tr {
         display: block; /* ブロック要素として設定 */
         margin-bottom: 1.5em; /* 各行の間に余白をしっかり取る */
@@ -732,11 +736,13 @@
           const currentValue = input.value || '';
           
           input.style.borderColor = ''; // Reset border color
-          currentInputErrors[date] = ''; // Reset error for this input
+          // Corrected line: Ensure setInputErrors is called correctly within the loop or after
+          setInputErrors(prev => ({...prev, [date]: ''})); 
 
           if (originalValue === '' && currentValue.trim() === '') {
             input.style.borderColor = 'var(--mantine-color-red-6)';
-            currentInputErrors[date] = '初回検針では指示数の入力が必須です。';
+            // Corrected line: Ensure setInputErrors is called correctly within the loop or after
+            setInputErrors(prev => ({...prev, [date]: '初回検針では指示数の入力が必須です。'}));
             hasValidationErrors = true;
             return;
           }
@@ -745,7 +751,8 @@
             const numericValue = parseFloat(currentValue);
             if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
               input.style.borderColor = 'var(--mantine-color-red-6)';
-              currentInputErrors[date] = '指示数は0以上の数値を入力してください。';
+              // Corrected line: Ensure setInputErrors is called correctly within the loop or after
+              setInputErrors(prev => ({...prev, [date]: '指示数は0以上の数値を入力してください。'}));
               hasValidationErrors = true;
               return;
             }
@@ -758,7 +765,8 @@
           }
         });
         
-        setInputErrors(currentInputErrors);
+        // It's generally better to update state once after the loop
+        // setInputErrors(currentInputErrors); // This was the previous position, moved for clarity if needed
 
         if (hasValidationErrors) {
           displayToast('入力値に誤りがあります。各項目のエラーを確認してください。');
@@ -936,7 +944,17 @@
                         {meterReadings.map((reading, index) => {
                           const formattedDate = formatDate(reading.date);
                           const dateForDataAttribute = reading.date;
-                          
+
+                          // Helper function for usage calculation (consistent with original logic)
+                          const calculateUsageDisplay = (currentStr, previousStr) => {
+                            const current = parseFloat(currentStr);
+                            const previous = parseFloat(previousStr);
+                            if (!isNaN(current) && !isNaN(previous) && previousStr && previousStr !== 'N/A') {
+                              const usage = current - previous;
+                              return (usage >= 0 ? usage : 0).toString(); // Return as string, ensure non-negative
+                            }
+                            return '0'; // Default if cannot calculate
+                          };
 
                           let prevReadingText = reading.previousReading || 'N/A';
                           let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
@@ -955,16 +973,8 @@
                             const diff = prev - prevPrev;
                             prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
                           }
-
-                          const calculateUsage = (currentValue, previousValue) => {
-                            const current = parseFloat(currentValue);
-                            const previous = parseFloat(previousValue);
-                            if (!isNaN(current) && !isNaN(previous)) {
-                              const usage = current - previous;
-                              return usage >= 0 ? usage : 0;
-                            }
-                            return 0;
-                          };
+                          
+                          const initialUsageDisplay = calculateUsageDisplay(reading.currentReading, reading.previousReading);
 
                           return (
                             <tr key={index}>
@@ -972,6 +982,7 @@
                               <td data-label="今回(㎥)">
                                 <input
                                   type="number"
+                                  step="any" // Allows decimal inputs
                                   defaultValue={reading.currentReading || ''}
                                   placeholder="指示数入力"
                                   min="0"
@@ -980,22 +991,19 @@
                                   data-previous-reading={reading.previousReading || ''}
                                   className="mantine-input"
                                   onChange={(e) => {
-                                    const currentValue = e.target.value || '';
+                                    const currentValue = e.target.value;
                                     const previousValue = reading.previousReading || '';
-                                    if (currentValue && previousValue && previousValue !== 'N/A') {
-                                      const usage = calculateUsage(currentValue, previousValue);
-                                      setUsageStates(prev => ({
-                                        ...prev,
-                                        [dateForDataAttribute]: usage.toString()
-                                      }));
-                                    } else {
-                                      setUsageStates(prev => ({
-                                        ...prev,
-                                        [dateForDataAttribute]: '0'
-                                      }));
+                                    
+                                    const numericValue = parseFloat(currentValue);
+                                    if (currentValue !== '' && (isNaN(numericValue) || numericValue < 0)) {
+                                      setInputErrors(prev => ({...prev, [dateForDataAttribute]: '指示数は0以上の数値を入力してください。'}));
+                                      e.target.style.borderColor = 'var(--mantine-color-red-6)';
+                                      setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' })); // Indicate error in usage                                    } else {
+                                      setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                      e.target.style.borderColor = '';
+                                      const usage = calculateUsageDisplay(currentValue, previousValue);
+                                      setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: usage }));
                                     }
-                                    setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
-                                    e.target.style.borderColor = '';
                                   }}
                                 />
                                 {inputErrors[dateForDataAttribute] && (
@@ -1006,9 +1014,9 @@
                               <td data-label="前々回">{prevPrevReadingText}</td>
                               <td data-label="前々々回">{prevPrevPrevReadingText}</td>
                               <td data-label="今回使用量">
-                                <span className="usage-highlight">
-                                  {usageStates[dateForDataAttribute] || calculateUsage(reading.currentReading, reading.previousReading) || '0'}㎥
-                                </span>
+                                {usageStates[dateForDataAttribute] !== undefined 
+                                  ? `${usageStates[dateForDataAttribute]}㎥` 
+                                  : `${calculateUsage(reading.currentReading, reading.previousReading) || '0'}㎥`}
                               </td>
                               <td data-label="状態">
                                 <span style={{
@@ -1050,33 +1058,37 @@
                   </div>
                   <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)'}}>
                     <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
-                    <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>
-                      <div>
-                        <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
-                        <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" />
-                      </div>
-                      <div>
-                        <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
-                        <input
-                          type="number"
-                          id="initialReadingValue"
-                          placeholder="指示数入力"
-                          min="0"
-                          data-date={new Date().toISOString().split('T')[0]} 
-                          data-original-value=""
-                          data-previous-reading=""
-                          className="mantine-input"
-                          onChange={(e) => {
-                            const dateForDataAttribute = new Date().toISOString().split('T')[0];
-                            setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
-                            e.target.style.borderColor = '';
-                          }}
-                        />
-                         {inputErrors[new Date().toISOString().split('T')[0]] && (
-                            <div className="inline-error">{inputErrors[new Date().toISOString().split('T')[0]]}</div>
-                          )}
-                      </div>
-                       <div>
+                    <div className="mantine-stack">
+                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>
+                        <div className="mantine-alert info">
+                          <div>                            <h3 className="mantine-text weight-600">初回検針</h3>
+                            <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
+                            <p className="mantine-text">
+                              <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" />から最初の検針データを入力してください。
+                            </p>
+                          </div>
+                          <div>
+                            <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
+                            <input
+                              type="number"
+                              id="initialReadingValue"
+                              className="mantine-input"
+                              placeholder="指示数入力"
+                              min="0"
+                              data-date={new Date().toISOString().split('T')[0]} 
+                              data-original-value=""
+                              data-previous-reading=""
+                              onChange={(e) => {
+                                const dateForDataAttribute = new Date().toISOString().split('T')[0];
+                                setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                e.target.style.borderColor = '';
+                              }}
+                            />
+                            {inputErrors[new Date().toISOString().split('T')[0]] && (
+                              <div className="inline-error">{inputErrors[new Date().toISOString().split('T')[0]]}</div>
+                            )}
+                          </div>
+                        </div>
                         <label className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>写真:</label>
                         <button
                           className="mantine-button variant-filled"
@@ -1091,23 +1103,21 @@
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* 写真表示モーダル */}
-            {showModal && (
-              <div className="modal-overlay" onClick={hidePhotoModal}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={hidePhotoModal}
-                    className="modal-close"
-                  >
-                    &times;
-                  </button>
-                  <img src={modalImageSrc} alt="検針写真" className="modal-image" />
+              {/* 写真表示モーダル */}
+              {showModal && (
+                <div className="modal-overlay" onClick={hidePhotoModal}>
+                  <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={hidePhotoModal}
+                      className="modal-close"
+                    >
+                      &times;
+                    </button>
+                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
           {/* フローティングアクションボタン */}
           {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
@@ -1122,16 +1132,14 @@
               </button>
             </div>
           )}
-          
+
           {/* トースト通知 */}
           <div className={`toast-notification ${showToast ? 'show' : ''}`}>
             {toastMessage}
           </div>
-
-        </div>
-      );
-    };
-
+        </div> {/* This closes mantine-stack */}
+      </div> /* This closes mantine-container */
+    );
     ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
   </script>
 </body>
