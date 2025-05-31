@@ -306,41 +306,47 @@
       }
 
       .mantine-table tr {
-        display: block; /* 各行をブロック要素に */
-        margin-bottom: .625em;
+        display: flex; /* Flexboxコンテナとして設定 */
+        flex-wrap: wrap; /* 要素がコンテナ幅を超える場合に折り返す */
+        margin-bottom: 1em; /* 各行の間に余白 */
         border-bottom: 2px solid var(--mantine-color-gray-3);
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         padding: .5em;
       }
       
       .mantine-table td {
-        display: block; /* 各セルをブロック要素に */
-        text-align: right; /* テキストを右寄せに */
-        font-size: .9em;
+        display: flex; /* Flexboxアイテムとして設定 */
+        flex-direction: column; /* ラベルと値を縦に並べる */
+        width: calc(50% - 10px); /* 2列表示のための幅 (左右のmargin 5px * 2 = 10px を考慮) */
+        margin: 5px; /* 各セルの周りの余白 */
+        padding: .5em;
         border-bottom: 1px dotted var(--mantine-color-gray-3);
+        box-sizing: border-box; /* paddingとborderを幅に含める */
       }
 
       .mantine-table td:last-child {
-        border-bottom: 0;
+        border-bottom: 1px dotted var(--mantine-color-gray-3); 
       }
       
       .mantine-table td::before {
         content: attr(data-label); /* data-label属性の内容を表示 */
-        float: left; /* ラベルを左寄せに */
         font-weight: bold;
         text-transform: uppercase;
+        margin-bottom: .25em; /* ラベルと値の間の余白 */
+        color: var(--mantine-color-gray-7);
       }
 
       .mantine-table td input[type="number"],
-      .mantine-table td .mantine-button {
+      .mantine-table td .mantine-button,
+      .mantine-table td .usage-highlight {
         width: 100%; /* 入力フィールドとボタンを幅いっぱいに */
         box-sizing: border-box; /* paddingとborderを幅に含める */
         margin-top: 5px;
+        text-align: right; /* 値を右寄せ */
       }
        .mantine-table td .usage-highlight {
-        display: block; /* 使用量もブロック表示 */
-        text-align: right; /* 右寄せ */
-        margin-top: 5px;
+        display: inline-block; /* インラインブロックで表示 */
+        padding: 2px 4px; /* 少しパディングを追加 */
       }
     }
   </style>
