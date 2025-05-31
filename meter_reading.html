@@ -269,16 +269,14 @@
       try {
         console.log('[meter_reading] WOFFを初期化します。');
         const debugInfoDiv = document.getElementById('debug-info');
-        debugInfoDiv.innerHTML = 'WOFF初期化開始...<br>';
-
-        // sessionStorageからgasWebAppUrlを取得
+        debugInfoDiv.innerHTML = 'WOFF初期化開始...<br>';        // sessionStorageからgasWebAppUrlを取得
         gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
         if (!gasWebAppUrl) {
-          console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。');
-          document.getElementById('meter-readings-list').innerHTML = '<p>アプリの設定情報が不足しています。前の画面から再度操作してください。</p>';
-          return;
+          console.warn('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。デバッグ用URLを使用します。');
+          // ★★★ デバッグ用: 固定URLを設定（必要に応じて新しいURLに更新） ★★★
+          gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxeG4o_oSyEyTp9TrDIZkThtd_PYbFUyJuSh9ZpfFFGyO3FC_HSshA87-GheJvDAnh0QQ/exec';
         }
-        console.log('[meter_reading] gasWebAppUrlをsessionStorageから取得しました:', gasWebAppUrl);
+        console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
 
         if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
           console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
