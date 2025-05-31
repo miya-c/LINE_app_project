@@ -298,82 +298,76 @@
 
       .mantine-table thead {
         display: none; /* モバイルサイズではテーブルヘッダーを非表示に */
-      }
-
-      .mantine-table tr {
-        display: block; /* ブロック要素として設定 */
-        margin-bottom: 1.5em; /* 各行の間に余白をしっかり取る */
+      }      /* 2列レイアウトのためのグリッド作成 */
+      .mantine-table tbody tr {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto auto auto auto;
+        gap: 0.5em;
+        margin-bottom: 1.5em;
         border-bottom: 2px solid var(--mantine-color-gray-3);
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         padding: .5em;
         border-radius: var(--mantine-radius-sm);
         background-color: white;
         position: relative;
-      }
-      
+      }      
       .mantine-table td {
         display: block;
-        padding: .5em 0; /* パディング調整 */
-        border: none;
+        padding: .5em;
+        border: 1px solid var(--mantine-color-gray-2);
+        border-radius: var(--mantine-radius-xs);
+        background-color: var(--mantine-color-gray-0);
         text-align: left;
-        margin-bottom: .5em;
         position: relative;
-        font-size: 1.3rem; /* モバイルでのフォントサイズを極めて大きく (26px相当) */
-        line-height: 1.4; /* 行間も調整 */
-      }
-      
-      /* 2列レイアウトのためのコンテナ作成 */
-      .mantine-table tbody tr::before {
-        content: "";
-        display: block;
-        width: 100%;
-        height: auto;
-        position: relative;
+        font-size: 1.3rem;
+        line-height: 1.4;
+        box-sizing: border-box;
       }
       
       /* 左列: 検針日時、今回(㎥) */
-      .mantine-table td[data-label="検針日時"],
+      .mantine-table td[data-label="検針日時"] {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      
       .mantine-table td[data-label="今回(㎥)"] {
-        width: 48%;
-        float: left;
-        clear: left;
-        border-right: 1px solid var(--mantine-color-gray-3);
-        padding-right: 0.5em;
-        margin-right: 2%;
-        box-sizing: border-box;
+        grid-column: 1;
+        grid-row: 2;
       }
       
       /* 右列: 前回、前々回、前々々回、今回使用量、状態 */
-      .mantine-table td[data-label="前回"],
-      .mantine-table td[data-label="前々回"],
-      .mantine-table td[data-label="前々々回"],
-      .mantine-table td[data-label="今回使用量"],
-      .mantine-table td[data-label="状態"] {
-        width: 48%;
-        float: right;
-        clear: right;
-        padding-left: 0.5em;
-        margin-left: 2%;
-        box-sizing: border-box;
+      .mantine-table td[data-label="前回"] {
+        grid-column: 2;
+        grid-row: 1;
       }
       
+      .mantine-table td[data-label="前々回"] {
+        grid-column: 2;
+        grid-row: 2;
+      }
+      
+      .mantine-table td[data-label="前々々回"] {
+        grid-column: 2;
+        grid-row: 3;
+      }
+      
+      .mantine-table td[data-label="今回使用量"] {
+        grid-column: 2;
+        grid-row: 4;
+      }
+      
+      .mantine-table td[data-label="状態"] {
+        grid-column: 2;
+        grid-row: 5;
+      }      
       /* 写真は全幅 */
       .mantine-table td[data-label="写真"] {
-        width: 100%;
-        float: none;
-        clear: both;
+        grid-column: 1 / -1;
+        grid-row: 6;
         border-top: 1px solid var(--mantine-color-gray-3);
         padding-top: 0.5em;
         margin-top: 0.5em;
-        padding-left: 0;
-        padding-right: 0;
-      }
-      
-      /* floatをクリアするため */
-      .mantine-table tbody tr::after {
-        content: "";
-        display: table;
-        clear: both;
       }
       
       .mantine-table td::before {
@@ -382,7 +376,7 @@
         color: var(--mantine-color-gray-7);
         display: block;
         margin-bottom: 0.25em;
-        font-size: 1.1rem; /* モバイルでのラベルフォントサイズも大きく (22px相当) */
+        font-size: 1.1rem;
       }
 
       .mantine-table td input[type="number"],
