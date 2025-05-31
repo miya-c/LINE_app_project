@@ -283,8 +283,7 @@
     .modal-close:hover {
       background-color: var(--mantine-color-gray-1);
     }
-    
-    @media (max-width: 768px) {
+      @media (max-width: 768px) {
       .mantine-container {
         padding: var(--mantine-spacing-sm);
       }
@@ -306,47 +305,48 @@
       }
 
       .mantine-table tr {
-        display: flex; /* Flexboxコンテナとして設定 */
-        flex-wrap: wrap; /* 要素がコンテナ幅を超える場合に折り返す */
+        display: block; /* ブロック要素として設定 */
         margin-bottom: 1em; /* 各行の間に余白 */
         border-bottom: 2px solid var(--mantine-color-gray-3);
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         padding: .5em;
+        border-radius: var(--mantine-radius-sm);
+        background-color: white;
       }
       
       .mantine-table td {
-        display: flex; /* Flexboxアイテムとして設定 */
-        flex-direction: column; /* ラベルと値を縦に並べる */
-        width: calc(50% - 10px); /* 2列表示のための幅 (左右のmargin 5px * 2 = 10px を考慮) */
-        margin: 5px; /* 各セルの周りの余白 */
-        padding: .5em;
+        display: block; /* ブロック要素として設定 */
+        width: 100%; /* 幅を100%に */
+        margin-bottom: .5em; /* 各セルの下に余白 */
+        padding: .3em 0;
         border-bottom: 1px dotted var(--mantine-color-gray-3);
-        box-sizing: border-box; /* paddingとborderを幅に含める */
+        text-align: left; /* テキストを左寄せに */
       }
 
       .mantine-table td:last-child {
-        border-bottom: 1px dotted var(--mantine-color-gray-3); 
+        border-bottom: 0; /* 最後のセルの下線を削除 */
+        margin-bottom: 0; /* 最後のセルの下余白を削除 */
       }
       
       .mantine-table td::before {
-        content: attr(data-label); /* data-label属性の内容を表示 */
+        content: attr(data-label) ": "; /* data-label属性の内容をコロン付きで表示 */
         font-weight: bold;
-        text-transform: uppercase;
-        margin-bottom: .25em; /* ラベルと値の間の余白 */
         color: var(--mantine-color-gray-7);
+        display: inline-block;
+        margin-right: .5em;
+        min-width: 80px; /* ラベル部分の最小幅を設定 */
       }
 
       .mantine-table td input[type="number"],
-      .mantine-table td .mantine-button,
-      .mantine-table td .usage-highlight {
+      .mantine-table td .mantine-button {
         width: 100%; /* 入力フィールドとボタンを幅いっぱいに */
         box-sizing: border-box; /* paddingとborderを幅に含める */
         margin-top: 5px;
-        text-align: right; /* 値を右寄せ */
       }
        .mantine-table td .usage-highlight {
         display: inline-block; /* インラインブロックで表示 */
         padding: 2px 4px; /* 少しパディングを追加 */
+        margin-left: .5em;
       }
     }
   </style>
