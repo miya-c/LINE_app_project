@@ -708,14 +708,18 @@
           displayToast('写真の処理中に予期せぬエラーが発生しました。');
         }
       };
-      
-      const displayToast = (message) => {
+        const displayToast = (message) => {
         setToastMessage(message);
         setShowToast(true);
         setTimeout(() => {
           setShowToast(false);
           setToastMessage('');
         }, 3000);
+      };
+
+      const hidePhotoModal = () => {
+        setShowModal(false);
+        setModalImageSrc('');
       };
 
       const handleUpdateReadings = async () => {
@@ -979,10 +983,9 @@
                           return (
                             <tr key={index}>
                               <td data-label="検針日時">{formattedDate}</td>
-                              <td data-label="今回(㎥)">
-                                <input
+                              <td data-label="今回(㎥)">                                <input
                                   type="number"
-                                  step="any" // Allows decimal inputs
+                                  step="any" /* Allows decimal inputs */
                                   defaultValue={reading.currentReading || ''}
                                   placeholder="指示数入力"
                                   min="0"
@@ -993,12 +996,12 @@
                                   onChange={(e) => {
                                     const currentValue = e.target.value;
                                     const previousValue = reading.previousReading || '';
-                                    
-                                    const numericValue = parseFloat(currentValue);
+                                      const numericValue = parseFloat(currentValue);
                                     if (currentValue !== '' && (isNaN(numericValue) || numericValue < 0)) {
                                       setInputErrors(prev => ({...prev, [dateForDataAttribute]: '指示数は0以上の数値を入力してください。'}));
                                       e.target.style.borderColor = 'var(--mantine-color-red-6)';
-                                      setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' })); // Indicate error in usage                                    } else {
+                                      setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' })); // Indicate error in usage
+                                    } else {
                                       setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
                                       e.target.style.borderColor = '';
                                       const usage = calculateUsageDisplay(currentValue, previousValue);
@@ -1012,11 +1015,10 @@
                               </td>
                               <td data-label="前回">{prevReadingText}</td>
                               <td data-label="前々回">{prevPrevReadingText}</td>
-                              <td data-label="前々々回">{prevPrevPrevReadingText}</td>
-                              <td data-label="今回使用量">
+                              <td data-label="前々々回">{prevPrevPrevReadingText}</td>                              <td data-label="今回使用量">
                                 {usageStates[dateForDataAttribute] !== undefined 
                                   ? `${usageStates[dateForDataAttribute]}㎥` 
-                                  : `${calculateUsage(reading.currentReading, reading.previousReading) || '0'}㎥`}
+                                  : `${calculateUsageDisplay(reading.currentReading, reading.previousReading) || '0'}㎥`}
                               </td>
                               <td data-label="状態">
                                 <span style={{
@@ -1059,9 +1061,9 @@
                   <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)'}}>
                     <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
                     <div className="mantine-stack">
-                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>
-                        <div className="mantine-alert info">
-                          <div>                            <h3 className="mantine-text weight-600">初回検針</h3>
+                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>                        <div className="mantine-alert info">
+                          <div>
+                            <h3 className="mantine-text weight-600">初回検針</h3>
                             <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
                             <p className="mantine-text">
                               <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" />から最初の検針データを入力してください。
@@ -1094,8 +1096,7 @@
                           className="mantine-button variant-filled"
                           style={{ fontSize: '0.75rem', padding: '4px 8px' }}
                           data-date-button={new Date().toISOString().split('T')[0]}
-                          onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
-                        >
+                          onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}                        >
                           写真を追加 📸
                         </button>
                       </div>
@@ -1113,11 +1114,11 @@
                       className="modal-close"
                     >
                       &times;
-                    </button>
-                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
+                    </button>                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
                   </div>
                 </div>
               )}
+            </div> {/* This closes mantine-paper for 検針履歴 */}
 
           {/* フローティングアクションボタン */}
           {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
@@ -1127,8 +1128,7 @@
                 onClick={handleUpdateReadings}
                 disabled={updating}
                 title="指示数を更新"
-              >
-                {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
+              >                {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
               </button>
             </div>
           )}
@@ -1136,11 +1136,12 @@
           {/* トースト通知 */}
           <div className={`toast-notification ${showToast ? 'show' : ''}`}>
             {toastMessage}
-          </div>
-        </div> {/* This closes mantine-stack */}
-      </div> /* This closes mantine-container */
+          </div>        </div> 
+      </div>
     );
-    ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
+  };
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
   </script>
 </body>
 </html>
