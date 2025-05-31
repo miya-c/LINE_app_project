@@ -3,27 +3,31 @@
 <head>
   <title>物件選択 (React)</title>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    body { font-family: sans-serif; margin: 10px; }
-    #search-box { margin-bottom: 10px; padding: 8px; width: calc(100% - 20px); box-sizing: border-box; }
-    .property-button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; background-color: #f0f0f0; border: 1px solid #ccc; cursor: pointer; }
-    .property-button:hover { background-color: #e0e0e0; }
-    .loading, .error { text-align: center; padding: 20px; }
-    h1 { font-size: 1.5em; margin-bottom: 0.5em;}
-  </style>
-  {/* ReactとReactDOMのCDN */}
-  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-  {/* BabelのCDN (JSXをブラウザで変換するため) */}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
+  
+  <!-- Mantine CSS -->
+  <link href="https://unpkg.com/@mantine/core@7.0.0/styles.css" rel="stylesheet">
+  
+  <!-- ReactとReactDOMのCDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Mantine Core (UMD) -->
+  <script src="https://unpkg.com/@mantine/core@7.0.0/umd/mantine-core.min.js"></script>
+  
+  <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body { margin: 0; padding: 0; }
+    #root { min-height: 100vh; }
+  </style>
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel">
+    const { MantineProvider, AppShell, Text, Container, Stack, TextInput, Button, Loader, Alert, Title } = window.MantineCore;
+
     const App = () => {
       const [properties, setProperties] = React.useState([]);
       const [searchTerm, setSearchTerm] = React.useState('');
@@ -150,67 +154,125 @@
       
       // WOFF SDK初期化前、または初期化エラー時
       if (!woffInitialized && loading) {
-        return <div className="loading">アプリを初期化中です...</div>;
+        return (
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack align="center" gap="md">
+                <Loader size="lg" />
+                <Text>アプリを初期化中です...</Text>
+              </Stack>
+            </Container>
+          </MantineProvider>
+        );
       }
       if (!woffInitialized && error) {
-         return <div className="error">{error}</div>;
+        return (
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Alert color="red" title="エラー">
+                {error}
+              </Alert>
+            </Container>
+          </MantineProvider>
+        );
       }
 
       // 物件データ取得中の初期ローディング
       if (loading && properties.length === 0 && woffInitialized) {
         return (
-          <div>
-            <h1>物件選択</h1>
-            <input type="text" id="search-box" placeholder="物件IDまたは物件名で検索..." value={searchTerm} onChange={handleSearchChange} disabled />
-            <div className="loading">物件情報を読み込み中です...</div>
-          </div>
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack gap="md">
+                <Title order={1}>物件選択</Title>
+                <TextInput
+                  placeholder="物件IDまたは物件名で検索..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  disabled
+                />
+                <Stack align="center" gap="md">
+                  <Loader size="lg" />
+                  <Text>物件情報を読み込み中です...</Text>
+                </Stack>
+              </Stack>
+            </Container>
+          </MantineProvider>
         );
       }
       
       // 物件データ取得エラー (初期ロード時)
       if (error && properties.length === 0 && woffInitialized) {
         return (
-          <div>
-            <h1>物件選択</h1>
-            <input type="text" id="search-box" placeholder="物件IDまたは物件名で検索..." value={searchTerm} onChange={handleSearchChange} disabled />
-            <div className="error">{error}</div>
-          </div>
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack gap="md">
+                <Title order={1}>物件選択</Title>
+                <TextInput
+                  placeholder="物件IDまたは物件名で検索..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  disabled
+                />
+                <Alert color="red" title="エラー">
+                  {error}
+                </Alert>
+              </Stack>
+            </Container>
+          </MantineProvider>
         );
       }
 
       return (
-        <div>
-          <h1>物件選択</h1>
-          <input
-            type="text"
-            id="search-box"
-            placeholder="物件IDまたは物件名で検索..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            disabled={!woffInitialized || (loading && properties.length === 0)} // 初期化中または初期ロード中は無効
-          />
-          {/* 操作中のローディング表示やエラー表示 */}
-          {loading && properties.length > 0 && <p className="loading" style={{fontSize: '0.9em', padding: '5px'}}>処理中...</p>}
-          {error && <p className="error" style={{color: 'red', padding: '5px'}}>{error}</p>}
+        <MantineProvider>
+          <Container size="md" p="md">
+            <Stack gap="md">
+              <Title order={1}>物件選択</Title>
+              <TextInput
+                placeholder="物件IDまたは物件名で検索..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                disabled={!woffInitialized || (loading && properties.length === 0)} // 初期化中または初期ロード中は無効
+              />
+              
+              {/* 操作中のローディング表示やエラー表示 */}
+              {loading && properties.length > 0 && (
+                <Stack align="center" gap="xs">
+                  <Loader size="sm" />
+                  <Text size="sm">処理中...</Text>
+                </Stack>
+              )}
+              {error && (
+                <Alert color="red" title="エラー">
+                  {error}
+                </Alert>
+              )}
 
-          {woffInitialized && !loading && properties.length === 0 && !error && (
-            <p>登録されている物件がありません。</p>
-          )}
-          {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
-            <p>該当する物件が見つかりません。</p>
-          )}
+              {woffInitialized && !loading && properties.length === 0 && !error && (
+                <Text ta="center">登録されている物件がありません。</Text>
+              )}
+              {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
+                <Text ta="center">該当する物件が見つかりません。</Text>
+              )}
 
-          {woffInitialized && filteredProperties.map(property => (
-            <button
-              key={property.id}
-              className="property-button"
-              onClick={() => handlePropertySelect(property)}
-              disabled={loading} // 何らかの処理中はボタンを無効化
-            >
-              {property.id != null ? property.id : 'IDなし'}：{property.name != null ? property.name : '名称なし'}
-            </button>
-          ))}
-        </div>
+              <Stack gap="xs">
+                {woffInitialized && filteredProperties.map(property => (
+                  <Button
+                    key={property.id}
+                    variant="light"
+                    size="md"
+                    fullWidth
+                    leftSection={React.createElement(Text, { weight: 500 }, `${property.id != null ? property.id : 'IDなし'}`)}
+                    onClick={() => handlePropertySelect(property)}
+                    disabled={loading} // 何らかの処理中はボタンを無効化
+                    style={{ textAlign: 'left', justifyContent: 'flex-start' }}
+                  >
+                    {property.name != null ? property.name : '名称なし'}
+                  </Button>
+                ))}
+              </Stack>
+            </Stack>
+          </Container>
+        </MantineProvider>
       );
     };
 

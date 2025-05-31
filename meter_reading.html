@@ -3,225 +3,38 @@
 <head>
   <title>検針情報 (React)</title>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
+  
+  <!-- Mantine CSS -->
+  <link href="https://unpkg.com/@mantine/core@7.0.0/styles.css" rel="stylesheet">
+  
   <style>
-    body { font-family: sans-serif; margin: 10px; }
-    .info-section { margin-bottom: 20px; }
-    .info-section h2 { margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-    .info-item { margin-bottom: 8px; }
-    .info-label { font-weight: bold; }
-    #meter-readings-table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-top: 10px;
+    body { margin: 0; padding: 0; }
+    #root { min-height: 100vh; }
+    .usage-highlight { 
+      background-color: #e3f2fd; 
+      padding: 2px 4px; 
+      border-radius: 3px; 
+      color: #1976d2; 
+      font-weight: bold; 
     }
-    
-    /* モバイル表示（デフォルト）- 縦並び表示 */
-    #meter-readings-table thead { 
-      display: none; /* ヘッダーを完全に非表示 */
-    }
-    
-    #meter-readings-table tbody { 
-      display: block; 
-    }
-    
-    #meter-readings-table tbody tr { 
-      display: block; 
-      margin-bottom: 15px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      padding: 15px;
-      background-color: #f9f9f9;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    #meter-readings-table td { 
-      display: block;
-      border: none;
-      padding: 8px 0; 
-      text-align: left; 
-      position: relative;
-      min-height: 30px;
-      border-bottom: 1px solid #eee;
-    }
-    
-    #meter-readings-table td:last-child {
-      border-bottom: none;
-    }
-    
-    #meter-readings-table td::before {
-      content: attr(data-label) ": ";
-      font-weight: bold;
-      color: #333;
-      display: inline-block;
-      width: 80px;
-      margin-right: 10px;
-      font-size: 14px;
-    }
-    
-    /* 入力フィールドのスタイル調整 */
-    #meter-readings-table input[type="number"] {
-      width: 120px;
-      padding: 6px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    
-    #meter-readings-table button {
-      padding: 6px 12px;
-      margin: 2px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #fff;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    
-    #meter-readings-table button:hover {
-      background-color: #f0f0f0;
-    }
-    
-    /* 初回検針行のスタイル */
-    .initial-reading-row {
-      background-color: #f0f8ff !important;
-      border-left: 4px solid #007bff !important;
-    }
-    
-    .initial-reading-row input[type="number"] {
-      border: 2px solid #007bff;
-      background-color: #fff;
-    }
-    
-    .initial-reading-row input[type="number"]:focus {
-      outline: none;
-      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-    }
-    
-    /* モバイル表示での初回検針行の追加スタイル */
-    @media (max-width: 767px) {
-      .initial-reading-row {
-        border: 3px solid #007bff !important;
-        background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%) !important;
-      }
-      
-      .initial-reading-row td::before {
-        color: #007bff !important;
-        font-weight: bold !important;
-      }
-    }
-
-    /* デスクトップサイズでの通常テーブル表示 */
-    @media (min-width: 768px) {
-      #meter-readings-table { 
-        display: table;
-        border-collapse: collapse;
-      }
-      
-      #meter-readings-table thead { 
-        display: table-header-group; 
-      }
-      
-      #meter-readings-table tbody { 
-        display: table-row-group; 
-      }
-      
-      #meter-readings-table thead tr { 
-        display: table-row; 
-      }
-      
-      #meter-readings-table tbody tr { 
-        display: table-row; 
-        margin-bottom: 0;
-        border: none;
-        border-radius: 0;
-        padding: 0;
-        background-color: transparent;
-        box-shadow: none;
-      }
-      
-      #meter-readings-table th, #meter-readings-table td { 
-        display: table-cell;
-        border: 1px solid #ddd;
-        padding: 8px; 
-        text-align: left; 
-        position: static;
-        min-height: auto;
-        border-bottom: 1px solid #ddd;
-      }
-      
-      #meter-readings-table th { 
-        background-color: #f2f2f2;
-        font-weight: bold;
-      }
-      
-      #meter-readings-table td::before {
-        display: none;
-      }
-      
-      #meter-readings-table input[type="number"] {
-        width: 80px;
-      }
-    }
-    
-    /* モーダルのスタイル */
-    .photo-modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.8);
-    }
-
-    .modal-content {
-      position: relative;
-      margin: 15% auto;
-      padding: 20px;
-      width: 80%;
-      max-width: 700px;
-      background-color: #fff;
-      border-radius: 8px;
-    }
-
-    .modal-image {
-      width: 100%;
-      height: auto;
-      border-radius: 4px;
-    }
-
-    .close-modal-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    .loading, .error { text-align: center; padding: 20px; }
-    .back-button { margin-bottom: 10px; padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .back-button:hover { background-color: #5a6268; }
-    .update-button { margin-top: 10px; padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .update-button:hover { background-color: #0056b3; }
-    .update-button:disabled { background-color: #6c757d; cursor: not-allowed; }
-  </style>
-  {/* ReactとReactDOMのCDN */}
-  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-  {/* BabelのCDN (JSXをブラウザで変換するため) */}
+  </style>  </style>
+  
+  <!-- ReactとReactDOMのCDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Mantine Core (UMD) -->
+  <script src="https://unpkg.com/@mantine/core@7.0.0/umd/mantine-core.min.js"></script>
+  
+  <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel">
+    const { MantineProvider, Container, Stack, Title, Text, Button, NumberInput, Table, Loader, Alert, Modal, Image, Group, Card, Badge, ActionIcon } = window.MantineCore;
+
     const MeterReadingApp = () => {
       const [woffInitialized, setWoffInitialized] = React.useState(false);
       const [loading, setLoading] = React.useState(true);
@@ -232,9 +45,9 @@
       const [roomName, setRoomName] = React.useState('');
       const [meterReadings, setMeterReadings] = React.useState([]);
       const [debugInfo, setDebugInfo] = React.useState(null);
-      const [showModal, setShowModal] = React.useState(false);
-      const [modalImageSrc, setModalImageSrc] = React.useState('');
+      const [showModal, setShowModal] = React.useState(false);      const [modalImageSrc, setModalImageSrc] = React.useState('');
       const [updating, setUpdating] = React.useState(false);
+      const [usageStates, setUsageStates] = React.useState({});
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
       let gasWebAppUrl = '';
@@ -401,9 +214,7 @@
           console.warn('[meter_reading] 日付のフォーマットに失敗しました:', dateValue, e);
           return String(dateValue);
         }
-      };
-
-      const handleFileSelection = (event, date) => {
+      };      const handleFileSelection = (event, date) => {
         const file = event.target.files[0];
         if (file) {
           console.log('[meter_reading] ファイルが選択されました:', file.name, 'for date:', date);
@@ -418,8 +229,12 @@
               inputElement.setAttribute('data-new-photo', base64PhotoData);
               console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
               
-              // プレビュー表示の更新（簡易実装）
-              updatePhotoPreview(date, base64PhotoData);
+              // 撮影ボタンのテキストを変更
+              const cameraBtn = document.querySelector(`button[data-date-button="${date}"]`);
+              if (cameraBtn) {
+                cameraBtn.textContent = '変更';
+                cameraBtn.style.backgroundColor = '#28a745';
+              }
             } else {
               console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
               alert('写真データを紐付ける入力フィールドが見つかりませんでした。');
@@ -436,66 +251,7 @@
         if (event.target.parentElement === document.body) {
           document.body.removeChild(event.target);
         }
-      };
-
-      const updatePhotoPreview = (date, base64Data) => {
-        const photoCell = document.querySelector(`td[data-date-photo="${date}"]`);
-        if (photoCell) {
-          let previewImg = photoCell.querySelector('img.temp-preview');
-          if (!previewImg) {
-            previewImg = document.createElement('img');
-            previewImg.className = 'temp-preview';
-            previewImg.style.width = '60px';
-            previewImg.style.height = '60px';
-            previewImg.style.objectFit = 'cover';
-            previewImg.style.margin = '5px';
-            previewImg.style.cursor = 'pointer';
-            previewImg.addEventListener('click', () => showPhotoModal(base64Data));
-            photoCell.appendChild(previewImg);
-          }
-          previewImg.src = base64Data;
-          
-          // 削除ボタンの追加
-          let deleteBtn = photoCell.querySelector('button.delete-photo-btn');
-          if (!deleteBtn) {
-            deleteBtn = document.createElement('button');
-            deleteBtn.textContent = '削除';
-            deleteBtn.className = 'delete-photo-btn';
-            deleteBtn.style.backgroundColor = '#dc3545';
-            deleteBtn.style.color = 'white';
-            deleteBtn.style.border = 'none';
-            deleteBtn.style.padding = '2px 6px';
-            deleteBtn.style.marginRight = '5px';
-            deleteBtn.style.fontSize = '12px';
-            deleteBtn.style.cursor = 'pointer';
-            deleteBtn.style.borderRadius = '3px';
-            
-            deleteBtn.addEventListener('click', () => {
-              const currentReadingInput = document.querySelector(`input[data-date="${date}"]`);
-              if (currentReadingInput) {
-                currentReadingInput.removeAttribute('data-new-photo');
-              }
-              if (previewImg) previewImg.remove();
-              if (deleteBtn) deleteBtn.remove();
-              const cameraBtn = photoCell.querySelector('button[data-date-button]');
-              if (cameraBtn) cameraBtn.textContent = '撮影';
-            });
-            
-            const cameraBtn = photoCell.querySelector('button[data-date-button]');
-            if (cameraBtn) {
-              photoCell.insertBefore(deleteBtn, cameraBtn);
-            } else {
-              photoCell.appendChild(deleteBtn);
-            }
-          }
-          
-          // カメラボタンのテキストを変更
-          const cameraBtn = photoCell.querySelector('button[data-date-button]');
-          if (cameraBtn) cameraBtn.textContent = '変更';
-        }
-      };
-
-      const handleCameraClick = (date) => {
+      };      const handleCameraClick = (date) => {
         console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
         
         try {
@@ -523,19 +279,18 @@
       const hidePhotoModal = () => {
         setShowModal(false);
         setModalImageSrc('');
-      };
-
-      const handleUpdateReadings = async () => {
+      };      const handleUpdateReadings = async () => {
         if (!propertyId || !roomId) {
           alert('物件IDまたは部屋IDが取得できませんでした。');
           return;
         }
 
-        const inputs = document.querySelectorAll('#meter-readings-table tbody input[type="number"][data-date]');
+        // MantineのNumberInputからデータを取得するため、DOMから直接値を取得
+        const numberInputs = document.querySelectorAll('input[data-date]');
         const updatedReadings = [];
         let hasValidationErrors = false;
         
-        inputs.forEach(input => {
+        numberInputs.forEach(input => {
           const date = input.getAttribute('data-date');
           const newPhotoData = input.getAttribute('data-new-photo');
           const originalValue = input.getAttribute('data-original-value') || '';
@@ -607,7 +362,7 @@
           try {
             const result = JSON.parse(resultText); 
             if (result.success) {
-              const isInitialReading = inputs.length > 0 && inputs[0].getAttribute('data-original-value') === '';
+              const isInitialReading = numberInputs.length > 0 && numberInputs[0].getAttribute('data-original-value') === '';
               
               if (isInitialReading) {
                 alert('初回検針データを正常に登録しました。次回からは使用量も計算されます。');
@@ -629,279 +384,313 @@
         } finally {
           setUpdating(false);
         }
-      };
-
-      // WOFF SDK初期化前のローディング
+      };// WOFF SDK初期化前のローディング
       if (!woffInitialized && loading) {
-        return <div className="loading">アプリを初期化中です...</div>;
+        return (
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack align="center" gap="md">
+                <Loader size="lg" />
+                <Text>アプリを初期化中です...</Text>
+              </Stack>
+            </Container>
+          </MantineProvider>
+        );
       }
 
       // WOFF SDK初期化エラー
       if (!woffInitialized && error) {
-        return <div className="error">{error}</div>;
+        return (
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Alert color="red" title="エラー">
+                {error}
+              </Alert>
+            </Container>
+          </MantineProvider>
+        );
       }
 
       // データ読み込み中
       if (loading && woffInitialized) {
         return (
-          <div>
-            <button className="back-button" onClick={handleBackButton}>部屋選択へ戻る</button>
-            <h1>検針情報</h1>
-            <div className="loading">検針データを読み込み中です...</div>
-          </div>
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack gap="md">
+                <Button variant="light" color="gray" onClick={handleBackButton}>
+                  部屋選択へ戻る
+                </Button>
+                <Title order={1}>検針情報</Title>
+                <Stack align="center" gap="md">
+                  <Loader size="lg" />
+                  <Text>検針データを読み込み中です...</Text>
+                </Stack>
+              </Stack>
+            </Container>
+          </MantineProvider>
         );
       }
 
       // エラー時の表示
       if (error) {
         return (
-          <div>
-            <button className="back-button" onClick={handleBackButton}>部屋選択へ戻る</button>
-            <h1>検針情報</h1>
-            <div className="error">{error}</div>
-          </div>
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack gap="md">
+                <Button variant="light" color="gray" onClick={handleBackButton}>
+                  部屋選択へ戻る
+                </Button>
+                <Title order={1}>検針情報</Title>
+                <Alert color="red" title="エラー">
+                  {error}
+                </Alert>
+              </Stack>
+            </Container>
+          </MantineProvider>
         );
-      }
+      }      return (
+        <MantineProvider>
+          <Container size="lg" p="md">
+            <Stack gap="md">
+              <Button variant="light" color="gray" onClick={handleBackButton}>
+                部屋選択へ戻る
+              </Button>
+              
+              <Title order={1}>検針情報</Title>
+              
+              {/* 物件・部屋情報 */}
+              <Card shadow="sm" padding="md" radius="md" withBorder>
+                <Title order={3} size="h4" mb="sm">物件・部屋情報</Title>
+                <Group gap="md">
+                  <Text><strong>物件名:</strong> {propertyName}</Text>
+                  <Text><strong>部屋名:</strong> {roomName}</Text>
+                </Group>
+              </Card>
 
-      return (
-        <div>
-          <button className="back-button" onClick={handleBackButton}>部屋選択へ戻る</button>
-          <h1>検針情報</h1>
-          
-          {/* デバッグ情報表示エリア（非表示） */}
-          <div id="debug-info" style={{border: '1px solid red', padding: '10px', marginTop: '10px', whiteSpace: 'pre-wrap', fontSize: '10px', backgroundColor: '#f0f0f0', color: 'black', display: 'none'}}>
-            デバッグ情報エリア
-            {debugInfo && (
-              <div>
-                <p><strong>📊 Server Debug Info:</strong><br/>
-                  <strong>ヘッダー情報:</strong><br/>
-                  &nbsp;&nbsp;検出されたヘッダー数: {debugInfo.headerCount || 'N/A'}<br/>
-                  &nbsp;&nbsp;ヘッダー一覧: {JSON.stringify(debugInfo.detectedHeaders || [])}<br/>
-                  <strong>前々々回指示数列:</strong><br/>
-                  &nbsp;&nbsp;列インデックス: {debugInfo.threeTimesPreviousIndex !== undefined ? debugInfo.threeTimesPreviousIndex : 'N/A'}<br/>
-                  &nbsp;&nbsp;列が存在: {debugInfo.threeTimesPreviousExists ? 'はい' : 'いいえ'}<br/>
-                  <strong>列マッピング:</strong><br/>
-                  {debugInfo.columnMapping ? Object.entries(debugInfo.columnMapping).map(([col, index]) => 
-                    `&nbsp;&nbsp;${col}: ${index !== -1 ? index : '見つからず'}`).join('<br/>') : 'マッピング情報なし'}<br/>
-                  <strong>データ統計:</strong><br/>
-                  &nbsp;&nbsp;総データ行数: {debugInfo.totalDataRows || 'N/A'}<br/>
-                  &nbsp;&nbsp;フィルタ後読み取り数: {debugInfo.filteredReadings || 'N/A'}<br/>
-                  <strong>メッセージ:</strong> {debugInfo.message || ''}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="info-section">
-            <h2>物件・部屋情報</h2>
-            <div className="info-item">
-                <span className="info-label">物件名:</span> {propertyName} /
-                <span className="info-label">部屋名:</span> {roomName}
-            </div>
-            <div className="info-item" style={{display: 'none'}}><span className="info-label">物件ID:</span> {propertyId}</div>
-            <div className="info-item" style={{display: 'none'}}><span className="info-label">部屋ID:</span> {roomId}</div>
-          </div>
-
-          <div className="info-section">
-            <h2>検針履歴</h2>
-            <div id="meter-readings-list">
-              {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
-                <div>
-                  <table id="meter-readings-table" style={{display: ''}}>
-                    <thead>
-                      <tr>
-                        <th>検針日時</th>
-                        <th>今回(㎥)</th>
-                        <th>前回</th>
-                        <th>前々回</th>
-                        <th>前々々回</th>
-                        <th>今回使用量</th>
-                        <th>状態</th>
-                        <th>写真</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {meterReadings.map((reading, index) => {
-                        const formattedDate = formatDate(reading.date);
-                        const dateForDataAttribute = reading.date;
+              {/* 検針履歴 */}
+              <Card shadow="sm" padding="md" radius="md" withBorder>
+                <Title order={3} size="h4" mb="md">検針履歴</Title>
+                
+                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                  <Stack gap="md">
+                    <Table striped highlightOnHover withTableBorder withColumnBorders>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>検針日時</Table.Th>
+                          <Table.Th>今回(㎥)</Table.Th>
+                          <Table.Th>前回</Table.Th>
+                          <Table.Th>前々回</Table.Th>
+                          <Table.Th>前々々回</Table.Th>
+                          <Table.Th>今回使用量</Table.Th>
+                          <Table.Th>状態</Table.Th>
+                          <Table.Th>写真</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {meterReadings.map((reading, index) => {
+                          const formattedDate = formatDate(reading.date);
+                          const dateForDataAttribute = reading.date;
+                          
                           // 差分計算
-                        let prevReadingText = reading.previousReading || 'N/A';
-                        let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
-                        const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
-                        
-                        const prev = parseFloat(reading.previousReading);
-                        const prevPrev = parseFloat(reading.previousPreviousReading);
-                        const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
-                        
-                        // 前々回と前々々回の差分計算
-                        if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
-                          const diff = prevPrev - prevPrevPrev;
-                          prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
-                        }
-                        
-                        // 前回と前々回の差分計算
-                        if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
-                          const diff = prev - prevPrev;
-                          prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
-                        }
-
-                        // リアルタイム使用量計算用の関数
-                        const calculateUsage = (currentValue, previousValue) => {
-                          const current = parseFloat(currentValue);
-                          const previous = parseFloat(previousValue);
-                          if (!isNaN(current) && !isNaN(previous)) {
-                            const usage = current - previous;
-                            return usage >= 0 ? usage : 0;
+                          let prevReadingText = reading.previousReading || 'N/A';
+                          let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
+                          const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
+                          
+                          const prev = parseFloat(reading.previousReading);
+                          const prevPrev = parseFloat(reading.previousPreviousReading);
+                          const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
+                          
+                          // 差分表示の計算
+                          if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+                            const diff = prevPrev - prevPrevPrev;
+                            prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
                           }
-                          return 0;
-                        };                        return (
-                          <tr key={index}>
-                            <td data-label="検針日時">{formattedDate}</td>
-                            <td data-label="今回(㎥)">
-                              <input
-                                type="number"
-                                defaultValue={reading.currentReading || ''}
-                                data-date={dateForDataAttribute}
-                                data-original-value={reading.currentReading || ''}
-                                data-previous-reading={reading.previousReading || ''}
-                                pattern="[0-9]*"
-                                inputMode="numeric"
-                                onInput={(e) => {
-                                  e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                                  // リアルタイム使用量計算
-                                  const currentValue = e.target.value;
-                                  const previousValue = e.target.getAttribute('data-previous-reading');
-                                  const usageCell = e.target.closest('tr').querySelector('td[data-label="今回使用量"]');
-                                  if (currentValue && previousValue && previousValue !== 'N/A' && usageCell) {
-                                    const usage = calculateUsage(currentValue, previousValue);
-                                    usageCell.textContent = usage + '㎥';
-                                    usageCell.style.color = '#007bff';
-                                    usageCell.style.fontWeight = 'bold';
-                                  } else if (usageCell) {
-                                    usageCell.textContent = '0';
-                                    usageCell.style.color = '';
-                                    usageCell.style.fontWeight = '';
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td data-label="前回">{prevReadingText}</td>
-                            <td data-label="前々回">{prevPrevReadingText}</td>
-                            <td data-label="前々々回">{prevPrevPrevReadingText}</td>
-                            <td data-label="今回使用量">0</td>
-                            <td data-label="状態">{reading.status || 'N/A'}</td>
-                            <td data-label="写真" data-date-photo={dateForDataAttribute}>
-                              <button
-                                data-date-button={dateForDataAttribute}
-                                onClick={() => handleCameraClick(dateForDataAttribute)}
-                              >
-                                撮影
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <button 
-                    className="update-button" 
-                    onClick={handleUpdateReadings}
-                    disabled={updating}
-                  >
-                    {updating ? '更新中...' : '指示数を更新'}
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  {/* 初回検針用のテンプレート行 */}
-                  <table id="meter-readings-table" style={{display: ''}}>
-                    <thead>
-                      <tr>
-                        <th>検針日時</th>
-                        <th>今回(㎥)</th>
-                        <th>前回</th>
-                        <th>前々回</th>
-                        <th>前々々回</th>
-                        <th>今回使用量</th>
-                        <th>状態</th>
-                        <th>写真</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const currentDate = new Date();
-                        const year = currentDate.getFullYear();
-                        const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-                        const day = currentDate.getDate().toString().padStart(2, '0');
-                        const formattedCurrentDate = `${year}年${month}月${day}日`;
-                        const dateForDataAttribute = `${year}/${month}/${day}`;                        return (
-                          <tr className="initial-reading-row">
-                            <td data-label="検針日時">{formattedCurrentDate}</td>
-                            <td data-label="今回(㎥)">
-                              <input
-                                type="number"
-                                defaultValue=""
-                                placeholder="初回指示数を入力"
-                                data-date={dateForDataAttribute}
-                                data-original-value=""
-                                data-previous-reading=""
-                                pattern="[0-9]*"
-                                inputMode="numeric"
-                                min="0"
-                                required
-                                onInput={(e) => {
-                                  e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                                  e.target.style.borderColor = '';
-                                  // 初回検針では使用量は常に0
-                                  const usageCell = e.target.closest('tr').querySelector('td[data-label="今回使用量"]');
-                                  if (usageCell) {
-                                    usageCell.textContent = '0';
-                                    usageCell.style.color = '#007bff';
-                                    usageCell.style.fontWeight = 'bold';
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td data-label="前回">N/A</td>
-                            <td data-label="前々回">N/A</td>
-                            <td data-label="前々々回">N/A</td>
-                            <td data-label="今回使用量">0</td>
-                            <td data-label="状態" style={{color: '#007bff', fontWeight: 'bold'}}>初回検針</td>
-                            <td data-label="写真" data-date-photo={dateForDataAttribute}>
-                              <button
-                                data-date-button={dateForDataAttribute}
-                                onClick={() => handleCameraClick(dateForDataAttribute)}
-                              >
-                                撮影
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })()}
-                    </tbody>
-                  </table>
-                  <button 
-                    className="update-button" 
-                    onClick={handleUpdateReadings}
-                    disabled={updating}
-                  >
-                    {updating ? '更新中...' : '指示数を更新'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+                          
+                          if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
+                            const diff = prev - prevPrev;
+                            prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;                          }
 
-          {/* 写真表示モーダル */}
-          {showModal && (
-            <div className="photo-modal" style={{display: 'block'}}>
-              <div className="modal-content">
-                <button className="close-modal-button" onClick={hidePhotoModal}>&times;</button>
-                <img className="modal-image" src={modalImageSrc} alt="検針写真" />
-              </div>
-            </div>
-          )}
-        </div>
+                          // リアルタイム使用量計算用の関数
+                          const calculateUsage = (currentValue, previousValue) => {
+                            const current = parseFloat(currentValue);
+                            const previous = parseFloat(previousValue);
+                            if (!isNaN(current) && !isNaN(previous)) {
+                              const usage = current - previous;
+                              return usage >= 0 ? usage : 0;
+                            }
+                            return 0;
+                          };
+
+                          return (
+                            <Table.Tr key={index}>
+                              <Table.Td>{formattedDate}</Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  defaultValue={reading.currentReading || ''}
+                                  placeholder="指示数入力"
+                                  min={0}
+                                  hideControls
+                                  data-date={dateForDataAttribute}
+                                  data-original-value={reading.currentReading || ''}
+                                  data-previous-reading={reading.previousReading || ''}
+                                  onChange={(value) => {
+                                    const currentValue = value || '';
+                                    const previousValue = reading.previousReading || '';
+                                    if (currentValue && previousValue && previousValue !== 'N/A') {
+                                      const usage = calculateUsage(currentValue, previousValue);
+                                      setUsageStates(prev => ({
+                                        ...prev,
+                                        [dateForDataAttribute]: usage.toString()
+                                      }));
+                                    } else {
+                                      setUsageStates(prev => ({
+                                        ...prev,
+                                        [dateForDataAttribute]: '0'
+                                      }));
+                                    }
+                                  }}
+                                />
+                              </Table.Td>
+                              <Table.Td>{prevReadingText}</Table.Td>
+                              <Table.Td>{prevPrevReadingText}</Table.Td>
+                              <Table.Td>{prevPrevPrevReadingText}</Table.Td>
+                              <Table.Td>
+                                <Text className="usage-highlight">
+                                  {usageStates[dateForDataAttribute] || '0'}㎥
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Badge color="blue" variant="light">
+                                  {reading.status || 'N/A'}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td>
+                                <Button
+                                  size="xs"
+                                  variant="filled"
+                                  color="blue"
+                                  data-date-button={dateForDataAttribute}
+                                  onClick={() => handleCameraClick(dateForDataAttribute)}
+                                >
+                                  撮影
+                                </Button>
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })}
+                      </Table.Tbody>
+                    </Table>
+                    
+                    <Button 
+                      fullWidth
+                      size="lg"
+                      loading={updating}
+                      onClick={handleUpdateReadings}
+                    >
+                      {updating ? '更新中...' : '指示数を更新'}
+                    </Button>
+                  </Stack>
+                ) : (
+                  <Stack gap="md">
+                    {/* 初回検針用のテンプレート */}
+                    <Alert color="blue" title="初回検針">
+                      初回の検針データを入力してください。
+                    </Alert>
+                    
+                    <Table striped highlightOnHover withTableBorder withColumnBorders>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>検針日時</Table.Th>
+                          <Table.Th>今回(㎥)</Table.Th>
+                          <Table.Th>前回</Table.Th>
+                          <Table.Th>前々回</Table.Th>
+                          <Table.Th>前々々回</Table.Th>
+                          <Table.Th>今回使用量</Table.Th>
+                          <Table.Th>状態</Table.Th>
+                          <Table.Th>写真</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {(() => {
+                          const currentDate = new Date();
+                          const year = currentDate.getFullYear();
+                          const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+                          const day = currentDate.getDate().toString().padStart(2, '0');
+                          const formattedCurrentDate = `${year}年${month}月${day}日`;
+                          const dateForDataAttribute = `${year}/${month}/${day}`;
+
+                          return (
+                            <Table.Tr>
+                              <Table.Td>{formattedCurrentDate}</Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  placeholder="初回指示数を入力"
+                                  min={0}
+                                  hideControls
+                                  required
+                                  data-date={dateForDataAttribute}
+                                  data-original-value=""
+                                  data-previous-reading=""
+                                />
+                              </Table.Td>
+                              <Table.Td>N/A</Table.Td>
+                              <Table.Td>N/A</Table.Td>
+                              <Table.Td>N/A</Table.Td>
+                              <Table.Td>
+                                <Text className="usage-highlight">0㎥</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Badge color="green" variant="light">
+                                  初回検針
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td>
+                                <Button
+                                  size="xs"
+                                  variant="filled"
+                                  color="blue"
+                                  data-date-button={dateForDataAttribute}
+                                  onClick={() => handleCameraClick(dateForDataAttribute)}
+                                >
+                                  撮影
+                                </Button>
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })()}
+                      </Table.Tbody>
+                    </Table>
+                    
+                    <Button 
+                      fullWidth
+                      size="lg"
+                      loading={updating}
+                      onClick={handleUpdateReadings}
+                    >
+                      {updating ? '更新中...' : '指示数を更新'}
+                    </Button>
+                  </Stack>
+                )}
+              </Card>
+            </Stack>
+
+            {/* 写真表示モーダル */}
+            <Modal
+              opened={showModal}
+              onClose={hidePhotoModal}
+              title="検針写真"
+              size="lg"
+              centered
+            >
+              <Image
+                src={modalImageSrc}
+                alt="検針写真"
+                fit="contain"
+                style={{ maxHeight: '60vh' }}
+              />
+            </Modal>
+          </Container>
+        </MantineProvider>
       );
     };
 

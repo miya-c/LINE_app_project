@@ -3,29 +3,31 @@
 <head>
   <title>部屋選択 (React)</title>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
-  <style>
-    body { font-family: sans-serif; margin: 10px; }
-    h1, h2 { margin-top: 0; }
-    .room-button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; text-align: left; background-color: #f0f0f0; border: 1px solid #ccc; cursor: pointer; }
-    .room-button:hover { background-color: #e0e0e0; }
-    .room-button:disabled { background-color: #ccc; cursor: not-allowed; }
-    .property-name { font-size: 1.2em; margin-bottom: 15px; }
-    .loading, .error { text-align: center; padding: 20px; }
-    .back-button { margin-bottom: 10px; padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .back-button:hover { background-color: #5a6268; }
-  </style>
-  {/* ReactとReactDOMのCDN */}
-  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-  {/* BabelのCDN (JSXをブラウザで変換するため) */}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
+  
+  <!-- Mantine CSS -->
+  <link href="https://unpkg.com/@mantine/core@7.0.0/styles.css" rel="stylesheet">
+  
+  <!-- ReactとReactDOMのCDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Mantine Core (UMD) -->
+  <script src="https://unpkg.com/@mantine/core@7.0.0/umd/mantine-core.min.js"></script>
+  
+  <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body { margin: 0; padding: 0; }
+    #root { min-height: 100vh; }
+  </style>
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel">
+    const { MantineProvider, Container, Stack, Title, Text, Button, Loader, Alert, Group } = window.MantineCore;
+
     const RoomSelectApp = () => {
       const [propertyId, setPropertyId] = React.useState(null);
       const [propertyName, setPropertyName] = React.useState('');
@@ -141,67 +143,112 @@
 
       // WOFF SDK初期化前のローディング
       if (!woffInitialized && loading) {
-        return <div className="loading">アプリを初期化中です...</div>;
+        return (
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack align="center" gap="md">
+                <Loader size="lg" />
+                <Text>アプリを初期化中です...</Text>
+              </Stack>
+            </Container>
+          </MantineProvider>
+        );
       }
 
       // WOFF SDK初期化エラー
       if (!woffInitialized && error) {
-        return <div className="error">{error}</div>;
+        return (
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Alert color="red" title="エラー">
+                {error}
+              </Alert>
+            </Container>
+          </MantineProvider>
+        );
       }
 
       // データ読み込み中
       if (loading && woffInitialized) {
         return (
-          <div>
-            <button className="back-button" onClick={handleBackToPropertySelect}>物件選択へ戻る</button>
-            <h1>部屋選択</h1>
-            <div className="property-name">物件名：読み込み中...</div>
-            <div className="loading">部屋情報を読み込み中です...</div>
-          </div>
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack gap="md">
+                <Button variant="light" color="gray" onClick={handleBackToPropertySelect}>
+                  物件選択へ戻る
+                </Button>
+                <Title order={1}>部屋選択</Title>
+                <Text size="lg" fw={500}>物件名：読み込み中...</Text>
+                <Stack align="center" gap="md">
+                  <Loader size="lg" />
+                  <Text>部屋情報を読み込み中です...</Text>
+                </Stack>
+              </Stack>
+            </Container>
+          </MantineProvider>
         );
       }
 
       // エラー時の表示
       if (error) {
         return (
-          <div>
-            <button className="back-button" onClick={handleBackToPropertySelect}>物件選択へ戻る</button>
-            <h1>部屋選択</h1>
-            <div className="property-name">物件名：{propertyName}</div>
-            <div className="error">{error}</div>
-          </div>
+          <MantineProvider>
+            <Container size="md" p="md">
+              <Stack gap="md">
+                <Button variant="light" color="gray" onClick={handleBackToPropertySelect}>
+                  物件選択へ戻る
+                </Button>
+                <Title order={1}>部屋選択</Title>
+                <Text size="lg" fw={500}>物件名：{propertyName}</Text>
+                <Alert color="red" title="エラー">
+                  {error}
+                </Alert>
+              </Stack>
+            </Container>
+          </MantineProvider>
         );
       }
 
       return (
-        <div>
-          <button className="back-button" onClick={handleBackToPropertySelect}>物件選択へ戻る</button>
-          <h1>部屋選択</h1>
-          <div className="property-name">物件名：{propertyName}</div>
+        <MantineProvider>
+          <Container size="md" p="md">
+            <Stack gap="md">
+              <Button variant="light" color="gray" onClick={handleBackToPropertySelect}>
+                物件選択へ戻る
+              </Button>
+              <Title order={1}>部屋選択</Title>
+              <Text size="lg" fw={500}>物件名：{propertyName}</Text>
 
-          {!Array.isArray(rooms) && (
-            <p className="error">部屋データの形式が正しくありません。</p>
-          )}
-          
-          {Array.isArray(rooms) && rooms.length === 0 && (
-            <p>この物件に登録されている部屋はありません。</p>
-          )}
+              {!Array.isArray(rooms) && (
+                <Alert color="red" title="エラー">
+                  部屋データの形式が正しくありません。
+                </Alert>
+              )}
+              
+              {Array.isArray(rooms) && rooms.length === 0 && (
+                <Text ta="center">この物件に登録されている部屋はありません。</Text>
+              )}
 
-          {Array.isArray(rooms) && rooms.length > 0 && (
-            <div>
-              {rooms.map(room => (
-                <button
-                  key={room.id}
-                  className="room-button"
-                  onClick={() => handleRoomSelect(room)}
-                  disabled={loading}
-                >
-                  {room.name || 'N/A'}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+              {Array.isArray(rooms) && rooms.length > 0 && (
+                <Stack gap="xs">
+                  {rooms.map(room => (
+                    <Button
+                      key={room.id}
+                      variant="light"
+                      size="md"
+                      fullWidth
+                      onClick={() => handleRoomSelect(room)}
+                      disabled={loading}
+                      style={{ textAlign: 'left', justifyContent: 'flex-start' }}
+                    >
+                      {room.name || 'N/A'}
+                    </Button>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Container>
+        </MantineProvider>
       );
     };
 
