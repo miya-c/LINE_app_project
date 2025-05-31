@@ -39,6 +39,15 @@
       --mantine-spacing-md: 16px;
       --mantine-spacing-lg: 20px;
       --mantine-spacing-xl: 32px;
+      --app-bg-color: #f0f4f8; /* Light blue/gray background */
+      --header-bg-color: #007bff; /* Blue header */
+      --header-text-color: #ffffff; /* White text for header */
+      --card-bg-color: #ffffff; /* White card background */
+      --primary-text-color: #333333;
+      --secondary-text-color: #555555;
+      --accent-color: #007bff; /* Blue accent for property info */
+      --border-color: #dddddd;
+      --font-family-sans-serif: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
     }
     
     * {
@@ -51,7 +60,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
       line-height: 1.55;
       color: var(--mantine-color-gray-7);
-      background-color: var(--mantine-color-gray-0);
+      background-color: var(--app-bg-color);
       font-size: 20px; /* 基本フォントサイズを20pxに大幅アップ */
     }
     
@@ -392,71 +401,198 @@
       .mantine-table td .mantine-button {
         padding: var(--mantine-spacing-md); /* ボタンのパディングも大きく */
       }
-    }
 
-    /* フローティングアクションボタン (FAB) のスタイル */
-    .fab-container {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 1000;
-    }
+      .app-header {
+        background-color: var(--header-bg-color);
+        color: var(--header-text-color);
+        padding: 10px 15px;
+        text-align: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Center title */
+      }
 
-    .fab-button {
-      background-color: var(--mantine-color-blue-6);
-      color: white;
-      width: 70px; /* FABサイズも少し大きく */
-      height: 70px; /* FABサイズも少し大きく */
-      border-radius: 50%;
-      border: none;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 30px; /* アイコンサイズも大きく */
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
+      .back-button {
+        background-color: transparent;
+        border: none;
+        color: var(--header-text-color);
+        font-size: 24px;
+        cursor: pointer;
+        position: absolute; /* Position back button to the left */
+        left: 15px;
+      }
 
-    .fab-button:hover {
-      background-color: var(--mantine-color-blue-7);
-    }
+      .header-title {
+        margin: 0;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
 
-    .fab-button:disabled {
-      background-color: var(--mantine-color-gray-3);
-      cursor: not-allowed;
-    }
-    
-    /* トースト通知のスタイル */
-    .toast-notification {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: var(--mantine-color-gray-8);
-      color: white;
-      padding: var(--mantine-spacing-md) var(--mantine-spacing-lg); /* トーストのパディングも調整 */
-      border-radius: var(--mantine-radius-sm);
-      z-index: 2000;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out, top 0.5s ease-in-out;
-      visibility: hidden;
-      font-size: 1rem; /* トーストのフォントサイズ (20px相当) */
-    }
+      .content-area {
+        padding-top: 60px; /* Adjust based on header height */
+        padding-bottom: 20px;
+      }
+      
+      .property-info-card {
+        background-color: var(--accent-color); /* Blue background */
+        color: var(--header-text-color); /* White text */
+        padding: 15px;
+        margin: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
 
-    .toast-notification.show {
-      opacity: 1;
-      top: 40px;
-      visibility: visible;
+      .property-name {
+        font-size: 1.3em;
+        font-weight: bold;
+        margin-top: 0;
+        margin-bottom: 5px;
+      }
+
+      .room-label {
+        font-size: 0.9em;
+        margin-bottom: 2px;
+      }
+
+      .room-name {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+
+      .mantine-paper.reading-history-container {
+        padding: 5px; /* Reduce padding for mobile */
+        margin: 0 5px; /* Reduce margin for mobile */
+        background-color: transparent; /* Make it transparent as cards have their own bg */
+        box-shadow: none; /* Remove shadow as cards will have it */
+      }
+
+      .reading-entry-card {
+        background-color: var(--card-bg-color);
+        border-radius: 8px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: block; /* Make tr a block element for card layout */
+        width: 100%;
+        border: 1px solid var(--border-color); /* Add border to card */
+      }
+
+      .reading-entry-card > td { /* The single td that wraps the grid */
+        display: block;
+        padding: 0; /* Remove padding from this td */
+        border: none; /* Remove borders from this td */
+      }
+
+      .reading-entry-card > td::before {
+          content: none !important; /* Ensure the wrapper TD doesn't get a data-label */
+      }
+      
+      .reading-card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* Two columns */
+        grid-template-rows: auto auto auto; /* Three rows for content */
+        gap: 10px;
+        padding: 15px;
+      }
+
+      .reading-card-grid > div { /* Direct children divs of the grid */
+        padding: 5px;
+        /* border-bottom: 1px solid #eee; */ /* Optional: for visual separation */
+      }
+      
+      .reading-card-grid > div:last-child {
+        border-bottom: none;
+      }
+
+      .grid-item-datetime {
+        grid-column: 1 / 2; /* Span 1 column, start at 1 */
+        grid-row: 1 / 2;    /* Span 1 row, start at 1 */
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+      .grid-item-current-reading {
+        grid-column: 2 / 3; /* Span 1 column, start at 2 */
+        grid-row: 1 / 2;    /* Span 1 row, start at 1 */
+        text-align: right;
+      }
+      .grid-item-current-usage {
+        grid-column: 1 / 2; /* Span 1 column, start at 1 */
+        grid-row: 2 / 2;    /* Span 1 row, start at 2 */
+        text-align: left;
+      }
+      
+      .grid-item-status {
+        grid-column: 2 / 3; /* Span 1 column, start at 2 */
+        grid-row: 2 / 2;    /* Span 1 row, start at 2 */
+        text-align: right;
+      }
+
+      .grid-item-previous-readings {
+        grid-column: 1 / -1; /* Span full width */
+        grid-row: 3 / 4;     /* Span 1 row, start at 3 */
+        /* background-color: #f9f9f9; */ /* Slightly different background for this section */
+        /* padding: 10px; */
+        /* border-top: 1px solid var(--border-color); */
+      }
+      
+      .grid-item-photo {
+        grid-column: 1 / -1; /* Span full width */
+        grid-row: 4 / 5; /* Span 1 row, start at 4 */
+        text-align: center; /* Center the image/link */
+      }
+
+
+      .previous-readings-section {
+        font-size: 0.9em;
+        color: var(--secondary-text-color);
+      }
+      .previous-readings-section p {
+        margin: 2px 0;
+      }
+      .previous-readings-section strong {
+        color: var(--primary-text-color);
+      }
+
+
+      /* Hide original table cells that are now part of the card grid */
+      /* The following rules were empty and have been removed or commented out if potentially needed later */
+      /* 
+      .reading-entry-card td[data-label=\"検針日時\"],
+      .reading-entry-card td[data-label=\"今回(㎥)\"],
+      .reading-entry-card td[data-label=\"今回使用量\"],
+      .reading-entry-card td[data-label=\"前回\"],
+      .reading-entry-card td[data-label=\"前々回\"],
+      .reading-entry-card td[data-label=\"前々々回\"],
+      .reading-entry-card td[data-label=\"状態\"],
+      .reading-entry-card td[data-label=\"写真\"] {
+          display: none; 
+      }
+      */
+
+      /* Ensure the data-label pseudo-elements are not shown for the new layout */
+      /* 
+      .reading-entry-card td::before {
+         content: none !important; 
+      }
+      */
+      
+      /* Hide original table headers if they are still rendered by Mantine */
+      /*
+      thead tr {
+          display: none; 
+      }
+      tbody tr td {
+          border-bottom: none; 
+      }
+      */
     }
-    
-    /* インラインエラーメッセージ */
-    .inline-error {
-      color: var(--mantine-color-red-6);
-      font-size: 1rem; /* エラーメッセージも大きく (20px相当) */
-      margin-top: 5px;
-    }
+    /* ...existing code... */
   </style>
 </head>
 <body>
@@ -647,6 +783,51 @@
           return String(dateValue);
         }
       };
+
+      // Helper function for usage calculation (consistent with original logic)
+      const calculateUsageDisplay = (currentStr, previousStr) => {
+        const current = parseFloat(currentStr);
+        const previous = parseFloat(previousStr);
+        if (!isNaN(current) && !isNaN(previous) && previousStr && previousStr !== 'N/A') {
+          const usage = current - previous;
+          return (usage >= 0 ? usage : 0).toString(); // Return as string, ensure non-negative
+        }
+        return '0'; // Default if cannot calculate
+      };
+
+      // Helper for previous readings text
+      const getPreviousReadingsText = (r) => {
+        let parts = [];
+        if (r.previousReading && r.previousReading !== 'N/A') {
+            let text = `前回: ${r.previousReading}`;
+            if (r.previousPreviousReading && r.previousPreviousReading !== 'N/A') {
+                const prev = parseFloat(r.previousReading);
+                const prevPrev = parseFloat(r.previousPreviousReading);
+                if (!isNaN(prev) && !isNaN(prevPrev)) {
+                    const diff = prev - prevPrev;
+                    text += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+                }
+            }
+            parts.push(text);
+        }
+        if (r.previousPreviousReading && r.previousPreviousReading !== 'N/A') {
+            let text = `前々回: ${r.previousPreviousReading}`;
+            if (r.threeTimesPrevious && r.threeTimesPrevious !== 'N/A') {
+                const prevPrev = parseFloat(r.previousPreviousReading);
+                const prevPrevPrev = parseFloat(r.threeTimesPrevious);
+                if (!isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
+                    const diff = prevPrev - prevPrevPrev;
+                    text += ` [${diff >= 0 ? '+' : ''}${diff}]`;
+                }
+            }
+            parts.push(text);
+        }
+        if (r.threeTimesPrevious && r.threeTimesPrevious !== 'N/A') {
+            parts.push(`前々々回: ${r.threeTimesPrevious}`);
+        }
+        return parts.length > 0 ? parts.join(' / ') : 'なし';
+      };
+
 
       const handleFileSelection = (event, date) => {
         const file = event.target.files[0];
@@ -851,293 +1032,327 @@
           </div>
         );
       }
-
-      // データ読み込み中
+      
+      // データ読み込み中 (ヘッダー構造を適用)
       if (loading && woffInitialized) {
         return (
-          <div className="mantine-container">
-            <div className="mantine-stack">
-              <button
-                onClick={handleBackButton}
-                className="mantine-button variant-outline"
-              >
-                部屋選択へ戻る
+          <>
+            <div className="app-header">
+              <button onClick={handleBackButton} className="back-button" aria-label="戻る">
+                &lt;
               </button>
-              <h1 className="mantine-title">検針情報</h1>
-              <div className="mantine-center">
-                <div className="mantine-stack center">
-                  <div className="mantine-loader"></div>
-                  <p className="mantine-text">検針データを読み込んでいます...</p>
-                </div>
+              <h1 className="header-title">検針情報</h1>
+            </div>
+            <div className="content-area mantine-container">
+              <div className="mantine-stack center">
+                <div className="mantine-loader"></div>
+                <p className="mantine-text">検針データを読み込んでいます...</p>
               </div>
             </div>
-          </div>
+          </>
         );
       }
 
-      // エラー時の表示
+      // エラー時の表示 (ヘッダー構造を適用)
       if (error) {
         return (
-          <div className="mantine-container">
-            <div className="mantine-stack">
-              <button
-                onClick={handleBackButton}
-                className="mantine-button variant-outline"
-              >
-                部屋選択へ戻る
+          <>
+            <div className="app-header">
+              <button onClick={handleBackButton} className="back-button" aria-label="戻る">
+                &lt;
               </button>
-              <h1 className="mantine-title">検針情報</h1>
-              <div className="mantine-alert">
-                <h3 className="mantine-text weight-600">エラー</h3>
-                <p className="mantine-text">{error}</p>
+              <h1 className="header-title">検針情報</h1>
+            </div>
+            <div className="content-area mantine-container">
+              <div className="mantine-stack">
+                <div className="mantine-alert">
+                  <h3 className="mantine-text weight-600">エラー</h3>
+                  <p className="mantine-text">{error}</p>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         );
       }
 
       // メインコンテンツ表示
       return (
-        <div className="mantine-container">
-          <div className="mantine-stack">
-            <button
-              onClick={handleBackButton}
-              className="mantine-button variant-outline"
-            >
-              部屋選択へ戻る
+        <>
+          <div className="app-header">
+            <button onClick={handleBackButton} className="back-button" aria-label="戻る">
+              &lt;
             </button>
-            
-            <h1 className="mantine-title">検針情報</h1>
-            
-            {/* 物件・部屋情報 */}
-            <div className="mantine-paper">
-              <h3 className="mantine-subtitle">物件・部屋情報</h3>
-              <div className="mantine-stack">
-                <p className="mantine-text"><strong>物件名:</strong> {propertyName}</p>
-                <p className="mantine-text"><strong>部屋名:</strong> {roomName}</p>
-              </div>
-            </div>
+            <h1 className="header-title">検針情報</h1>
+          </div>
 
-            {/* 検針履歴 */}
-            <div className="mantine-paper">
-              <h3 className="mantine-subtitle">検針履歴</h3>
+          <div className="content-area mantine-container">
+            <div className="mantine-stack">
               
+              <div className="property-info-card">
+                <h2 className="property-name">{propertyName}</h2>
+                <p className="room-label">部屋:</p>
+                <p className="room-name">{roomName}</p>
+              </div>
 
-              {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
-                <div className="mantine-stack">
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="mantine-table">
-                      <thead>
-                        <tr>
-                          <th>検針日時</th>
-                          <th>今回(㎥)</th>
-                          <th>前回</th>
-                          <th>前々回</th>
-                          <th>前々々回</th>
-                          <th>今回使用量</th>
-                          <th>状態</th>
-                          <th>写真</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {meterReadings.map((reading, index) => {
-                          const formattedDate = formatDate(reading.date);
-                          const dateForDataAttribute = reading.date;
+              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
+                <h3 className="mantine-subtitle" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
+                
+                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                  <table className="mantine-table">
+                    <thead style={{ display: 'none' }}>
+                      <tr>
+                        <th>検針日時</th>
+                        <th>今回(㎥)</th>
+                        <th>前回</th>
+                        <th>前々回</th>
+                        <th>前々々回</th>
+                        <th>今回使用量</th>
+                        <th>状態</th>
+                        <th>写真</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {meterReadings.map((reading, index) => {
+                        const formattedDate = formatDate(reading.date);
+                        const dateForDataAttribute = reading.date;
+                        const currentReadingDisplay = reading.currentReading || '';
+                        
+                        const usageToDisplay = usageStates[dateForDataAttribute] !== undefined 
+                                            ? usageStates[dateForDataAttribute]
+                                            : calculateUsageDisplay(reading.currentReading, reading.previousReading);
+                        
+                        const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;
 
-                          // Helper function for usage calculation (consistent with original logic)
-                          const calculateUsageDisplay = (currentStr, previousStr) => {
-                            const current = parseFloat(currentStr);
-                            const previous = parseFloat(previousStr);
-                            if (!isNaN(current) && !isNaN(previous) && previousStr && previousStr !== 'N/A') {
-                              const usage = current - previous;
-                              return (usage >= 0 ? usage : 0).toString(); // Return as string, ensure non-negative
-                            }
-                            return '0'; // Default if cannot calculate
-                          };
+                        const statusDisplay = reading.status || 'N/A';
+                        const previousReadingsInfo = getPreviousReadingsText(reading);
 
-                          let prevReadingText = reading.previousReading || 'N/A';
-                          let prevPrevReadingText = reading.previousPreviousReading || 'N/A';
-                          const prevPrevPrevReadingText = reading.threeTimesPrevious || 'N/A';
-                          
-                          const prev = parseFloat(reading.previousReading);
-                          const prevPrev = parseFloat(reading.previousPreviousReading);
-                          const prevPrevPrev = parseFloat(reading.threeTimesPrevious);
-                          
-                          if (prevPrevReadingText !== 'N/A' && prevPrevPrevReadingText !== 'N/A' && !isNaN(prevPrev) && !isNaN(prevPrevPrev)) {
-                            const diff = prevPrev - prevPrevPrev;
-                            prevPrevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
-                          }
-                          
-                          if (prevReadingText !== 'N/A' && (reading.previousPreviousReading || 'N/A') !== 'N/A' && !isNaN(prev) && !isNaN(prevPrev)) {
-                            const diff = prev - prevPrev;
-                            prevReadingText += ` [${diff >= 0 ? '+' : ''}${diff}]`;
-                          }
-                          
-                          const initialUsageDisplay = calculateUsageDisplay(reading.currentReading, reading.previousReading);                          return (
-                            <tr key={index}>
-                              <td data-label="検針日時">{formattedDate}</td>
-                              <td data-label="今回(㎥)">                                <input
-                                  type="number"
-                                  step="any"
-                                  defaultValue={reading.currentReading || ''}
-                                  placeholder="指示数入力"
-                                  min="0"
-                                  data-date={dateForDataAttribute}
-                                  data-original-value={reading.currentReading || ''}
-                                  data-previous-reading={reading.previousReading || ''}
-                                  className="mantine-input"
-                                  onChange={(e) => {
-                                    const currentValue = e.target.value;
-                                    const previousValue = reading.previousReading || '';
+                        return (
+                          <tr key={index} className="reading-entry-card">
+                            <td> {/* Single td wrapper for the grid */}
+                              <div className="reading-card-grid">
+                                <div className="grid-item-datetime">
+                                  {formattedDate}
+                                </div>
+                                <div className="grid-item-current-reading">
+                                  <span style={{fontSize: '0.8em', color: 'var(--secondary-text-color)'}}>今回指示数</span><br/>
+                                  <strong style={{fontSize: '1.2em'}}>{currentReadingDisplay}</strong> ㎥
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    defaultValue={currentReadingDisplay}
+                                    placeholder="指示数入力"
+                                    min="0"
+                                    data-date={dateForDataAttribute}
+                                    data-original-value={reading.currentReading || ''}
+                                    data-previous-reading={reading.previousReading || ''}
+                                    className="mantine-input"
+                                    style={{ marginTop: '8px', width: '100%', fontSize: '1.1rem', padding: '10px' }}
+                                    onChange={(e) => {
+                                      const currentValue = e.target.value;
+                                      const previousValue = reading.previousReading || '';
                                       const numericValue = parseFloat(currentValue);
-                                    if (currentValue !== '' && (isNaN(numericValue) || numericValue < 0)) {
-                                      setInputErrors(prev => ({...prev, [dateForDataAttribute]: '指示数は0以上の数値を入力してください。'}));
-                                      e.target.style.borderColor = 'var(--mantine-color-red-6)';
-                                      setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' })); // Indicate error in usage
-                                    } else {
-                                      setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
-                                      e.target.style.borderColor = '';
-                                      const usage = calculateUsageDisplay(currentValue, previousValue);
-                                      setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: usage }));
-                                    }
-                                  }}
-                                />
-                                {inputErrors[dateForDataAttribute] && (
-                                  <div className="inline-error">{inputErrors[dateForDataAttribute]}</div>
+                                      if (currentValue === '') { 
+                                          setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                          e.target.style.borderColor = '';
+                                          setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(currentValue, previousValue) }));
+                                      } else if (isNaN(numericValue) || numericValue < 0) {
+                                        setInputErrors(prev => ({...prev, [dateForDataAttribute]: '0以上の数値を入力'}));
+                                        e.target.style.borderColor = 'var(--mantine-color-red-6)';
+                                        setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' }));
+                                      } else {
+                                        setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                        e.target.style.borderColor = '';
+                                        setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(currentValue, previousValue) }));
+                                      }
+                                    }}
+                                  />
+                                  {inputErrors[dateForDataAttribute] && (
+                                    <div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', textAlign: 'right', marginTop: '4px' }}>
+                                      {inputErrors[dateForDataAttribute]}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="grid-item-current-usage">
+                                  <span style={{fontSize: '0.8em', color: 'var(--secondary-text-color)'}}>今回使用量</span><br/>
+                                  <strong style={{fontSize: '1.1em'}}>{usageDisplayString}</strong>
+                                </div>
+                                <div className="grid-item-status">
+                                  <span style={{fontSize: '0.8em', color: 'var(--secondary-text-color)'}}>状態</span><br/>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '3px 9px',
+                                    fontSize: '0.9em',
+                                    fontWeight: 500,
+                                    backgroundColor: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-2)' : 'var(--mantine-color-blue-light)',
+                                    color: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-7)' : 'var(--mantine-color-blue-8)',
+                                    borderRadius: 'var(--mantine-radius-sm)',
+                                    marginTop: '2px'
+                                  }}>
+                                    {statusDisplay}
+                                  </span>
+                                </div>
+                                {previousReadingsInfo && previousReadingsInfo !== 'なし' && (
+                                  <div className="grid-item-previous-readings previous-readings-section">
+                                    <p style={{fontSize: '0.8em', color: 'var(--secondary-text-color)', marginBottom: '3px'}}>参考 (前回 / 前々回 / 前々々回)</p>
+                                    <p style={{fontSize: '0.9em'}}>{previousReadingsInfo}</p>
+                                  </div>
                                 )}
-                              </td>
-                              <td data-label="前回">{prevReadingText}</td>
-                              <td data-label="前々回">{prevPrevReadingText}</td>
-                              <td data-label="前々々回">{prevPrevPrevReadingText}</td>
-                              <td data-label="今回使用量">
-                                {usageStates[dateForDataAttribute] !== undefined 
-                                  ? `${usageStates[dateForDataAttribute]}㎥` 
-                                  : `${calculateUsageDisplay(reading.currentReading, reading.previousReading) || '0'}㎥`}
-                              </td>
-                              <td data-label="状態">
-                                <span style={{
-                                  display: 'inline-block',
-                                  padding: '2px 8px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 500,
-                                  backgroundColor: 'var(--mantine-color-blue-light)',
-                                  color: 'var(--mantine-color-blue-8)',
-                                  borderRadius: 'var(--mantine-radius-sm)'
-                                }}>
-                                  {reading.status || 'N/A'}
-                                </span>
-                              </td>
-                              <td data-label="写真">
-                                <button
-                                  className="mantine-button variant-filled"
-                                  style={{ fontSize: '0.75rem', padding: '4px 8px' }}
-                                  data-date-button={dateForDataAttribute}
-                                  onClick={() => handleCameraClick(dateForDataAttribute)}
-                                >
-                                  写真を追加 📸
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="mantine-stack">
-                  <div className="mantine-alert info">
-                    <h3 className="mantine-text weight-600">初回検針</h3>
-                    <p className="mantine-text">
-                      この部屋の検針データはまだありません。下のフォームから最初の検針データを入力してください。
-                    </p>
-                  </div>
-                  <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)'}}>
-                    <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
-                    <div className="mantine-stack">
-                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-sm)'}}>
-                        <div className="mantine-alert info">
-                          <div>
-                            <h3 className="mantine-text weight-600">初回検針</h3>
-                            <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
-                            <p className="mantine-text">
-                              <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" />から最初の検針データを入力してください。
-                            </p>
-                          </div>
-                          <div>
-                            <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
-                            <input
-                              type="number"
-                              id="initialReadingValue"
-                              className="mantine-input"
-                              placeholder="指示数入力"
-                              min="0"
-                              data-date={new Date().toISOString().split('T')[0]} 
-                              data-original-value=""
-                              data-previous-reading=""
-                              onChange={(e) => {
-                                const dateForDataAttribute = new Date().toISOString().split('T')[0];
-                                setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
-                                e.target.style.borderColor = '';
-                              }}
-                            />
-                            {inputErrors[new Date().toISOString().split('T')[0]] && (
-                              <div className="inline-error">{inputErrors[new Date().toISOString().split('T')[0]]}</div>
-                            )}
-                          </div>
+                                <div className="grid-item-photo">
+                                  <button
+                                    className="mantine-button variant-filled"
+                                    style={{ width: '100%', fontSize: '1rem', padding: '10px 0' }}
+                                    data-date-button={dateForDataAttribute}
+                                    onClick={() => handleCameraClick(dateForDataAttribute)}
+                                  >
+                                    写真を追加/変更 📸
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="mantine-stack">
+                    <div className="mantine-alert info">
+                      <h3 className="mantine-text weight-600">初回検針</h3>
+                      <p className="mantine-text">
+                        この部屋の検針データはまだありません。下のフォームから最初の検針データを入力してください。
+                      </p>
+                    </div>
+                    <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)', padding: 'var(--mantine-spacing-md)'}}>
+                      <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
+                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-lg)'}}>
+                        <div>
+                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
+                          <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" style={{fontSize: '1rem', padding: '10px'}} />
                         </div>
-                        <label className="mantine-text weight-600" style={{fontSize: '0.8rem', marginBottom: '4px', display: 'block'}}>写真:</label>
-                        <button
-                          className="mantine-button variant-filled"
-                          style={{ fontSize: '0.75rem', padding: '4px 8px' }}
-                          data-date-button={new Date().toISOString().split('T')[0]}
-                          onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
-                        >
-                          写真を追加 📸
-                        </button>
+                        <div>
+                          <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
+                          <input
+                            type="number"
+                            id="initialReadingValue"
+                            className="mantine-input"
+                            placeholder="指示数入力"
+                            min="0"
+                            step="any"
+                            style={{fontSize: '1rem', padding: '10px'}}
+                            data-date={new Date().toISOString().split('T')[0]} 
+                            data-original-value=""
+                            data-previous-reading=""
+                            onChange={(e) => {
+                              const dateForDataAttribute = new Date().toISOString().split('T')[0];
+                              const numericValue = parseFloat(e.target.value);
+                              if (e.target.value === '') {
+                                  setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                  e.target.style.borderColor = '';
+                              } else if (isNaN(numericValue) || numericValue < 0) {
+                                  setInputErrors(prev => ({...prev, [dateForDataAttribute]: '0以上の数値を入力してください。'}));
+                                  e.target.style.borderColor = 'var(--mantine-color-red-6)';
+                              } else {
+                                  setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
+                                  e.target.style.borderColor = '';
+                              }
+                            }}
+                          />
+                          {inputErrors[new Date().toISOString().split('T')[0]] && (
+                            <div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', marginTop: '4px' }}>
+                              {inputErrors[new Date().toISOString().split('T')[0]]}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>写真:</label>
+                          <button
+                            className="mantine-button variant-filled"
+                            style={{ width: '100%', fontSize: '1rem', padding: '10px 0' }}
+                            data-date-button={new Date().toISOString().split('T')[0]}
+                            onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
+                          >
+                            写真を追加 📸
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* 写真表示モーダル */}
               {showModal && (
                 <div className="modal-overlay" onClick={hidePhotoModal}>
                   <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={hidePhotoModal}
-                      className="modal-close"                    >
+                      className="modal-close"
+                    >
                       &times;
                     </button>
                     <img src={modalImageSrc} alt="検針写真" className="modal-image" />
                   </div>
                 </div>
               )}
-            </div> {/* This closes mantine-paper for 検針履歴 */}
-
-          {/* フローティングアクションボタン */}
-          {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
-            <div className="fab-container">
-              <button
-                className="fab-button"
-                onClick={handleUpdateReadings}
-                disabled={updating}                title="指示数を更新"
-              >
-                {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
-              </button>
             </div>
-          )}
+            
+            {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
+              <div className="fab-container" style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1001}}>
+                <button
+                  className="fab-button mantine-button variant-filled"
+                  onClick={handleUpdateReadings}
+                  disabled={updating}
+                  title="指示数を更新"
+                  style={{ 
+                      width: '60px', 
+                      height: '60px', 
+                      borderRadius: '50%', 
+                      fontSize: '24px', 
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                  }}
+                >
+                  {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
+                </button>
+              </div>
+            )}
 
-          {/* トースト通知 */}          <div className={`toast-notification ${showToast ? 'show' : ''}`}>
-            {toastMessage}
+            <div className={`toast-notification ${showToast ? 'show' : ''}`} style={{
+              position: 'fixed',
+              bottom: '90px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'var(--mantine-color-gray-8)',
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: 'var(--mantine-radius-md)',
+              zIndex: 2000,
+              opacity: 0,
+              visibility: 'hidden',
+              transition: 'opacity 0.3s ease, visibility 0.3s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}>
+              {toastMessage}
+            </div>
+            <style jsx>{`
+              .toast-notification.show {
+                opacity: 1;
+                visibility: visible;
+              }
+              .inline-error {
+                  color: var(--mantine-color-red-6);
+                  font-size: 0.85em;
+                  margin-top: 4px;
+              }
+            `}</style>
+
           </div>
-        </div>
-      </div>
-    );
-  };
+        </>
+      );
+    };
 
-  ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
+    ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
   </script>
 </body>
 </html>
