@@ -137,12 +137,23 @@ function doGet(e) {
         console.error(`[物件.gs] getMeterReadings - シート '${sheetName}' が見つかりません。`);
         return ContentService.createTextOutput(JSON.stringify({ error: `シート '${sheetName}' が見つかりません。` }))
           .setMimeType(ContentService.MimeType.JSON);
-      }
-
-      const data = sheet.getDataRange().getValues();
+      }      const data = sheet.getDataRange().getValues();
       if (data.length <= 1) { // ヘッダー行のみ、または空の場合
         console.warn(`[物件.gs] getMeterReadings - シート '${sheetName}' にデータがありません（ヘッダー行を除く）。`);
-        return ContentService.createTextOutput(JSON.stringify([])) // 空の配列を返す
+        // ★★★ 修正: 空の場合でも responseObject 構造で返す ★★★
+        const emptyResponseObject = {
+          readings: [],
+          debugInfo: {
+            message: "データが存在しません（ヘッダー行のみ）",
+            detectedHeaders: data.length > 0 ? data[0] : [],
+            headerCount: data.length > 0 ? data[0].length : 0,
+            threeTimesPreviousIndex: -1,
+            threeTimesPreviousExists: false,
+            totalDataRows: 0,
+            filteredReadings: 0
+          }
+        };
+        return ContentService.createTextOutput(JSON.stringify(emptyResponseObject))
           .setMimeType(ContentService.MimeType.JSON);
       }
 
