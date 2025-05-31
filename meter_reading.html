@@ -981,10 +981,9 @@
                           const initialUsageDisplay = calculateUsageDisplay(reading.currentReading, reading.previousReading);                          return (
                             <tr key={index}>
                               <td data-label="検針日時">{formattedDate}</td>
-                              <td data-label="今回(㎥)">
-                                <input
+                              <td data-label="今回(㎥)">                                <input
                                   type="number"
-                                  step="any" /* Allows decimal inputs */
+                                  step="any"
                                   defaultValue={reading.currentReading || ''}
                                   placeholder="指示数入力"
                                   min="0"
