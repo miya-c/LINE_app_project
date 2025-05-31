@@ -272,8 +272,10 @@
         debugInfoDiv.innerHTML = 'WOFF初期化開始...<br>';        // sessionStorageからgasWebAppUrlを取得
         gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
         if (!gasWebAppUrl) {
-          console.warn('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。デバッグ用URLを使用します。');          // ★★★ デバッグ用: 固定URLを設定（修正版物件.gsデプロイ後に新しいURLに更新） ★★★
-          gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxK0J0flRSGNdM9mi8AIRImmYqRNoWS9hS9alZUYlvvDgMFMyjeuvc2XQxOkYuP_3B3XQ/exec';
+          console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
+          alert('アプリケーションが正常に起動されていません。物件選択画面から再度お試しください。');
+          window.location.href = 'property_select.html';
+          return;
         }
         console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
 
