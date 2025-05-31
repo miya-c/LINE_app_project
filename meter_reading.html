@@ -298,28 +298,23 @@
       }      .mantine-table thead {
         display: none; /* モバイルサイズではテーブルヘッダーを非表示に */
       }
-      
-      .mantine-table tr {
-        display: grid; /* CSS Gridレイアウトに変更 */
-        grid-template-columns: 1fr 1fr; /* 2列レイアウト */
-        grid-template-rows: repeat(6, auto); /* 6行のグリッド */
-        gap: 0.5em; /* セル間の隙間 */
+        .mantine-table tr {
+        display: block; /* 通常のブロック表示に戻す */
         margin-bottom: 1.5em; /* 各行の間に余白をしっかり取る */
-        border-bottom: 2px solid var(--mantine-color-gray-3);
+        border: 2px solid var(--mantine-color-gray-3);
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-        padding: .5em;
+        padding: 1em;
         border-radius: var(--mantine-radius-sm);
         background-color: white;
         position: relative;
-        align-items: start; /* グリッドアイテムを上端揃え */
       }
       
       .mantine-table td {
         display: block;
-        padding: .5em;
-        border: 1px solid var(--mantine-color-gray-2);
-        border-radius: var(--mantine-radius-xs);
-        background-color: var(--mantine-color-gray-0);
+        padding: 0.75em 0;
+        border: none; /* カード内なので境界線不要 */
+        border-bottom: 1px solid var(--mantine-color-gray-2); /* セル間の区切り線 */
+        background-color: transparent;
         text-align: left;
         position: relative;
         font-size: 1.3rem; /* モバイルでのフォントサイズを極めて大きく (26px相当) */
@@ -327,48 +322,8 @@
         margin: 0; /* デフォルトマージンをリセット */
         box-sizing: border-box;
       }
-      
-      /* 左列: 検針日時、今回(㎥) */
-      .mantine-table td[data-label="検針日時"] {
-        grid-column: 1;
-        grid-row: 1;
-      }
-      
-      .mantine-table td[data-label="今回(㎥)"] {
-        grid-column: 1;
-        grid-row: 2;
-      }
-      
-      /* 右列: 前回、前々回、前々々回、今回使用量、状態 */
-      .mantine-table td[data-label="前回"] {
-        grid-column: 2;
-        grid-row: 1;
-      }
-      
-      .mantine-table td[data-label="前々回"] {
-        grid-column: 2;
-        grid-row: 2;
-      }
-      
-      .mantine-table td[data-label="前々々回"] {
-        grid-column: 2;
-        grid-row: 3;
-      }
-      
-      .mantine-table td[data-label="今回使用量"] {
-        grid-column: 2;
-        grid-row: 4;
-      }
-      
-      .mantine-table td[data-label="状態"] {
-        grid-column: 2;
-        grid-row: 5;
-      }
-      
-      /* 写真セルは2列にまたがる */
-      .mantine-table td[data-label="写真"] {
-        grid-column: 1 / 3; /* 1列目から3列目まで（つまり2列にまたがる） */
-        grid-row: 6;
+        .mantine-table td:last-child {
+        border-bottom: none; /* 最後のセルには下線不要 */
       }
       
       .mantine-table td::before {
