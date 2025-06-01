@@ -562,10 +562,11 @@
                                             ? usageStates[dateForDataAttribute]
                                             : calculateUsageDisplay(reading.currentReading, reading.previousReading);
                         
-                        const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;                        const statusDisplay = reading.status || 'N/A';
-                        const previousReadingsInfo = getPreviousReadingsText(reading);
-                        
-                        return (                          <tr key={index}>
+                        const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;
+                        const statusDisplay = reading.status || 'N/A';
+                        const previousReadingsInfo = getPreviousReadingsText(reading);                        
+                        return (
+                          <tr key={index}>
                             <td data-label="検針日時">
                               最終検針日: {formattedDate}
                             </td>
@@ -623,9 +624,9 @@
                                 color: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-7)' : 'var(--mantine-color-blue-8)', 
                                 borderRadius: 'var(--mantine-radius-sm)' 
                               }}>
-                                {statusDisplay}
-                              </span>
-                            </td>                            <td data-label="前回履歴">
+                                {statusDisplay}                              </span>
+                            </td>
+                            <td data-label="前回履歴">
                               {previousReadingsInfo && previousReadingsInfo.length > 0 ? (
                                 <div style={{ lineHeight: '1.6' }}>
                                   {previousReadingsInfo.map((info, infoIndex) => (
