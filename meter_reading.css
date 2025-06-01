@@ -78,7 +78,7 @@ body {
 }
 
 .mantine-subtitle {
-  font-size: 2.2rem; /* 1.8rem → 2.2rem に増加 */
+  font-size: clamp(1.6rem, 4vw, 2.2rem); /* レスポンシブフォントサイズに変更 */
   font-weight: 600;
   margin: 0;
   color: var(--mantine-color-gray-7);
@@ -417,11 +417,6 @@ body {
   .mantine-title {
     font-size: 2.2rem; /* 1.8rem → 2.2rem に増加 */
   }
-
-  .mantine-subtitle {
-    font-size: 1.6rem; /* 1.2rem → 1.6rem に増加 */
-  }
-
   /* シンプルなテーブルレイアウト（モバイル対応） */
   .mantine-table {
     border: none;
@@ -580,14 +575,19 @@ body {
     box-sizing: border-box;
     min-height: 60px;
   }
-
   /* 写真ボタンのスタイル */
   .mantine-table td[data-label="写真"] .mantine-button {
     width: 100%;
     font-size: 1.1rem;
     padding: 12px;
-    margin-top: 8px;
     box-sizing: border-box;
+  }
+
+  .mantine-table td[data-label="写真"] div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
   }
 
   .mantine-table td[data-label="写真"]::before {
@@ -707,11 +707,11 @@ body {
     box-shadow: none;
     border: none;
   }
-
   .mantine-paper.reading-history-container .mantine-subtitle {
     text-align: center;
     margin-bottom: 16px;
-    font-size: 1.1rem;
+    font-size: clamp(1.8rem, 5vw, 2.8rem); /* レスポンシブフォントサイズに変更 */
+    font-weight: bold; /* フォントの太さを追加 */
     padding: 0 8px; /* タイトルのみ少しパディング */
   }
 
@@ -739,6 +739,7 @@ body {
 .mantine-table td[data-label="前回履歴"] div {
   margin-bottom: 4px;
   padding: 2px 0;
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem);
 }
 
 .mantine-table td[data-label="前回履歴"] div:last-child {
@@ -746,17 +747,16 @@ body {
 }
 
 /* モバイルでの前回履歴表示調整 */
-@media (max-width: 768px) {
-  .mantine-table td[data-label="前回履歴"] {
+@media (max-width: 768px) {  .mantine-table td[data-label="前回履歴"] {
     padding-left: 16px;
-    font-size: 1rem;
+    font-size: clamp(1.1rem, 3.5vw, 1.6rem);
     line-height: 1.5;
   }
-
   .mantine-table td[data-label="前回履歴"] div {
     margin-bottom: 6px;
     padding: 3px 0;
     border-bottom: 1px solid #f0f0f0;
+    font-size: clamp(1.1rem, 3.5vw, 1.6rem);
   }
 
   .mantine-table td[data-label="前回履歴"] div:last-child {

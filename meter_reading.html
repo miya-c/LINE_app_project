@@ -37,6 +37,7 @@
       const [toastMessage, setToastMessage] = React.useState('');
       const [showToast, setShowToast] = React.useState(false);
       const [inputErrors, setInputErrors] = React.useState({});
+      const [photoStates, setPhotoStates] = React.useState({});
 
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
@@ -276,17 +277,15 @@
           const reader = new FileReader();
           reader.onload = (readerEvent) => {
             const base64PhotoData = readerEvent.target.result;
-            
-            const inputElement = document.querySelector(`input[data-date="${date}"]`);
+              const inputElement = document.querySelector(`input[data-date="${date}"]`);
             if (inputElement) {
               inputElement.setAttribute('data-new-photo', base64PhotoData);
               console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
               
-              const cameraBtn = document.querySelector(`button[data-date-button="${date}"]`);
-              if (cameraBtn) {
-                cameraBtn.innerHTML = '変更 📸'; // アイコン追加
-                cameraBtn.style.backgroundColor = 'var(--mantine-color-green-6)';
-              }
+              // 写真状態を更新
+              setPhotoStates(prev => ({...prev, [date]: true}));
+              
+              displayToast('写真を設定しました。');
             } else {
               console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
               displayToast('写真データを紐付ける入力フィールドが見つかりませんでした。');
@@ -302,9 +301,7 @@
         if (event.target.parentElement === document.body) {
           document.body.removeChild(event.target);
         }
-      };
-
-      const handleCameraClick = (date) => {
+      };      const handleCameraClick = (date) => {
         console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
         
         try {
@@ -321,6 +318,24 @@
         } catch (error) {
           console.error('[meter_reading] 写真の取得または処理に失敗しました:', error);
           displayToast('写真の処理中に予期せぬエラーが発生しました。');
+        }
+      };
+
+      const handlePhotoDelete = (date) => {
+        console.log('[meter_reading] 写真削除:', date);
+        
+        const inputElement = document.querySelector(`input[data-date="${date}"]`);
+        if (inputElement) {
+          inputElement.removeAttribute('data-new-photo');
+          console.log('[meter_reading] 写真データを削除しました for date:', date);
+          
+          // 写真状態を更新
+          setPhotoStates(prev => ({...prev, [date]: false}));
+          
+          displayToast('写真を削除しました。');
+        } else {
+          console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
+          displayToast('削除対象の写真が見つかりませんでした。');
         }
       };
         const displayToast = (message) => {
@@ -550,10 +565,9 @@
                         const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;                        const statusDisplay = reading.status || 'N/A';
                         const previousReadingsInfo = getPreviousReadingsText(reading);
                         
-                        return (
-                          <tr key={index}>
+                        return (                          <tr key={index}>
                             <td data-label="検針日時">
-                              {formattedDate}
+                              検針日時: {formattedDate}
                             </td>
                             <td data-label="今回指示数(㎥)">
                               <input 
@@ -624,16 +638,32 @@
                                   ))}
                                 </div>
                               </td>
-                            )}
-                            <td data-label="写真">
-                              <button 
-                                className="mantine-button variant-filled" 
-                                data-date-button={dateForDataAttribute} 
-                                onClick={() => handleCameraClick(dateForDataAttribute)}
-                              >
-                                写真を追加/変更 📸
-                              </button>
-                            </td>                          </tr>
+                            )}                            <td data-label="写真">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button 
+                                  className="mantine-button variant-filled" 
+                                  data-date-button={dateForDataAttribute} 
+                                  onClick={() => handleCameraClick(dateForDataAttribute)}
+                                  style={{
+                                    backgroundColor: photoStates[dateForDataAttribute] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
+                                  }}
+                                >
+                                  {photoStates[dateForDataAttribute] ? '変更 📸' : '写真を追加/変更 📸'}
+                                </button>
+                                {photoStates[dateForDataAttribute] && (
+                                  <button 
+                                    className="mantine-button variant-outline" 
+                                    onClick={() => handlePhotoDelete(dateForDataAttribute)}
+                                    style={{
+                                      borderColor: 'var(--mantine-color-red-6)',
+                                      color: 'var(--mantine-color-red-6)'
+                                    }}
+                                  >
+                                    削除 🗑️
+                                  </button>
+                                )}
+                              </div>
+                            </td></tr>
                         );
                       })}
                     </tbody>
@@ -694,14 +724,36 @@
                           )}
                         </div>                        <div>
                           <label className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>写真:</label>
-                          <button
-                            className="mantine-button variant-filled"
-                            style={{ width: '100%', fontSize: '1rem', padding: '10px 0' }}
-                            data-date-button={new Date().toISOString().split('T')[0]}
-                            onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
-                          >
-                            写真を追加 📸
-                          </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button
+                              className="mantine-button variant-filled"
+                              style={{ 
+                                width: '100%', 
+                                fontSize: '1rem', 
+                                padding: '10px 0',
+                                backgroundColor: photoStates[new Date().toISOString().split('T')[0]] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
+                              }}
+                              data-date-button={new Date().toISOString().split('T')[0]}
+                              onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
+                            >
+                              {photoStates[new Date().toISOString().split('T')[0]] ? '変更 📸' : '写真を追加 📸'}
+                            </button>
+                            {photoStates[new Date().toISOString().split('T')[0]] && (
+                              <button
+                                className="mantine-button variant-outline"
+                                style={{ 
+                                  width: '100%', 
+                                  fontSize: '1rem', 
+                                  padding: '10px 0',
+                                  borderColor: 'var(--mantine-color-red-6)',
+                                  color: 'var(--mantine-color-red-6)'
+                                }}
+                                onClick={() => handlePhotoDelete(new Date().toISOString().split('T')[0])}
+                              >
+                                削除 🗑️
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
