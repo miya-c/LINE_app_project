@@ -452,8 +452,7 @@ body {
     font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
     line-height: 1.5; /* 1.4 → 1.5 に増加 */
   }
-
-  /* 2列レイアウト（モバイル用） */  /* モバイル用の2カラムレイアウト - 写真ボタンを前回履歴の下に移動 */
+  /* 2列レイアウト（モバイル用） */
   .mantine-table tr {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -461,7 +460,8 @@ body {
       "date date"
       "reading history"
       "usage history"
-      "status photo";
+      "status ."
+      "photo photo";
     gap: 8px; /* 16px → 8px に縮小してスペース確保 */
     margin-bottom: 2em;
     margin-left: 0;
@@ -531,12 +531,13 @@ body {
     border-left: 1px solid var(--mantine-color-gray-2);
   }
 
-  /* 右カラム下部 - 写真ボタン */
+  /* 写真ボタン - グリッド全幅の下部に配置 */
   .mantine-table td[data-label="写真"] {
     grid-area: photo;
-    padding-left: 2px;
-    padding-top: 8px; /* 上部に少し余白を追加 */
-    border-left: 1px solid var(--mantine-color-gray-2);
+    grid-column: 1 / -1; /* 全幅に配置 */
+    border-top: 1px solid var(--mantine-color-gray-2);
+    padding: 12px 8px;
+    text-align: center;
   }
   /* 共通のtdスタイル */
   .mantine-table td {
@@ -614,14 +615,14 @@ body {
     width: 100%;
     box-sizing: border-box;
     margin-top: 4px; /* 上部に少し余白を追加 */
-  }
-  /* 前回履歴がない場合のレイアウト調整 */
+  }  /* 前回履歴がない場合のレイアウト調整 */
   .mantine-table tr:not(:has(td[data-label="前回履歴"])) {
     grid-template-areas: 
       "date date"
       "reading ."
       "usage ."
-      "status photo";
+      "status ."
+      "photo photo";
   }
   .mantine-table td:last-child {
     border-bottom: none;
