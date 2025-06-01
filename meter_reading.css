@@ -65,6 +65,13 @@ body {
   gap: var(--mantine-spacing-xl); /* lg → xl に変更 */
 }
 
+/* モバイル専用：mantine-stackのギャップを狭く */
+@media (max-width: 768px) {
+  .mantine-stack {
+    gap: 8px; /* モバイルでは大幅に縮小 */
+  }
+}
+
 .mantine-stack.center {
   align-items: center;
   text-align: center;
@@ -676,18 +683,17 @@ body {
     padding-bottom: 24px; /* 20px → 24px に増加 */
     margin-left: 0;
     margin-right: 0;
-  }
-  /* 物件情報カード */
+  }  /* 物件情報カード */
   .property-info-card {
     background-color: var(--accent-color);
     color: var(--header-text-color);
     padding: 20px 8px; /* 左右パディングを8pxに変更 */
-    margin-bottom: 20px; /* 16px → 20px に増加 */
+    margin-bottom: 8px; /* 20px → 8px に大幅縮小 */
     margin-left: 0;
     margin-right: 0;
     border-radius: 0; /* 角丸を削除 */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }  .property-name {
+  }.property-name {
     font-size: clamp(1.5rem, 5vw, 2.5rem); /* 2.0remを基準にした可変長 */
     font-weight: bold;
     margin: 0 0 10px 0; /* 8px → 10px に増加 */
