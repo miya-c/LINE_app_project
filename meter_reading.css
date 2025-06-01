@@ -751,6 +751,9 @@ body {
   color: var(--mantine-color-gray-8);
   font-weight: 500;
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mantine-table td[data-label="前回履歴"] div:last-child {
@@ -771,13 +774,15 @@ body {
     border-bottom: 1px solid #f0f0f0;
     font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
   }
-
   /* モバイル専用の前回履歴テキスト調整 */
   .previous-reading-text {
     font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
     border-bottom: 1px solid #f0f0f0;
     margin-bottom: 6px;
     padding: 3px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .previous-reading-text:last-child {
@@ -824,6 +829,9 @@ body {
 @media (max-width: 375px) {
   .previous-reading-text {
     font-size: clamp(1.0rem, 4vw, 1.4rem) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -831,5 +839,8 @@ body {
 @media (max-width: 320px) {
   .previous-reading-text {
     font-size: clamp(0.9rem, 4.5vw, 1.2rem) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
