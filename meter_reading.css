@@ -496,21 +496,23 @@ body {
   .mantine-table td[data-label="状態"] {
     grid-area: status;
     padding-left: 12px;
-  }
-  /* 左カラム - 今回使用量 */
+  }  /* 左カラム - 今回使用量 */
   .mantine-table td[data-label="今回使用量"] {
     grid-area: usage;
     background-color: #e3f2fd;
-    padding: 8px;
+    padding: 6px 8px;
     border-radius: 6px;
     font-weight: bold;
     font-size: 1.4rem;
+    line-height: 1.1;
     border-right: 1px solid var(--mantine-color-gray-2);
-    padding-right: 8px;
+    margin: 0;
+    border-bottom: none;
   }
 
   .mantine-table td[data-label="今回使用量"]::before {
     color: var(--mantine-color-blue-7);
+    margin-bottom: 2px;
   }
 
   /* 右カラム - 前回履歴 */
@@ -526,16 +528,30 @@ body {
     grid-area: photo;
     padding-top: 8px;
   }
-
   /* 共通のtdスタイル */
   .mantine-table td {
     display: block;
-    padding: 12px 0;
+    padding: 8px 0;
     border: none;
     background-color: transparent;
     font-size: 1.2rem;
     line-height: 1.5;
     border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  /* 今回指示数入力欄の下マージンを調整 */
+  .mantine-table td[data-label="今回指示数(㎥)"] {
+    margin-bottom: 4px;
+  }
+
+  /* 使用量の後の要素との間隔調整 */
+  .mantine-table td[data-label="状態"] {
+    margin-top: 2px;
+  }
+
+  .mantine-table td[data-label="前回履歴"] {
+    margin-top: 2px;
   }
 
   .mantine-table td::before {
