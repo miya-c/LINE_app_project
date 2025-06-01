@@ -1,0 +1,239 @@
+/* Property Select Application Styles */
+:root {
+  --mantine-color-blue-6: #228be6;
+  --mantine-color-blue-7: #1c7ed6;
+  --mantine-color-blue-8: #1971c2;
+  --mantine-color-blue-light: #e7f5ff;
+  --mantine-color-gray-0: #f8f9fa;
+  --mantine-color-gray-1: #f1f3f4;
+  --mantine-color-gray-2: #e9ecef;
+  --mantine-color-gray-3: #dee2e6;
+  --mantine-color-gray-6: #868e96;
+  --mantine-color-gray-7: #495057;
+  --mantine-color-red-6: #fa5252;
+  --mantine-color-red-light: #fff5f5;
+  --mantine-radius-sm: 4px;
+  --mantine-radius-md: 8px;
+  --mantine-spacing-xs: 10px;
+  --mantine-spacing-sm: 12px;
+  --mantine-spacing-md: 16px;
+  --mantine-spacing-lg: 20px;
+  --mantine-spacing-xl: 32px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  line-height: 1.55;
+  color: var(--mantine-color-gray-7);
+  background-color: var(--mantine-color-gray-0);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.mantine-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--mantine-spacing-md);
+}
+
+.mantine-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.mantine-title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--mantine-color-gray-7);
+}
+
+.mantine-text-input {
+  position: relative;
+}
+
+.mantine-text-input input {
+  width: 100%;
+  padding: var(--mantine-spacing-sm);
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-sm);
+  font-size: 14px;
+  line-height: 1.55;
+  background-color: white;
+  transition: border-color 0.15s ease;
+}
+
+.mantine-text-input input:focus {
+  outline: none;
+  border-color: var(--mantine-color-blue-6);
+  box-shadow: 0 0 0 2px rgba(34, 139, 230, 0.15);
+}
+
+.mantine-text-input input:disabled {
+  background-color: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-6);
+  cursor: not-allowed;
+}
+
+.mantine-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border: none;
+  border-radius: var(--mantine-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mantine-button.variant-filled {
+  background-color: var(--mantine-color-blue-6);
+  color: white;
+}
+
+.mantine-button.variant-filled:hover {
+  background-color: var(--mantine-color-blue-7);
+}
+
+.mantine-button.variant-filled:active {
+  background-color: var(--mantine-color-blue-8);
+}
+
+.mantine-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mantine-paper {
+  background-color: white;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.mantine-paper:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--mantine-color-gray-3);
+  transform: translateY(-1px);
+}
+
+.mantine-paper.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mantine-paper.disabled:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-color: var(--mantine-color-gray-2);
+  transform: none;
+}
+
+.mantine-loader {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--mantine-color-gray-2);
+  border-radius: 50%;
+  border-top-color: var(--mantine-color-blue-6);
+  animation: spin 1s ease-in-out infinite;
+}
+
+.mantine-loader.size-sm {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.mantine-alert {
+  padding: var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-sm);
+  border-left: 4px solid var(--mantine-color-red-6);
+  background-color: var(--mantine-color-red-light);
+  color: var(--mantine-color-gray-7);
+}
+
+.mantine-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-xl);
+}
+
+.mantine-grid {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.property-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+}
+
+.property-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.property-id {
+  font-size: 12px;
+  color: var(--mantine-color-gray-6);
+  font-weight: 500;
+}
+
+.property-name {
+  font-size: 16px;
+  color: var(--mantine-color-gray-7);
+  font-weight: 600;
+}
+
+.property-arrow {
+  width: 20px;
+  height: 20px;
+  color: var(--mantine-color-gray-6);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .mantine-container {
+    padding: 0 var(--mantine-spacing-sm);
+  }
+  
+  .mantine-title {
+    font-size: 1.5rem;
+  }
+  
+  .mantine-grid {
+    grid-template-columns: 1fr;
+  }
+}
