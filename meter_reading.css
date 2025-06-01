@@ -565,7 +565,7 @@ body {
   /* 入力フィールドのスタイル */
   .mantine-table td[data-label="今回指示数(㎥)"] .mantine-input {
     width: 100%;
-    font-size: 1.4rem;
+    font-size: 3.5rem;
     padding: 20px;
     margin-top: 8px;
     border: 2px solid var(--mantine-color-gray-3);
