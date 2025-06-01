@@ -692,19 +692,19 @@ body {
   }
 
   .property-name {
-    font-size: 1.6rem; /* 1.4rem → 1.6rem に増加 */
+    font-size: 2.5rem; /* 1.6rem → 2.5rem に増加 */
     font-weight: bold;
     margin: 0 0 10px 0; /* 8px → 10px に増加 */
   }
 
   .room-label {
-    font-size: 1.1rem; /* 0.9rem → 1.1rem に増加 */
+    font-size: 1.3rem; /* 0.9rem → 1.1rem に増加 */
     margin: 0 0 4px 0; /* 2px → 4px に増加 */
     opacity: 0.9;
   }
 
   .room-name {
-    font-size: 1.4rem; /* 1.2rem → 1.4rem に増加 */
+    font-size: 1.7rem; /* 1.2rem → 1.4rem に増加 */
     font-weight: bold;
     margin: 0;
   }
