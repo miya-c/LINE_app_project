@@ -453,14 +453,15 @@ body {
     line-height: 1.5; /* 1.4 → 1.5 に増加 */
   }
 
-  /* 2列レイアウト（モバイル用） */  /* モバイル用の2カラムレイアウト */
+  /* 2列レイアウト（モバイル用） */  /* モバイル用の2カラムレイアウト - 状態を左カラムに移動 */
   .mantine-table tr {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-areas: 
       "date date"
-      "reading status"
+      "reading history"
       "usage history"
+      "status history"
       "photo photo";
     gap: 8px; /* 16px → 8px に縮小してスペース確保 */
     margin-bottom: 2em;
@@ -494,11 +495,7 @@ body {
     padding-right: 2px; /* 4px → 2px に縮小 */
   }
 
-  /* 右カラム - 状態 */
-  .mantine-table td[data-label="状態"] {
-    grid-area: status;
-    padding-left: 2px; /* 4px → 2px に縮小 */
-  }/* 左カラム - 今回使用量 */
+  /* 左カラム - 今回使用量 */
   .mantine-table td[data-label="今回使用量"] {
     grid-area: usage;
     background-color: #e3f2fd;
@@ -515,12 +512,24 @@ body {
   .mantine-table td[data-label="今回使用量"]::before {
     color: var(--mantine-color-blue-7);
     margin-bottom: 2px;
-  }  /* 右カラム - 前回履歴 */
+  }
+
+  /* 左カラム - 状態（今回使用量の下に移動） */
+  .mantine-table td[data-label="状態"] {
+    grid-area: status;
+    border-right: 1px solid var(--mantine-color-gray-2);
+    padding-right: 2px; /* 4px → 2px に縮小 */
+    padding-top: 8px; /* 上部に少し余白を追加 */
+  }
+
+  /* 右カラム - 前回履歴（全体の高さに拡張） */
   .mantine-table td[data-label="前回履歴"] {
     grid-area: history;
     padding-left: 2px; /* 4px → 2px に縮小 */
     font-size: 1.1rem;
     line-height: 1.4;
+    align-self: stretch; /* グリッドアイテムの高さを最大化 */
+    min-height: 200px; /* 最小高さを設定 */
   }
 
   /* 写真ボタン - 下部全幅 */
@@ -594,7 +603,6 @@ body {
     margin-bottom: 8px;
     display: block;
   }
-
   /* 状態表示の調整 */
   .mantine-table td[data-label="状態"] span {
     display: inline-block;
@@ -605,14 +613,16 @@ body {
     text-align: center;
     width: 100%;
     box-sizing: border-box;
+    margin-top: 4px; /* 上部に少し余白を追加 */
   }
 
   /* 前回履歴がない場合のレイアウト調整 */
   .mantine-table tr:not(:has(td[data-label="前回履歴"])) {
     grid-template-areas: 
       "date date"
-      "reading status"
-      "usage status"
+      "reading ."
+      "usage ."
+      "status ."
       "photo photo";
   }
   .mantine-table td:last-child {
