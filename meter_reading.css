@@ -376,9 +376,7 @@ body {
   .mantine-table tbody {
     display: block;
     width: 100%;
-  }
-
-  .mantine-table tr {
+  }  .mantine-table tr {
     display: block;
     margin-bottom: 2em; /* 1.5em → 2em に増加 */
     border: 1px solid var(--mantine-color-gray-3);
@@ -396,6 +394,46 @@ body {
     text-align: left;
     font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
     line-height: 1.5; /* 1.4 → 1.5 に増加 */
+  }
+
+  /* 2列レイアウト（モバイル用） */
+  .mantine-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+      "left-col right-col";
+    gap: 1rem;
+    margin-bottom: 2em;
+    border: 1px solid var(--mantine-color-gray-3);
+    border-radius: var(--mantine-radius-md);
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    padding: 1.5em;
+  }
+
+  .mantine-table td:nth-child(1), /* 検針日時 */
+  .mantine-table td:nth-child(2), /* 今回指示数 */
+  .mantine-table td:nth-child(3) { /* 今回使用量 */
+    grid-area: left-col;
+    display: block;
+    padding: 0.8em 0;
+    border: none;
+    border-bottom: 1px solid var(--mantine-color-gray-2);
+  }
+
+  .mantine-table td:nth-child(4), /* 状態 */
+  .mantine-table td:nth-child(5), /* 前回履歴 */
+  .mantine-table td:nth-child(6) { /* 写真 */
+    grid-area: right-col;
+    display: block;
+    padding: 0.8em 0;
+    border: none;
+    border-bottom: 1px solid var(--mantine-color-gray-2);
+  }
+
+  .mantine-table td:nth-child(3):last-of-type,
+  .mantine-table td:nth-child(6):last-of-type {
+    border-bottom: none;
   }
 
   .mantine-table td:last-child {
