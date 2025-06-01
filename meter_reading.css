@@ -569,11 +569,10 @@ body {
     overflow: hidden; /* はみ出し部分を隠す */
     text-overflow: ellipsis; /* ...で省略表示 */
     max-width: 100%;
-  }
-  /* 入力フィールドのスタイル */
+  }  /* 入力フィールドのスタイル */
   .mantine-table td[data-label="今回指示数(㎥)"] .mantine-input {
     width: 100%;
-    font-size: 2.0rem;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
     padding: 20px;
     margin-top: 8px;
     border: 2px solid var(--mantine-color-gray-3);
@@ -680,7 +679,7 @@ body {
     border-radius: 0; /* 角丸を削除 */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }  .property-name {
-    font-size: 3rem; /* 適切なサイズに修正 */
+    font-size: clamp(1.5rem, 5vw, 2.5rem); /* 2.0remを基準にした可変長 */
     font-weight: bold;
     margin: 0 0 10px 0; /* 8px → 10px に増加 */
   }
