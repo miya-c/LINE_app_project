@@ -629,9 +629,13 @@
                               {previousReadingsInfo && previousReadingsInfo.length > 0 ? (
                                 <div style={{ lineHeight: '1.6' }}>
                                   {previousReadingsInfo.map((info, infoIndex) => (
-                                    <div key={infoIndex} style={{ 
-                                      marginBottom: infoIndex < previousReadingsInfo.length - 1 ? '6px' : '0'
-                                    }}>
+                                    <div 
+                                      key={infoIndex} 
+                                      className="previous-reading-text"
+                                      style={{ 
+                                        marginBottom: infoIndex < previousReadingsInfo.length - 1 ? '6px' : '0'
+                                      }}
+                                    >
                                       {info}
                                     </div>
                                   ))}

@@ -742,6 +742,17 @@ body {
   font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
 }
 
+/* 前回履歴テキストの専用クラス - 確実にフォントサイズを適用 */
+.previous-reading-text {
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
+  line-height: 1.5 !important;
+  margin-bottom: 6px;
+  padding: 3px 0;
+  color: var(--mantine-color-gray-8);
+  font-weight: 500;
+  display: block;
+}
+
 .mantine-table td[data-label="前回履歴"] div:last-child {
   margin-bottom: 0;
 }
@@ -752,14 +763,24 @@ body {
     padding-left: 16px;
     font-size: clamp(1.1rem, 3.5vw, 1.6rem);
     line-height: 1.5;
-  }  .mantine-table td[data-label="前回履歴"] div {
+  }
+  
+  .mantine-table td[data-label="前回履歴"] div {
     margin-bottom: 6px;
     padding: 3px 0;
     border-bottom: 1px solid #f0f0f0;
     font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
   }
 
-  .mantine-table td[data-label="前回履歴"] div:last-child {
+  /* モバイル専用の前回履歴テキスト調整 */
+  .previous-reading-text {
+    font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 6px;
+    padding: 3px 0;
+  }
+
+  .previous-reading-text:last-child {
     border-bottom: none;
     margin-bottom: 0;
   }
@@ -799,35 +820,16 @@ body {
   }
 }
 
-/* 小さな画面サイズ（375px以下）用の追加調整 */
+/* 小さな画面サイズ（375px以下）用の前回履歴テキスト調整 */
 @media (max-width: 375px) {
-    .mantine-table td::before {
-      font-size: 0.8rem; /* さらに小さく */
-      margin-bottom: 4px;
-    }
-
-    .mantine-table tr {
-      gap: 6px; /* さらに間隔を縮小 */
-    }
-
-    .mantine-table td[data-label="今回指示数(㎥)"],
-    .mantine-table td[data-label="今回使用量"],
-    .mantine-table td[data-label="状態"],
-    .mantine-table td[data-label="前回履歴"] {
-      padding-left: 1px;
-      padding-right: 1px;
-    }
+  .previous-reading-text {
+    font-size: clamp(1.0rem, 4vw, 1.4rem) !important;
   }
+}
 
-  /* 超小画面（320px以下）用の最終調整 */
-  @media (max-width: 320px) {
-    .mantine-table td::before {
-      font-size: 0.75rem;
-      margin-bottom: 3px;
-    }
-
-    .mantine-table tr {
-      gap: 4px;
-      padding: 6px;
-    }
+/* 超小画面（320px以下）用の前回履歴テキスト調整 */
+@media (max-width: 320px) {
+  .previous-reading-text {
+    font-size: clamp(0.9rem, 4.5vw, 1.2rem) !important;
   }
+}
