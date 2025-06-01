@@ -675,19 +675,18 @@ body {
     margin: 0;
     font-size: 1.3rem; /* 1.1rem → 1.3rem に増加 */
     font-weight: bold;
-  }
-  .content-area {
-    padding-top: 80px; /* 70px → 80px に増加 */
+  }  .content-area {
+    padding-top: 60px; /* 80px → 60px に削減 */
     padding-left: 0; /* 20px → 0 に変更 */
     padding-right: 0; /* 20px → 0 に変更 */
     padding-bottom: 24px; /* 20px → 24px に増加 */
     margin-left: 0;
     margin-right: 0;
-  }  /* 物件情報カード */
+  }/* 物件情報カード */
   .property-info-card {
     background-color: var(--accent-color);
     color: var(--header-text-color);
-    padding: 20px 8px; /* 左右パディングを8pxに変更 */
+    padding: 5px 8px; /* 20px 8px → 5px 8px に変更 */
     margin-bottom: 8px; /* 20px → 8px に大幅縮小 */
     margin-left: 0;
     margin-right: 0;
