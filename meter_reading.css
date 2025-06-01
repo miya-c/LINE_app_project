@@ -853,3 +853,14 @@ body {
     text-overflow: ellipsis;
   }
 }
+
+/* デスクトップ専用表示 - モバイルで非表示 */
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
