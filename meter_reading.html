@@ -910,14 +910,8 @@
           }
           
           try {
-            const result = JSON.parse(resultText); 
-            if (result.success) {
-              const isInitialReading = meterReadings.length === 0 || (numberInputs.length > 0 && numberInputs[0].getAttribute('data-original-value') === '');
-              if (isInitialReading) {
-                displayToast('初回検針データを登録しました。');
-              } else {
-                displayToast('指示数を更新しました。');
-              }
+            const result = JSON.parse(resultText);            if (result.success) {
+              displayToast('送信しました');
               setInputErrors({}); // Clear errors on success
               await loadMeterReadings(propertyId, roomId);
             } else {
