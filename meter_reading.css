@@ -272,12 +272,12 @@ body {
     padding-left: var(--mantine-spacing-sm);
     padding-right: var(--mantine-spacing-sm);
   }
-
   .mantine-table td[data-label="今回使用量"] {
     background-color: #e3f2fd;
     border-right: none;
-    padding-left: var(--mantine-spacing-sm);
-    padding-right: var(--mantine-spacing-sm);
+    padding: 8px var(--mantine-spacing-sm);
+    font-size: 1.4rem;
+    font-weight: bold;
   }
 
   .mantine-table td[data-label="状態"] {
@@ -286,7 +286,6 @@ body {
     padding-left: var(--mantine-spacing-sm);
     padding-right: var(--mantine-spacing-sm);
   }
-
   .mantine-table td[data-label="今回指示数(㎥)"],
   .mantine-table td[data-label="前回履歴"],
   .mantine-table td[data-label="写真"] {
@@ -299,9 +298,9 @@ body {
   .mantine-table td .mantine-button {
     width: auto;
     margin-top: 4px;
-    font-size: 0.9rem;
-    padding: 8px;
-    min-height: auto;
+    font-size: 1.4rem;
+    padding: 20px;
+    min-height: 60px;
   }
 
   .mantine-table td[data-label="写真"] .mantine-button {
@@ -319,9 +318,9 @@ body {
   padding: 20px; /* より大きなパディング */
   border: 1px solid var(--mantine-color-gray-3);
   border-radius: var(--mantine-radius-sm);
-  font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
+  font-size: 1.4rem; /* 1.2rem → 1.4rem に増加 */
   transition: border-color 0.15s ease;
-  min-height: 48px; /* 最小高さを追加 */
+  min-height: 60px; /* 48px → 60px に増加 */
 }
 
 .mantine-input:focus {
@@ -498,16 +497,16 @@ body {
     grid-area: status;
     padding-left: 12px;
   }
-
   /* 左カラム - 今回使用量 */
   .mantine-table td[data-label="今回使用量"] {
     grid-area: usage;
     background-color: #e3f2fd;
-    padding: 12px;
+    padding: 8px;
     border-radius: 6px;
     font-weight: bold;
+    font-size: 1.4rem;
     border-right: 1px solid var(--mantine-color-gray-2);
-    padding-right: 12px;
+    padding-right: 8px;
   }
 
   .mantine-table td[data-label="今回使用量"]::before {
@@ -547,16 +546,16 @@ body {
     margin-bottom: 8px;
     font-size: 1.1rem;
   }
-
   /* 入力フィールドのスタイル */
   .mantine-table td[data-label="今回指示数(㎥)"] .mantine-input {
     width: 100%;
-    font-size: 1.2rem;
-    padding: 16px;
+    font-size: 1.4rem;
+    padding: 20px;
     margin-top: 8px;
     border: 2px solid var(--mantine-color-gray-3);
     border-radius: 6px;
     box-sizing: border-box;
+    min-height: 60px;
   }
 
   /* 写真ボタンのスタイル */
@@ -713,8 +712,9 @@ body {
     display: block;
     width: 100%;
   }
+}
 
-  /* 前回履歴の表示改善 */
+/* 前回履歴の表示改善 */
 .mantine-table td[data-label="前回履歴"] {
   line-height: 1.6;
   font-size: 1.1rem;
