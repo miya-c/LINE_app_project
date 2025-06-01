@@ -217,6 +217,12 @@ body {
 
 /* デスクトップ用のスタイリング */
 @media (min-width: 769px) {
+  .mantine-table {
+    display: table;
+    border-collapse: collapse;
+    width: 100%;
+  }
+
   .mantine-table thead {
     display: table-header-group !important;
   }
@@ -226,7 +232,10 @@ body {
   }
   
   .mantine-table tr {
-    display: table-row;
+    display: table-row !important;
+    grid-template-columns: none !important;
+    grid-template-areas: none !important;
+    gap: 0 !important;
     margin-bottom: 0;
     border: none;
     border-radius: 0;
@@ -235,8 +244,9 @@ body {
     padding: 0;
   }
   
+  .mantine-table th,
   .mantine-table td {
-    display: table-cell;
+    display: table-cell !important;
     padding: var(--mantine-spacing-sm);
     border: 1px solid var(--mantine-color-gray-3);
     border-bottom: 1px solid var(--mantine-color-gray-3);
@@ -244,10 +254,45 @@ body {
     font-size: 1rem;
     line-height: 1.4;
     vertical-align: top;
+    grid-area: none !important;
+    background-color: white;
+    margin: 0;
+    border-radius: 0;
   }
 
   .mantine-table td::before {
     display: none;
+  }
+
+  .mantine-table td[data-label="検針日時"] {
+    text-align: center;
+    font-weight: bold;
+    background-color: #f8f9fa;
+    border-right: none;
+    padding-left: var(--mantine-spacing-sm);
+    padding-right: var(--mantine-spacing-sm);
+  }
+
+  .mantine-table td[data-label="今回使用量"] {
+    background-color: #e3f2fd;
+    border-right: none;
+    padding-left: var(--mantine-spacing-sm);
+    padding-right: var(--mantine-spacing-sm);
+  }
+
+  .mantine-table td[data-label="状態"] {
+    text-align: center;
+    border-right: none;
+    padding-left: var(--mantine-spacing-sm);
+    padding-right: var(--mantine-spacing-sm);
+  }
+
+  .mantine-table td[data-label="今回指示数(㎥)"],
+  .mantine-table td[data-label="前回履歴"],
+  .mantine-table td[data-label="写真"] {
+    border-right: none;
+    padding-left: var(--mantine-spacing-sm);
+    padding-right: var(--mantine-spacing-sm);
   }
 
   .mantine-table td input[type="number"],
@@ -256,6 +301,16 @@ body {
     margin-top: 4px;
     font-size: 0.9rem;
     padding: 8px;
+    min-height: auto;
+  }
+
+  .mantine-table td[data-label="写真"] .mantine-button {
+    width: auto;
+  }
+
+  .mantine-table td[data-label="状態"] span {
+    width: auto;
+    text-align: center;
   }
 }
 
@@ -396,8 +451,16 @@ body {
     line-height: 1.5; /* 1.4 → 1.5 に増加 */
   }
 
-  /* 2列レイアウト（モバイル用） */  .mantine-table tr {
-    display: block;
+  /* 2列レイアウト（モバイル用） */  /* モバイル用の2カラムレイアウト */
+  .mantine-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+      "date date"
+      "reading status"
+      "usage history"
+      "photo photo";
+    gap: 16px;
     margin-bottom: 2em;
     border: 1px solid var(--mantine-color-gray-3);
     border-radius: var(--mantine-radius-md);
@@ -405,18 +468,74 @@ body {
     box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
     padding: 1.5em;
   }
-  
-  .mantine-table td {
-    display: block;
-    padding: 1em 0;
-    border: none;
+
+  /* 検針日時 - 上部全幅 */
+  .mantine-table td[data-label="検針日時"] {
+    grid-area: date;
+    text-align: center;
+    font-weight: bold;
+    background-color: #f8f9fa;
+    margin: -1.5em -1.5em 0 -1.5em;
+    padding: 16px 20px;
+    border-radius: 8px 8px 0 0;
     border-bottom: 1px solid var(--mantine-color-gray-2);
-    text-align: left;
-    font-size: 1.2rem;
-    line-height: 1.5;
+    margin-bottom: 0;
   }
 
-  .mantine-table td:last-child {
+  .mantine-table td[data-label="検針日時"]::before {
+    display: none;
+  }
+
+  /* 左カラム - 今回指示数 */
+  .mantine-table td[data-label="今回指示数(㎥)"] {
+    grid-area: reading;
+    border-right: 1px solid var(--mantine-color-gray-2);
+    padding-right: 12px;
+  }
+
+  /* 右カラム - 状態 */
+  .mantine-table td[data-label="状態"] {
+    grid-area: status;
+    padding-left: 12px;
+  }
+
+  /* 左カラム - 今回使用量 */
+  .mantine-table td[data-label="今回使用量"] {
+    grid-area: usage;
+    background-color: #e3f2fd;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    border-right: 1px solid var(--mantine-color-gray-2);
+    padding-right: 12px;
+  }
+
+  .mantine-table td[data-label="今回使用量"]::before {
+    color: var(--mantine-color-blue-7);
+  }
+
+  /* 右カラム - 前回履歴 */
+  .mantine-table td[data-label="前回履歴"] {
+    grid-area: history;
+    padding-left: 12px;
+    font-size: 1.1rem;
+    line-height: 1.4;
+  }
+
+  /* 写真ボタン - 下部全幅 */
+  .mantine-table td[data-label="写真"] {
+    grid-area: photo;
+    padding-top: 8px;
+  }
+
+  /* 共通のtdスタイル */
+  .mantine-table td {
+    display: block;
+    padding: 12px 0;
+    border: none;
+    background-color: transparent;
+    font-size: 1.2rem;
+    line-height: 1.5;
     border-bottom: none;
   }
 
@@ -424,20 +543,55 @@ body {
     content: attr(data-label) ": ";
     font-weight: bold;
     color: var(--mantine-color-gray-7);
-    display: inline-block;
-    margin-right: 0.7em;
+    display: block;
+    margin-bottom: 8px;
     font-size: 1.1rem;
-    min-width: 100px;
   }
 
-  .mantine-table td input[type="number"],
-  .mantine-table td .mantine-button {
+  /* 入力フィールドのスタイル */
+  .mantine-table td[data-label="今回指示数(㎥)"] .mantine-input {
     width: 100%;
-    box-sizing: border-box;
-    margin-top: 12px;
     font-size: 1.2rem;
     padding: 16px;
-    min-height: 52px;
+    margin-top: 8px;
+    border: 2px solid var(--mantine-color-gray-3);
+    border-radius: 6px;
+    box-sizing: border-box;
+  }
+
+  /* 写真ボタンのスタイル */
+  .mantine-table td[data-label="写真"] .mantine-button {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 12px;
+    margin-top: 8px;
+    box-sizing: border-box;
+  }
+
+  .mantine-table td[data-label="写真"]::before {
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  /* 状態表示の調整 */
+  .mantine-table td[data-label="状態"] span {
+    display: inline-block;
+    padding: 8px 12px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: var(--mantine-radius-sm);
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 前回履歴がない場合のレイアウト調整 */
+  .mantine-table tr:not(:has(td[data-label="前回履歴"])) {
+    grid-template-areas: 
+      "date date"
+      "reading status"
+      "usage status"
+      "photo photo";
   }
 
   .mantine-table td:last-child {

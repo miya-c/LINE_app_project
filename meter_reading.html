@@ -525,10 +525,21 @@
                 <div className="property-info-card">
                 <h2 className="property-name">{propertyName}</h2>
                 <p className="room-info">部屋: {roomName}</p>
-              </div>
-
-              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>                <h3 className="mantine-subtitle" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
-                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (<table className="mantine-table"><thead style={{ display: 'none' }}><tr><th>検針日時</th><th>今回指示数(㎥)</th><th>今回使用量</th><th>状態</th><th>前回履歴</th><th>写真</th></tr></thead><tbody>
+              </div>              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
+                <h3 className="mantine-subtitle" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
+                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                  <table className="mantine-table">
+                    <thead style={{ display: 'none' }}>
+                      <tr>
+                        <th>検針日時</th>
+                        <th>今回指示数(㎥)</th>
+                        <th>今回使用量</th>
+                        <th>状態</th>
+                        <th>前回履歴</th>
+                        <th>写真</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {meterReadings.map((reading, index) => {
                         const formattedDate = formatDate(reading.date);
                         const dateForDataAttribute = reading.date;
@@ -538,10 +549,10 @@
                                             ? usageStates[dateForDataAttribute]
                                             : calculateUsageDisplay(reading.currentReading, reading.previousReading);
                         
-                        const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;
-
-                        const statusDisplay = reading.status || 'N/A';
-                        const previousReadingsInfo = getPreviousReadingsText(reading);                        return (
+                        const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;                        const statusDisplay = reading.status || 'N/A';
+                        const previousReadingsInfo = getPreviousReadingsText(reading);
+                        
+                        return (
                           <tr key={index}>
                             <td data-label="検針日時">
                               {formattedDate}
@@ -616,9 +627,12 @@
                               >
                                 写真を追加/変更 📸
                               </button>
-                            </td>
-                          </tr>
-                        );})}</tbody></table>) : (
+                            </td>                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
                   <div className="mantine-stack">
                     <div className="mantine-alert info">
                       <h3 className="mantine-text weight-600">初回検針</h3>
@@ -628,9 +642,16 @@
                     </div>
                     <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)', padding: 'var(--mantine-spacing-md)'}}>
                       <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
-                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-lg)'}}>
-                        <div>
-                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日:</label>                          <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" style={{fontSize: '1rem', padding: '10px'}} />
+                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-lg)'}}>                        <div>
+                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
+                          <input 
+                            type="text" 
+                            id="initialReadingDate" 
+                            value={formatDate(new Date())} 
+                            readOnly 
+                            className="mantine-input" 
+                            style={{fontSize: '1rem', padding: '10px'}} 
+                          />
                         </div>
                         <div>
                           <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
@@ -665,8 +686,7 @@
                               {inputErrors[new Date().toISOString().split('T')[0]]}
                             </div>
                           )}
-                        </div>
-                        <div>
+                        </div>                        <div>
                           <label className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>写真:</label>
                           <button
                             className="mantine-button variant-filled"
@@ -675,11 +695,15 @@
                             onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
                           >
                             写真を追加 📸
-                          </button>                        </div>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                )}              </div>{showModal && (
+                )}
+              </div>
+              
+              {showModal && (
                 <div className="modal-overlay" onClick={hidePhotoModal}>
                   <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -687,17 +711,19 @@
                       className="modal-close"
                     >
                       &times;
-                    </button>
-                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
+                    </button>                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
                   </div>
-                </div>              )}
-            </div>{(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
-              <div className="fab-container" style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1001}}>
-                <button
+                </div>
+              )}
+            </div>
+            
+            {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
+              <div className="fab-container" style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1001}}>                <button
                   className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
                   disabled={updating}
-                  title="指示数を更新"                  style={{ 
+                  title="指示数を更新"
+                  style={{
                       width: '72px', /* 60px → 72px に増加 */
                       height: '72px', /* 60px → 72px に増加 */
                       borderRadius: '50%', 
@@ -708,10 +734,11 @@
                       justifyContent: 'center'
                   }}
                 >
-                  {updating ? <div className="mantine-loader" style={{width: '32px', height: '32px', borderTopColor: 'white'}}></div> : '💾'}
-                </button>
+                  {updating ? <div className="mantine-loader" style={{width: '32px', height: '32px', borderTopColor: 'white'}}></div> : '💾'}                </button>
               </div>
-            )}            {showToast && (
+            )}
+            
+            {showToast && (
               <div style={{
                 position: 'fixed',
                 top: 0,
@@ -720,10 +747,10 @@
                 height: '100%',
                 backgroundColor: 'rgba(0, 0, 0, 0.6)',
                 zIndex: 2000,
-                display: 'flex',
-                alignItems: 'center',
+                display: 'flex',                alignItems: 'center',
                 justifyContent: 'center'
-              }}>                <div style={{
+              }}>
+                <div style={{
                   backgroundColor: 'var(--mantine-color-blue-6)',
                   color: 'white',
                   padding: '24px 32px',
@@ -731,10 +758,10 @@
                   boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                   fontSize: '1.2rem',
                   fontWeight: '600',
-                  textAlign: 'center',
-                  minWidth: '240px',
+                  textAlign: 'center',                  minWidth: '240px',
                   animation: 'fadeInScale 0.3s ease-out'
-                }}>                  {toastMessage}
+                }}>
+                  {toastMessage}
                 </div>
               </div>
             )}
