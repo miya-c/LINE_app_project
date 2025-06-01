@@ -683,15 +683,19 @@ body {
     font-weight: bold;
     margin: 0 0 10px 0; /* 8px → 10px に増加 */
   }
-
   .room-label {
-    font-size: 1.3rem; /* 適切なサイズに修正 */
+    font-size: clamp(1.0rem, 3vw, 1.5rem); /* レスポンシブな可変長 */
     margin: 0 0 4px 0; /* 2px → 4px に増加 */
     opacity: 0.9;
   }
-
   .room-name {
-    font-size: 1.7rem; /* 適切なサイズに修正 */
+    font-size: clamp(1.3rem, 4vw, 2.0rem); /* レスポンシブな可変長 */
+    font-weight: bold;
+    margin: 0;
+  }
+
+  .room-info {
+    font-size: clamp(1.3rem, 4vw, 2.0rem); /* レスポンシブな可変長 */
     font-weight: bold;
     margin: 0;
   }
