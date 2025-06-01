@@ -534,14 +534,20 @@
         const initializeWoff = async () => {
           try {
             console.log('[meter_reading] WOFFを初期化します。');
-            
-            // sessionStorageからgasWebAppUrlを取得
+              // sessionStorageからgasWebAppUrlを取得
             gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
             if (!gasWebAppUrl) {
-              console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
-              alert('アプリケーションが正常に起動されていません。物件選択画面から再度お試しください。');
-              window.location.href = 'property_select.html';
-              return;
+              // テスト環境では固定のURLを使用
+              if (window.location.protocol === 'file:') {
+                console.log('[meter_reading] Test environment detected. Using default GAS URL.');
+                gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
+                sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
+              } else {
+                console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
+                alert('アプリケーションが正常に起動されていません。物件選択画面から再度お試しください。');
+                window.location.href = 'property_select.html';
+                return;
+              }
             }
             console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
 
@@ -551,12 +557,25 @@
               setLoading(false);
               return;
             }
-            
-            await woff.init({ woffId: woffIdForWorks });
+              await woff.init({ woffId: woffIdForWorks });
             console.log('[meter_reading] WOFFの初期化に成功しました。');
 
             if (!woff.isLoggedIn()) {
-              console.log("[meter_reading] Not logged in.");
+              console.log("[meter_reading] Not logged in. Running in test mode.");
+              // テスト環境用のダミーデータを設定
+              if (window.location.protocol === 'file:') {
+                console.log("[meter_reading] File protocol detected. Setting test parameters.");
+                // テスト用のURLパラメータを設定
+                const testParams = new URLSearchParams({
+                  propertyId: 'P000001',
+                  propertyName: 'テスト物件',
+                  roomId: 'R000001',
+                  roomName: 'テスト部屋'
+                });
+                if (!window.location.search) {
+                  window.history.replaceState({}, '', window.location.pathname + '?' + testParams.toString());
+                }
+              }
             } else {
               console.log("[meter_reading] Logged in. OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
             }
@@ -1006,9 +1025,9 @@
 
               <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
                 <h3 className="mantine-subtitle" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
-                
-                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
-                  <table className="mantine-table">                    <thead style={{ display: 'none' }}>
+                  {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                  <table className="mantine-table">
+                    <thead style={{ display: 'none' }}>
                       <tr>
                         <th>検針日時</th>
                         <th>今回指示数(㎥)</th>
@@ -1017,8 +1036,8 @@
                         <th>前回履歴</th>
                         <th>写真</th>
                       </tr>
-                    </thead>
-                    <tbody>                      {meterReadings.map((reading, index) => {
+                    </thead>                    <tbody>
+                      {meterReadings.map((reading, index) => {
                         const formattedDate = formatDate(reading.date);
                         const dateForDataAttribute = reading.date;
                         const currentReadingDisplay = reading.currentReading || '';
@@ -1088,8 +1107,7 @@
                                 borderRadius: 'var(--mantine-radius-sm)'
                               }}>
                                 {statusDisplay}
-                              </span>
-                            </td>
+                              </span>                            </td>
                             {previousReadingsInfo && previousReadingsInfo !== 'なし' && (
                               <td data-label="前回履歴">
                                 {previousReadingsInfo}
@@ -1103,10 +1121,8 @@
                               >
                                 写真を追加/変更 📸
                               </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                            </td>                          </tr>
+                        );                      })}
                     </tbody>
                   </table>
                 ) : (
@@ -1121,9 +1137,9 @@
                       <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
                       <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-lg)'}}>
                         <div>
-                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
-                          <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" style={{fontSize: '1rem', padding: '10px'}} />
-                        </div>                        <div>
+                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日:</label>                          <input type="text" id="initialReadingDate" value={formatDate(new Date())} readOnly className="mantine-input" style={{fontSize: '1rem', padding: '10px'}} />
+                        </div>
+                        <div>
                           <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
                           <input
                             type="number"
