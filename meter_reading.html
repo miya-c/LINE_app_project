@@ -1023,12 +1023,10 @@
                 <p className="room-name">{roomName}</p>
               </div>
 
-              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
-                <h3 className="mantine-subtitle" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
-                  {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
-                  <table className="mantine-table">
-                    <thead style={{ display: 'none' }}>
-                      <tr>
+              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>                <h3 className="mantine-subtitle" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
+                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                <table className="mantine-table">
+                    <thead style={{ display: 'none' }}>                      <tr>
                         <th>検針日時</th>
                         <th>今回指示数(㎥)</th>
                         <th>今回使用量</th>
@@ -1036,7 +1034,8 @@
                         <th>前回履歴</th>
                         <th>写真</th>
                       </tr>
-                    </thead>                    <tbody>
+                    </thead>
+                    <tbody>
                       {meterReadings.map((reading, index) => {
                         const formattedDate = formatDate(reading.date);
                         const dateForDataAttribute = reading.date;
@@ -1049,26 +1048,10 @@
                         const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;
 
                         const statusDisplay = reading.status || 'N/A';
-                        const previousReadingsInfo = getPreviousReadingsText(reading);
-
-                        return (
+                        const previousReadingsInfo = getPreviousReadingsText(reading);                        return (
                           <tr key={index}>
-                            <td data-label="検針日時">
-                              {formattedDate}
-                            </td>
-                            <td data-label="今回指示数(㎥)">
-                              <div>{currentReadingDisplay || '未入力'}</div>
-                              <input
-                                type="number"
-                                step="any"
-                                defaultValue={currentReadingDisplay}
-                                placeholder="指示数入力"
-                                min="0"
-                                data-date={dateForDataAttribute}
-                                data-original-value={reading.currentReading || ''}
-                                data-previous-reading={reading.previousReading || ''}
-                                className="mantine-input"
-                                onChange={(e) => {
+                            <td data-label="検針日時">{formattedDate}</td>
+                            <td data-label="今回指示数(㎥)"><div>{currentReadingDisplay || '未入力'}</div><input type="number" step="any" defaultValue={currentReadingDisplay} placeholder="指示数入力" min="0" data-date={dateForDataAttribute} data-original-value={reading.currentReading || ''} data-previous-reading={reading.previousReading || ''} className="mantine-input" onChange={(e) => {
                                   const currentValue = e.target.value;
                                   const previousValue = reading.previousReading || '';
                                   const numericValue = parseFloat(currentValue);
@@ -1083,46 +1066,14 @@
                                   } else {
                                     setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
                                     e.target.style.borderColor = '';
-                                    setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(currentValue, previousValue) }));
-                                  }
-                                }}
-                              />
-                              {inputErrors[dateForDataAttribute] && (
-                                <div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', marginTop: '4px' }}>
-                                  {inputErrors[dateForDataAttribute]}
-                                </div>
-                              )}
-                            </td>
-                            <td data-label="今回使用量">
-                              {usageDisplayString}
-                            </td>
-                            <td data-label="状態">
-                              <span style={{
-                                display: 'inline-block',
-                                padding: '3px 9px',
-                                fontSize: '0.9em',
-                                fontWeight: 500,
-                                backgroundColor: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-2)' : 'var(--mantine-color-blue-light)',
-                                color: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-7)' : 'var(--mantine-color-blue-8)',
-                                borderRadius: 'var(--mantine-radius-sm)'
-                              }}>
-                                {statusDisplay}
-                              </span>                            </td>
-                            {previousReadingsInfo && previousReadingsInfo !== 'なし' && (
-                              <td data-label="前回履歴">
-                                {previousReadingsInfo}
-                              </td>
-                            )}
-                            <td data-label="写真">
-                              <button
-                                className="mantine-button variant-filled"
-                                data-date-button={dateForDataAttribute}
-                                onClick={() => handleCameraClick(dateForDataAttribute)}
-                              >
-                                写真を追加/変更 📸
-                              </button>
-                            </td>                          </tr>
-                        );                      })}
+                                    setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(currentValue, previousValue) }));                                  }
+                                }} />{inputErrors[dateForDataAttribute] && (<div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', marginTop: '4px' }}>{inputErrors[dateForDataAttribute]}</div>)}</td>                            <td data-label="今回使用量">{usageDisplayString}</td>
+                            <td data-label="状態"><span style={{ display: 'inline-block', padding: '3px 9px', fontSize: '0.9em', fontWeight: 500, backgroundColor: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-2)' : 'var(--mantine-color-blue-light)', color: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-7)' : 'var(--mantine-color-blue-8)', borderRadius: 'var(--mantine-radius-sm)' }}>{statusDisplay}</span></td>{previousReadingsInfo && previousReadingsInfo !== 'なし' && (
+                              <td data-label="前回履歴">{previousReadingsInfo}</td>
+                            )}                            <td data-label="写真">
+                              <button className="mantine-button variant-filled" data-date-button={dateForDataAttribute} onClick={() => handleCameraClick(dateForDataAttribute)}>写真を追加/変更 📸</button>                            </td>
+                          </tr>);
+                      })}
                     </tbody>
                   </table>
                 ) : (
