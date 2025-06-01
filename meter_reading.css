@@ -713,4 +713,38 @@ body {
     display: block;
     width: 100%;
   }
+
+  /* 前回履歴の表示改善 */
+.mantine-table td[data-label="前回履歴"] {
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.mantine-table td[data-label="前回履歴"] div {
+  margin-bottom: 4px;
+  padding: 2px 0;
+}
+
+.mantine-table td[data-label="前回履歴"] div:last-child {
+  margin-bottom: 0;
+}
+
+/* モバイルでの前回履歴表示調整 */
+@media (max-width: 768px) {
+  .mantine-table td[data-label="前回履歴"] {
+    padding-left: 16px;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .mantine-table td[data-label="前回履歴"] div {
+    margin-bottom: 6px;
+    padding: 3px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .mantine-table td[data-label="前回履歴"] div:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
 }

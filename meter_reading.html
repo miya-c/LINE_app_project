@@ -234,9 +234,7 @@
           return (usage >= 0 ? usage : 0).toString(); // Return as string, ensure non-negative
         }
         return '0'; // Default if cannot calculate
-      };
-
-      // Helper for previous readings text
+      };      // Helper for previous readings text - 配列を返すように修正
       const getPreviousReadingsText = (r) => {
         let parts = [];
         if (r.previousReading && r.previousReading !== 'N/A') {
@@ -266,7 +264,7 @@
         if (r.threeTimesPrevious && r.threeTimesPrevious !== 'N/A') {
             parts.push(`前々々回: ${r.threeTimesPrevious}`);
         }
-        return parts.length > 0 ? parts.join(' / ') : 'なし';
+        return parts; // 配列を直接返す
       };
 
 
@@ -613,10 +611,18 @@
                               }}>
                                 {statusDisplay}
                               </span>
-                            </td>
-                            {previousReadingsInfo && previousReadingsInfo !== 'なし' && (
+                            </td>                            {previousReadingsInfo && previousReadingsInfo.length > 0 && (
                               <td data-label="前回履歴">
-                                {previousReadingsInfo}
+                                <div style={{ lineHeight: '1.6' }}>
+                                  {previousReadingsInfo.map((info, infoIndex) => (
+                                    <div key={infoIndex} style={{ 
+                                      marginBottom: infoIndex < previousReadingsInfo.length - 1 ? '6px' : '0',
+                                      fontSize: '1rem'
+                                    }}>
+                                      {info}
+                                    </div>
+                                  ))}
+                                </div>
                               </td>
                             )}
                             <td data-label="写真">
