@@ -53,55 +53,52 @@
     * {
       box-sizing: border-box;
     }
-    
-    body {
+      body {
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
       line-height: 1.55;
       color: var(--mantine-color-gray-7);
       background-color: var(--app-bg-color);
-      font-size: 20px; /* 基本フォントサイズを20pxに大幅アップ */
+      font-size: 24px; /* 20px → 24px に増加 老眼対応 */
     }
     
     #root {
       min-height: 100vh;
     }
-    
-    .mantine-container {
+      .mantine-container {
       min-height: 100vh;
-      padding: var(--mantine-spacing-md);
-      max-width: 800px;
+      padding: var(--mantine-spacing-lg); /* md → lg に変更 */
+      max-width: 900px; /* 800px → 900px に増加 */
       margin: 0 auto;
     }
     
     .mantine-stack {
       display: flex;
       flex-direction: column;
-      gap: var(--mantine-spacing-lg);
+      gap: var(--mantine-spacing-xl); /* lg → xl に変更 */
     }
     
     .mantine-stack.center {
       align-items: center;
       text-align: center;
     }
-    
-    .mantine-title {
-      font-size: 2.8rem; /* 大幅に大きく */
+      .mantine-title {
+      font-size: 3.2rem; /* 2.8rem → 3.2rem に増加 */
       font-weight: 700;
       margin: 0;
       color: var(--mantine-color-gray-8);
     }
     
     .mantine-subtitle {
-      font-size: 1.8rem; /* 大幅に大きく */
+      font-size: 2.2rem; /* 1.8rem → 2.2rem に増加 */
       font-weight: 600;
       margin: 0;
       color: var(--mantine-color-gray-7);
     }
     
     .mantine-text {
-      font-size: 1.1rem; /* 22px相当に */
+      font-size: 1.3rem; /* 1.1rem → 1.3rem に増加 */
       color: var(--mantine-color-gray-6);
       margin: 0;
       line-height: 1.6;
@@ -114,22 +111,22 @@
     .mantine-text.weight-600 {
       font-weight: 600;
     }
-    
-    .mantine-button {
+      .mantine-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: var(--mantine-spacing-xs);
-      padding: var(--mantine-spacing-md) var(--mantine-spacing-lg); /* パディングも調整 */
+      padding: 20px 28px; /* より大きなパディング */
       border-radius: var(--mantine-radius-sm);
       border: 1px solid transparent;
-      font-size: 1rem; /* 20px相当に */
+      font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
       font-weight: 600;
       line-height: 1;
       text-decoration: none;
       cursor: pointer;
       transition: all 0.15s ease;
       user-select: none;
+      min-height: 48px; /* 最小高さを追加 */
     }
     
     .mantine-button.variant-filled {
@@ -210,13 +207,12 @@
       border-collapse: collapse;
       border: 1px solid var(--mantine-color-gray-3);
     }
-    
-    .mantine-table th,
+      .mantine-table th,
     .mantine-table td {
       border: 1px solid var(--mantine-color-gray-3);
-      padding: var(--mantine-spacing-sm);
+      padding: 20px; /* より大きなパディング */
       text-align: left;
-      font-size: 1rem; /* 20px相当に */
+      font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
     }
     
     .mantine-table th {
@@ -272,14 +268,14 @@
         padding: 8px;
       }
     }
-    
-    .mantine-input {
+      .mantine-input {
       width: 100%;
-      padding: var(--mantine-spacing-md); /* パディング調整 */
+      padding: 20px; /* より大きなパディング */
       border: 1px solid var(--mantine-color-gray-3);
       border-radius: var(--mantine-radius-sm);
-      font-size: 1rem; /* 20px相当に */
+      font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
       transition: border-color 0.15s ease;
+      min-height: 48px; /* 最小高さを追加 */
     }
     
     .mantine-input:focus {
@@ -334,10 +330,9 @@
     }
       .modal-close:hover {
       background-color: var(--mantine-color-gray-1);
-    }
-      @media (max-width: 768px) {
+    }      @media (max-width: 768px) {
       body {
-        font-size: 16px; /* モバイル用フォントサイズ */
+        font-size: 20px; /* 16px → 20px に増加 */
       }
 
       .mantine-container {
@@ -346,12 +341,12 @@
       }
 
       .mantine-title {
-        font-size: 1.8rem; /* モバイル用サイズ */
+        font-size: 2.2rem; /* 1.8rem → 2.2rem に増加 */
       }
 
       .mantine-subtitle {
-        font-size: 1.2rem; /* モバイル用サイズ */
-      }      /* シンプルなテーブルレイアウト（モバイル対応） */
+        font-size: 1.6rem; /* 1.2rem → 1.6rem に増加 */
+      }/* シンプルなテーブルレイアウト（モバイル対応） */
       .mantine-table {
         border: none;
         border-collapse: separate;
@@ -366,48 +361,47 @@
         display: block;
         width: 100%;
       }
-      
-      .mantine-table tr {
+        .mantine-table tr {
         display: block;
-        margin-bottom: 1.5em;
+        margin-bottom: 2em; /* 1.5em → 2em に増加 */
         border: 1px solid var(--mantine-color-gray-3);
         border-radius: var(--mantine-radius-md);
         background-color: white;
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-        padding: 1em;
+        padding: 1.5em; /* 1em → 1.5em に増加 */
       }
       
       .mantine-table td {
         display: block;
-        padding: 0.75em 0;
+        padding: 1em 0; /* 0.75em → 1em に増加 */
         border: none;
         border-bottom: 1px solid var(--mantine-color-gray-2);
         text-align: left;
-        font-size: 1rem;
-        line-height: 1.4;
+        font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
+        line-height: 1.5; /* 1.4 → 1.5 に増加 */
       }
 
       .mantine-table td:last-child {
         border-bottom: none;
       }
-      
-      .mantine-table td::before {
+        .mantine-table td::before {
         content: attr(data-label) ": ";
         font-weight: bold;
         color: var(--mantine-color-gray-7);
         display: inline-block;
-        margin-right: 0.5em;
-        font-size: 0.9rem;
-        min-width: 80px;
+        margin-right: 0.7em; /* 0.5em → 0.7em に増加 */
+        font-size: 1.1rem; /* 0.9rem → 1.1rem に増加 */
+        min-width: 100px; /* 80px → 100px に増加 */
       }
 
       .mantine-table td input[type="number"],
       .mantine-table td .mantine-button {
         width: 100%;
         box-sizing: border-box;
-        margin-top: 8px;
-        font-size: 1rem;
-        padding: 12px;
+        margin-top: 12px; /* 8px → 12px に増加 */
+        font-size: 1.2rem; /* 1rem → 1.2rem に増加 */
+        padding: 16px; /* 12px → 16px に増加 */
+        min-height: 52px; /* 最小高さを追加 */
       }
 
       /* ヘッダー */
@@ -424,13 +418,11 @@
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-
-      .back-button {
+      }      .back-button {
         background-color: transparent;
         border: none;
         color: var(--header-text-color);
-        font-size: 24px;
+        font-size: 28px; /* 24px → 28px に増加 */
         cursor: pointer;
         position: absolute;
         left: 16px;
@@ -438,41 +430,39 @@
 
       .header-title {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 1.3rem; /* 1.1rem → 1.3rem に増加 */
         font-weight: bold;
       }
 
       .content-area {
-        padding-top: 70px; /* ヘッダー分のパディング */
-        padding-left: 16px;
-        padding-right: 16px;
-        padding-bottom: 20px;
-      }
-
-      /* 物件情報カード */
+        padding-top: 80px; /* 70px → 80px に増加 */
+        padding-left: 20px; /* 16px → 20px に増加 */
+        padding-right: 20px;
+        padding-bottom: 24px; /* 20px → 24px に増加 */
+      }      /* 物件情報カード */
       .property-info-card {
         background-color: var(--accent-color);
         color: var(--header-text-color);
-        padding: 16px;
-        margin-bottom: 16px;
+        padding: 20px; /* 16px → 20px に増加 */
+        margin-bottom: 20px; /* 16px → 20px に増加 */
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
 
       .property-name {
-        font-size: 1.4rem;
+        font-size: 1.6rem; /* 1.4rem → 1.6rem に増加 */
         font-weight: bold;
-        margin: 0 0 8px 0;
+        margin: 0 0 10px 0; /* 8px → 10px に増加 */
       }
 
       .room-label {
-        font-size: 0.9rem;
-        margin: 0 0 2px 0;
+        font-size: 1.1rem; /* 0.9rem → 1.1rem に増加 */
+        margin: 0 0 4px 0; /* 2px → 4px に増加 */
         opacity: 0.9;
       }
 
       .room-name {
-        font-size: 1.2rem;
+        font-size: 1.4rem; /* 1.2rem → 1.4rem に増加 */
         font-weight: bold;
         margin: 0;
       }
@@ -1111,19 +1101,18 @@
                   className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
                   disabled={updating}
-                  title="指示数を更新"
-                  style={{ 
-                      width: '60px', 
-                      height: '60px', 
+                  title="指示数を更新"                  style={{ 
+                      width: '72px', /* 60px → 72px に増加 */
+                      height: '72px', /* 60px → 72px に増加 */
                       borderRadius: '50%', 
-                      fontSize: '24px', 
+                      fontSize: '28px', /* 24px → 28px に増加 */
                       boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                   }}
                 >
-                  {updating ? <div className="mantine-loader" style={{width: '28px', height: '28px', borderTopColor: 'white'}}></div> : '💾'}
+                  {updating ? <div className="mantine-loader" style={{width: '32px', height: '32px', borderTopColor: 'white'}}></div> : '💾'}
                 </button>
               </div>
             )}            {showToast && (
@@ -1138,8 +1127,7 @@
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
-              }}>
-                <div style={{
+              }}>                <div style={{
                   backgroundColor: 'var(--mantine-color-blue-6)',
                   color: 'white',
                   padding: '24px 32px',
