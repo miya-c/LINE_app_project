@@ -34,10 +34,14 @@ body {
   line-height: 1.55;
   color: var(--mantine-color-gray-7);
   background-color: var(--mantine-color-gray-0);
+  position: relative;
+  z-index: 1000; /* 部屋選択画面のz-index */
 }
 
 #root {
   min-height: 100vh;
+  position: relative;
+  z-index: 1001; /* 部屋選択画面のrootのz-index */
 }
 
 .mantine-container {
