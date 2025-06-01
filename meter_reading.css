@@ -703,7 +703,7 @@ body {
   }
 
   .room-name {
-    font-size: 1.7rem; /* 1.2rem → 1.4rem に増加 */
+    font-size: 5rem; /* 1.2rem → 1.4rem に増加 */
     font-weight: bold;
     margin: 0;
   }
