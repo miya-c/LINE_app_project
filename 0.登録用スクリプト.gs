@@ -31,12 +31,12 @@ function createInitialInspectionData() {
     Logger.log(`エラー: "${ROOM_MASTER_SHEET_NAME}" シートが見つかりません。`); // MODIFIED
     return;
   }
-
-  // 検針データシートの存在確認
+  // 検針データシートの存在確認・自動作成
   if (!inspectionDataSheet) {
-    Logger.log(`エラー: "${INSPECTION_DATA_SHEET_NAME}" シートが見つかりません。このスクリプトは既存のシートにデータを追加します。先に "${INSPECTION_DATA_SHEET_NAME}" という名前のシートを作成してください。`); // MODIFIED
-    Logger.log(`エラー: "${INSPECTION_DATA_SHEET_NAME}" シートが見つかりませんでした。処理を中断します。`);
-    return; // 処理を中断
+    Logger.log(`"${INSPECTION_DATA_SHEET_NAME}" シートが見つかりません。新規作成します。`);
+    // inspection_dataシートを新規作成
+    inspectionDataSheet = ss.insertSheet(INSPECTION_DATA_SHEET_NAME);
+    Logger.log(`"${INSPECTION_DATA_SHEET_NAME}" シートを新規作成しました。`);
   }
 
   // ヘッダー行を設定 (まだ設定されていない場合、またはシートが空の場合)

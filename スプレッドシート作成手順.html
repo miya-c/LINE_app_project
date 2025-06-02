@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>総合カスタム処理スクリプト - スプレッドシート作成手順</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+            border-radius: 5px;
+        }
+        .step h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 総合カスタム処理スクリプト</h1>
+            <h2>Google Sheets セットアップ手順</h2>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ 重要:</strong> このスクリプトは Google Sheets に関連付けられている必要があります。<br>
+            現在のエラーは、スクリプトがスプレッドシートに関連付けられていないことが原因です。
+        </div>
+
+        <div class="step">
+            <h3>📋 ステップ1: 新しいGoogle Sheetsを作成</h3>
+            <p>以下のリンクから新しいGoogle Sheetsを作成してください：</p>
+            <a href="https://sheets.google.com" class="btn" target="_blank">
+                🔗 Google Sheets を開く
+            </a>
+            <p>「空白のスプレッドシート」を選択してください。</p>
+        </div>
+
+        <div class="step">
+            <h3>🔧 ステップ2: Apps Script エディタを開く</h3>
+            <p>作成したスプレッドシートで：</p>
+            <ol>
+                <li>メニューバーの「<strong>拡張機能</strong>」をクリック</li>
+                <li>「<strong>Apps Script</strong>」を選択</li>
+                <li>新しいタブでスクリプトエディタが開きます</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>📝 ステップ3: スクリプトをコピー</h3>
+            <p>スクリプトエディタで：</p>
+            <ol>
+                <li>デフォルトの <code>function myFunction() {}</code> を<strong>全て削除</strong></li>
+                <li>「総合カスタム処理.gs」ファイルの<strong>全内容</strong>をコピー</li>
+                <li>スクリプトエディタに<strong>貼り付け</strong></li>
+                <li><strong>Ctrl+S</strong> で保存</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>✅ ステップ4: メニューを表示</h3>
+            <p>スプレッドシートに戻って：</p>
+            <ol>
+                <li>スプレッドシートのタブに切り替える</li>
+                <li><strong>F5キー</strong>を押して再読み込み</li>
+                <li>メニューバーに「<strong>総合カスタム処理</strong>」が表示される</li>
+            </ol>
+        </div>
+
+        <div class="success">
+            <h3>🎉 成功した場合</h3>
+            <p>メニューバーに「総合カスタム処理」が表示され、以下の機能が利用できます：</p>
+            <ul>
+                <li>1. 初期検針データ作成 (部屋マスタから)</li>
+                <li>2. マスタから検針データへ新規部屋反映</li>
+                <li>3. 物件マスタの物件IDフォーマット</li>
+                <li>4. 部屋マスタの物件IDフォーマット</li>
+                <li>5. 部屋マスタの孤立データ削除 (整合性チェック)</li>
+                <li>6. 月次検針データ保存とリセット</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>🔍 トラブルシューティング</h3>
+            <p>もしメニューが表示されない場合：</p>
+            <ul>
+                <li>ブラウザのキャッシュをクリア</li>
+                <li>別のブラウザで試す</li>
+                <li>スクリプトエディタで <code>diagnoseAndSetup</code> 関数を実行</li>
+                <li>スプレッドシートでシートを複数作成（「物件マスタ」「部屋マスタ」「inspection_data」）</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>💡 重要なポイント</h3>
+            <ul>
+                <li>スクリプトは<strong>必ずスプレッドシートから</strong>Apps Scriptエディタを開いて作成</li>
+                <li>スタンドアロンスクリプトではUI操作ができません</li>
+                <li>スプレッドシートとスクリプトが正しく関連付けられていることが重要</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="https://sheets.google.com" class="btn btn-success" target="_blank">
+                🚀 今すぐGoogle Sheetsを開く
+            </a>
+        </div>
+    </div>
+</body>
+</html>
