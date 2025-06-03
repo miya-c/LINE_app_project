@@ -410,6 +410,7 @@ function processInspectionDataMonthly() {
       sourceSheet.getRange(i + 1, photoUrlIndex + 1).setValue("");    }
     safeAlert('完了', `シート "${sourceSheetName}" の指示数データと写真URLが更新されました。`);
     Logger.log(`シート "${sourceSheetName}" の指示数データと写真URLが更新されました。`);
+
   } catch (e) {
     Logger.log(`検針データ保存処理中にエラーが発生しました: ${e.message}\n${e.stack}`);
     safeAlert('スクリプト実行エラー', `検針データ保存処理中にエラーが発生しました: ${e.message}`);
@@ -417,7 +418,10 @@ function processInspectionDataMonthly() {
 }
 
 // --- 0.登録用スクリプト.gs の内容 ---
-// 以下の定数は関数内で定義されるローカル変数として移動済み
+const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
+const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
+const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
 
 const INSPECTION_DATA_HEADERS = [
   '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
@@ -427,12 +431,6 @@ const INSPECTION_DATA_HEADERS = [
 
 function createInitialInspectionData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
-  // ローカル定数定義
-  const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
-  const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
-  const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
-  
   const propertyMasterSheet = ss.getSheetByName(PROPERTY_MASTER_SHEET_NAME);
   const roomMasterSheet = ss.getSheetByName(ROOM_MASTER_SHEET_NAME);
   let inspectionDataSheet = ss.getSheetByName(INSPECTION_DATA_SHEET_NAME);
@@ -535,8 +533,8 @@ function onOpen() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu('総合カスタム処理');
 
-    menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
-    menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    menu.addItem('1. 初期検針データ作成 ', 'createInitialInspectionData');
+    menu.addItem('2. マスタから検針データへ物件・部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
     menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
@@ -671,98 +669,115 @@ function checkSpreadsheetInfo() {
   }
 }
 
-// スプレッドシート環境の診断機能とセットアップ支援機能
-function diagnoseAndSetup() {
+// onOpenトリガー用のメニュー作成関数
+function createCustomMenuOnOpen() {
   try {
-    Logger.log('🔍 Google Apps Script環境診断を開始します...');
-    Logger.log('');
-    
-    // 1. 現在のスクリプトタイプを確認
-    Logger.log('📋 スクリプトタイプ診断:');
-    try {
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      if (spreadsheet) {
-        Logger.log('✅ スプレッドシート関連付けスクリプト (コンテナバウンド)');
-        Logger.log(`📊 スプレッドシート名: ${spreadsheet.getName()}`);
-        Logger.log(`🔗 URL: ${spreadsheet.getUrl()}`);
-        Logger.log(`📝 ID: ${spreadsheet.getId()}`);
-        
-        // この場合はメニュー作成を試行
-        try {
-          const ui = SpreadsheetApp.getUi();
-          Logger.log('✅ UI操作が可能です - メニューを作成します');
-          createMenuDirectly();
-          return 'スプレッドシート環境確認 - メニュー作成完了';
-        } catch (uiError) {
-          Logger.log(`❌ UI操作エラー: ${uiError.message}`);
-        }
-      }
-    } catch (e) {
-      Logger.log('❌ スタンドアロンスクリプト (スプレッドシートに関連付けられていない)');
-      Logger.log(`📋 エラー詳細: ${e.message}`);
-    }
-    
-    Logger.log('');
-    Logger.log('🚀 解決方法:');
-    Logger.log('');
-    Logger.log('【方法1: 新しいスプレッドシートを作成する（推奨）】');
-    Logger.log('1. 新しいGoogle Sheetsを開く: https://sheets.google.com');
-    Logger.log('2. 「拡張機能」→「Apps Script」をクリック');
-    Logger.log('3. 表示されたエディタで、デフォルトのコードを削除');
-    Logger.log('4. この総合カスタム処理.gsファイルの全内容をコピー&ペースト');
-    Logger.log('5. 保存してからスプレッドシートに戻る');
-    Logger.log('6. スプレッドシートを再読み込み（F5）');
-    Logger.log('7. 「総合カスタム処理」メニューが表示される');
-    Logger.log('');
-    Logger.log('【方法2: 既存のスプレッドシートにスクリプトを関連付ける】');
-    Logger.log('1. 既存のGoogle Sheetsを開く');
-    Logger.log('2. 「拡張機能」→「Apps Script」をクリック');
-    Logger.log('3. 新しいプロジェクトが作成される');
-    Logger.log('4. この総合カスタム処理.gsファイルの全内容をコピー&ペースト');
-    Logger.log('5. 保存してからスプレッドシートに戻る');
-    Logger.log('6. スプレッドシートを再読み込み（F5）');
-    Logger.log('');
-    Logger.log('💡 重要: スクリプトはスプレッドシートに関連付けられている必要があります');
-    Logger.log('💡 スタンドアロンスクリプトからはSpreadsheetApp.getUi()は使用できません');
-    
-    return '診断完了 - 上記の手順に従ってください';
+    const ui = SpreadsheetApp.getUi();
+    const menu = ui.createMenu('総合カスタム処理');
+
+    menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
+    menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    menu.addSeparator();
+    menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    menu.addSeparator();
+    menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
+    menu.addSeparator();
+    menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+
+    menu.addToUi();
+    Logger.log('総合カスタム処理メニューが正常に作成されました。');
   } catch (e) {
-    Logger.log(`❌ 診断エラー: ${e.message}`);
-    return `エラー: ${e.message}`;
+    Logger.log(`onOpenメニュー作成エラー: ${e.message}`);
   }
 }
 
-// 直接的なメニュー作成（UI操作が可能な場合のみ）
-function createMenuDirectly() {
-  const ui = SpreadsheetApp.getUi();
-  const menu = ui.createMenu('総合カスタム処理');
-
-  menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
-  menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
-  menu.addSeparator();
-  menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
-  menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
-  menu.addSeparator();
-  menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
-  menu.addSeparator();
-  menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
-
-  menu.addToUi();
-  Logger.log('✅ メニューが正常に作成されました');
+// onEditトリガー対応のメニュー自動作成（より安全）
+function onEdit(e) {
+  // 編集イベント発生時に1回だけメニュー作成を試行
+  try {
+    const properties = PropertiesService.getDocumentProperties();
+    const menuCreated = properties.getProperty('customMenuCreated');
+    
+    if (!menuCreated) {
+      // まだメニューが作成されていない場合のみ実行
+      setTimeout(() => {
+        try {
+          createCustomMenu();
+          properties.setProperty('customMenuCreated', 'true');
+        } catch (e) {
+          Logger.log(`onEdit内でのメニュー作成に失敗: ${e.message}`);
+        }
+      }, 1000); // 1秒遅延して実行
+    }
+  } catch (e) {
+    // エラーが発生してもonEditの処理は継続
+    Logger.log(`onEdit関数内でエラーが発生: ${e.message}`);
+  }
 }
 
-// スクリプトファイルの内容をクリップボード用に整形
-function generateScriptForCopy() {
-  Logger.log('📋 以下のスクリプトを新しいGoogle Sheetsのスクリプトエディタにコピーしてください:');
+// 直接的なメニュー作成のための簡単な指示関数
+function showMenuInstructions() {
+  Logger.log('🎯 総合カスタム処理メニューを表示する方法');
   Logger.log('');
-  Logger.log('=' * 80);
-  Logger.log('// 以下の行から最後まで全てコピーしてください');
-  Logger.log('=' * 80);
+  Logger.log('✅ 最も簡単な方法:');
+  Logger.log('1. このスクリプトが含まれているGoogle Sheetsを開く');
+  Logger.log('2. スプレッドシートで「拡張機能」→「Apps Script」を選択');
+  Logger.log('3. 関数選択で「forceCreateMenu」を選び、実行ボタンをクリック');
+  Logger.log('4. スプレッドシートに戻ると「総合カスタム処理」メニューが表示される');
+  Logger.log('');
+  Logger.log('🔄 または、スプレッドシートを再読み込み（F5）すれば自動的にメニューが表示されます');
   
-  // ここで実際にファイルの内容を表示することも可能ですが、
-  // ログが長くなりすぎるため、指示のみ表示
-  Logger.log('💡 このファイル（総合カスタム処理.gs）の全内容をコピーして');
-  Logger.log('   新しいGoogle Sheetsのスクリプトエディタに貼り付けてください');
-  
-  return 'コピー用スクリプト準備完了';
+  return '手順説明完了';
+}
+
+// スプレッドシートのコンテキストで強制的にメニューを作成
+function forceCreateMenu() {
+  try {
+    Logger.log('🔄 強制メニュー作成を開始します...');
+    
+    const ui = SpreadsheetApp.getUi();
+    const menu = ui.createMenu('総合カスタム処理');
+
+    menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
+    menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    menu.addSeparator();
+    menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    menu.addSeparator();
+    menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
+    menu.addSeparator();
+    menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+
+    menu.addToUi();
+    
+    Logger.log('✅ 総合カスタム処理メニューが正常に作成されました！');
+    Logger.log('📋 スプレッドシートのメニューバーを確認してください');
+    
+    // Toastメッセージでユーザーに通知
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      '総合カスタム処理メニューが作成されました！メニューバーを確認してください。', 
+      '成功', 
+      5
+    );
+    
+    return '成功: メニュー作成完了';
+  } catch (e) {
+    Logger.log(`❌ 強制メニュー作成エラー: ${e.message}`);
+    Logger.log(`📋 詳細: ${e.stack}`);
+    
+    // エラーの場合もToastで通知
+    try {
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        `メニュー作成エラー: ${e.message}`, 
+        'エラー', 
+        5
+      );
+    } catch (toastError) {
+      // Toast表示もできない場合はログのみ
+      Logger.log('Toast表示もできませんでした');
+    }
+    
+    return `エラー: ${e.message}`;
+  }
 }
