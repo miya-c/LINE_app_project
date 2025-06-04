@@ -5,23 +5,17 @@
 
 // CORSヘッダーを設定するヘルパー関数
 function createCorsResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+  const jsonOutput = ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+  
+  // GASでは、WebアプリとしてデプロイされたアプリケーションはCORSが自動的に処理される
+  return jsonOutput;
 }
 
 // CORSプリフライトリクエスト（OPTIONSメソッド）を処理
 function doOptions(e) {
-  return ContentService.createTextOutput("")
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+  // OPTIONSリクエストには空のレスポンスを返す
+  return ContentService.createTextOutput('');
 }
 
 // バージョン確認用の関数
@@ -373,5 +367,33 @@ function handleUpdateMeterReadings(params) {
       success: false,
       error: "検針データの更新中にエラーが発生しました: " + error.message 
     });
+  }
+}
+
+// GAS doPost: CORS対応・POSTアクション分岐
+function doPost(e) {
+  try {
+    let params = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        params = JSON.parse(e.postData.contents);
+      } catch (parseError) {
+        return createCorsResponse({ error: 'POSTデータのJSON解析に失敗しました: ' + parseError.message });
+      }
+    } else {
+      return createCorsResponse({ error: 'POSTデータがありません。' });
+    }
+
+    if (params.action === 'updateMeterReadings') {
+      return handleUpdateMeterReadings(params);
+    } else {
+      return createCorsResponse({
+        error: '無効なアクションです（doPost）',
+        receivedAction: params.action,
+        expected: ['updateMeterReadings']
+      });
+    }
+  } catch (error) {
+    return createCorsResponse({ error: 'doPostサーバーエラー: ' + error.message });
   }
 }
