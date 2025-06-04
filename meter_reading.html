@@ -404,40 +404,33 @@
         if (updatedReadings.length === 0) {
           displayToast('更新するデータがありません。');
           return;
-        }
-
-        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        }        console.log('[meter_reading] 更新する指示数:', updatedReadings);
         setUpdating(true);
         try {
           gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-          const response = await fetch(gasWebAppUrl, { 
-            method: 'POST',
-            headers: {
-              'Content-Type': 'text/plain;charset=utf-8', 
-            },
-            body: JSON.stringify({
-              action: 'updateMeterReadings',
-              propertyId: propertyId,
-              roomId: roomId,
-              readings: updatedReadings
-            }),
+          
+          // POSTからGETに変更してCORSエラーを回避
+          const requestUrl = `${gasWebAppUrl}?action=updateMeterReadings&propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(roomId)}&readings=${encodeURIComponent(JSON.stringify(updatedReadings))}`;
+          
+          console.log('[meter_reading] 更新リクエスト送信 (GET方式):', requestUrl);
+          
+          const response = await fetch(requestUrl, {
+            method: 'GET'
           });
 
-          const resultText = await response.text(); 
           if (!response.ok) {
-            throw new Error(resultText || 'ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+            throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
           }
           
-          try {
-            const result = JSON.parse(resultText);            if (result.success) {
-              displayToast('送信しました');
-              setInputErrors({}); // Clear errors on success
-              await loadMeterReadings(propertyId, roomId);
-            } else {
-              throw new Error(result.error || '指示数の更新に失敗しました。');
-            }
-          } catch (e) {
-            throw new Error('サーバーからの応答形式が不正です: ' + resultText);
+          const result = await response.json();
+          console.log('[meter_reading] 更新レスポンス:', result);
+          
+          if (result.success) {
+            displayToast('送信しました');
+            setInputErrors({}); // Clear errors on success
+            await loadMeterReadings(propertyId, roomId);
+          } else {
+            throw new Error(result.error || '指示数の更新に失敗しました。');
           }
         } catch (error) {
           console.error('[meter_reading] handleUpdateReadings error:', error);
