@@ -1,22 +1,57 @@
 function doGet(e) {
-  // eオブジェクトとe.parameterの存在を確認
-  if (!e || !e.parameter) {
-    return ContentService.createTextOutput(JSON.stringify({ error: "リクエストパラメータがありません。" }))
+  // 最新のデバッグ情報
+  const timestamp = new Date().toISOString();
+  console.log(`[DEBUG ${timestamp}] doGet開始`);
+  
+  // eオブジェクトの詳細分析
+  console.log("[DEBUG] e オブジェクト存在:", !!e);
+  
+  if (e) {
+    console.log("[DEBUG] e.parameter:", JSON.stringify(e.parameter));
+    console.log("[DEBUG] e.queryString:", e.queryString);
+    console.log("[DEBUG] e.parameters:", JSON.stringify(e.parameters));
+    
+    // プロパティを一つずつチェック
+    for (let key in e) {
+      console.log(`[DEBUG] e.${key}:`, e[key]);
+    }
+  }
+  
+  // パラメータが空または存在しない場合の詳細チェック
+  if (!e || !e.parameter || Object.keys(e.parameter).length === 0) {
+    const debugInfo = {
+      timestamp: timestamp,
+      hasE: !!e,
+      hasParameter: !!(e && e.parameter),
+      parameterKeys: e && e.parameter ? Object.keys(e.parameter) : [],
+      queryString: e ? e.queryString : null,
+      allKeys: e ? Object.keys(e) : []
+    };
+    
+    console.log("[DEBUG] パラメータが空またはなし - デバッグ情報:", JSON.stringify(debugInfo));
+    
+    return ContentService.createTextOutput(JSON.stringify({ 
+      error: "リクエストパラメータがありません。",
+      debugInfo: debugInfo
+    }))
       .setMimeType(ContentService.MimeType.JSON);
   }
-
   const action = e.parameter.action;
+  console.log("[DEBUG] doGet - actionパラメータ:", action);
 
   // actionパラメータを確認
   if (action == 'getProperties') {
-    try {
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    console.log("[DEBUG] doGet - getPropertiesアクション開始");
+    try {      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = spreadsheet.getSheetByName('物件マスタ'); // シート名を確認
+      console.log("[DEBUG] doGet - 物件マスタシート取得:", sheet ? "成功" : "失敗");
       if (!sheet) {
         return ContentService.createTextOutput(JSON.stringify({ error: "シート '物件マスタ' が見つかりません。" }))
           .setMimeType(ContentService.MimeType.JSON);
       }
       const data = sheet.getDataRange().getValues();
+      console.log("[DEBUG] doGet - 取得データ行数:", data.length);
+      console.log("[DEBUG] doGet - ヘッダー行:", JSON.stringify(data[0]));
       const properties = [];
       // ヘッダー行 (1行目) をスキップするため、i = 1 から開始
       for (let i = 1; i < data.length; i++) {
@@ -25,10 +60,11 @@ function doGet(e) {
         if (row[0] && row[1]) { // 物件IDと物件名の両方が存在する場合のみ
           properties.push({ 
             id: String(row[0]).trim(), 
-            name: String(row[1]).trim()
-          });
+            name: String(row[1]).trim()          });
         }
       }
+      console.log("[DEBUG] doGet - 処理済み物件数:", properties.length);
+      console.log("[DEBUG] doGet - 返却データ:", JSON.stringify(properties));
       return ContentService.createTextOutput(JSON.stringify(properties))
         .setMimeType(ContentService.MimeType.JSON);
     } catch (error) {
@@ -265,9 +301,11 @@ function doGet(e) {
       };
       return ContentService.createTextOutput(JSON.stringify(errorResponse))
         .setMimeType(ContentService.MimeType.JSON);
-    }
-  } else {
+    }  } else {
     // actionパラメータが 'getProperties' でも 'getRooms' でもない場合
+    console.log("[DEBUG] doGet - 無効なアクション受信:", action);
+    console.log("[DEBUG] doGet - 利用可能なアクション:", ["getProperties", "getRooms"]);
+    console.log("[DEBUG] doGet - クエリ文字列:", e.queryString);
     return ContentService.createTextOutput(JSON.stringify({ 
         error: "無効なアクションです。", 
         expectedActions: ["getProperties", "getRooms"], 
@@ -709,12 +747,75 @@ function doPost(e) {
       if (errors.length === 0) {
         response = { success: true, message: message };
       } else {
-        response = { success: updatedCount > 0, message: message + ` エラー: ${errors.join('; ')}`, error: errors.join('; ') };
-      }
+        response = { success: updatedCount > 0, message: message + ` エラー: ${errors.join('; ')}`, error: errors.join('; ') };      }
       console.log("[物件.gs] updateMeterReadings - 処理結果: " + JSON.stringify(response));
 
+    } else if (params.action === 'updateInspectionComplete') {
+      // 検針完了日を更新する処理
+      const propertyId = params.propertyId;
+      
+      if (!propertyId) {
+        throw new Error("propertyId パラメータが必要です。");
+      }
+      
+      console.log(`[物件.gs] updateInspectionComplete - 物件ID: ${propertyId} の検針完了日を更新`);
+      
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = spreadsheet.getSheetByName('物件マスタ');
+      
+      if (!sheet) {
+        throw new Error("シート '物件マスタ' が見つかりません。");
+      }
+      
+      const data = sheet.getDataRange().getValues();
+      const headers = data.shift(); // ヘッダー行を取得
+      
+      const propertyIdColIndex = headers.indexOf('物件ID');
+      const inspectionCompleteDateColIndex = headers.indexOf('検針完了日');
+      
+      if (propertyIdColIndex === -1) {
+        throw new Error("物件マスタシートに '物件ID' 列が見つかりません。");
+      }
+      
+      if (inspectionCompleteDateColIndex === -1) {
+        throw new Error("物件マスタシートに '検針完了日' 列が見つかりません。シート構造を確認してください。");
+      }
+      
+      // 該当する物件IDの行を検索
+      let foundRowIndex = -1;
+      for (let i = 0; i < data.length; i++) {
+        if (String(data[i][propertyIdColIndex]).trim() === String(propertyId).trim()) {
+          foundRowIndex = i;
+          break;
+        }
+      }
+      
+      if (foundRowIndex === -1) {
+        throw new Error(`物件ID '${propertyId}' が物件マスタシートに見つかりません。`);
+      }
+      
+      // 今日の日付を日本時間で取得（YYYY/MM/DD形式）
+      const today = new Date();
+      const jstOffset = 9 * 60; // JST is UTC+9
+      const jstDate = new Date(today.getTime() + (jstOffset * 60 * 1000));
+      const formattedDate = `${jstDate.getUTCFullYear()}/${String(jstDate.getUTCMonth() + 1).padStart(2, '0')}/${String(jstDate.getUTCDate()).padStart(2, '0')}`;
+      
+      // 検針完了日を更新（行番号は1ベースなので+2: ヘッダー行+配列インデックス調整）
+      const targetRow = foundRowIndex + 2;
+      const targetCol = inspectionCompleteDateColIndex + 1;
+      
+      sheet.getRange(targetRow, targetCol).setValue(formattedDate);
+      
+      console.log(`[物件.gs] updateInspectionComplete - 物件ID: ${propertyId} の検針完了日を ${formattedDate} に更新しました。`);
+      
+      response = { 
+        success: true, 
+        message: `物件ID ${propertyId} の検針完了日を ${formattedDate} に更新しました。`,
+        completionDate: formattedDate
+      };
+
     } else {
-      throw new Error("無効なアクションです。'updateMeterReadings' を期待していました。");
+      throw new Error("無効なアクションです。'updateMeterReadings' または 'updateInspectionComplete' を期待していました。");
     }
   } catch (error) {
     console.error("[物件.gs] doPostエラー:", error.message, error.stack);
@@ -724,300 +825,124 @@ function doPost(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ★★★ デバッグ用: スプレッドシート構造を確認する関数 ★★★
-function debugSpreadsheetStructure() {
-  try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('inspection_data');
-    
-    if (!sheet) {
-      console.error("シート 'inspection_data' が見つかりません。");
-      return;
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0]; // ヘッダー行
-    
-    console.log("=== スプレッドシート構造情報 ===");
-    console.log("シート名: inspection_data");
-    console.log("総行数: " + data.length);
-    console.log("総列数: " + headers.length);
-    console.log("ヘッダー行: " + JSON.stringify(headers));
-    
-    const currentReadingColIndex = headers.indexOf('今回の指示数');
-    const photoUrlColIndex = headers.indexOf('写真URL');
-    
-    console.log("「今回の指示数」列インデックス: " + currentReadingColIndex);
-    console.log("「写真URL」列インデックス: " + photoUrlColIndex);
-    
-    // サンプルデータを表示
-    if (data.length > 1) {
-      console.log("サンプル行 (2行目): " + JSON.stringify(data[1]));
-      
-      // 今回の指示数セルの確認
-      if (currentReadingColIndex !== -1 && data.length > 1) {
-        const sampleCell = sheet.getRange(2, currentReadingColIndex + 1);
-        const comment = sampleCell.getComment();
-        console.log("サンプル行の「今回の指示数」セルのコメント: \"" + comment + "\"");
-      }
-      
-      // 最新の10行のコメントをチェック
-      console.log("=== 最新10行のコメント確認 ===");
-      const startRow = Math.max(2, data.length - 9); // 最新10行、最低でも2行目から
-      const endRow = data.length;
-      
-      for (let i = startRow; i <= endRow; i++) {
-        if (currentReadingColIndex !== -1) {
-          const cell = sheet.getRange(i, currentReadingColIndex + 1);
-          const comment = cell.getComment();
-          const cellValue = cell.getValue();
-          console.log(`行 ${i}: 値="${cellValue}", コメント="${comment || '(なし)'}"`);
-        }
-      }
-    }
-    
-    console.log("=== 構造確認完了 ===");
-    
-  } catch (error) {
-    console.error("デバッグ中にエラーが発生しました:", error.message, error.stack);
-  }
+/*
+テスト用関数: GASでパラメータが正しく受信されるかテスト
+*/
+function testDoGet() {
+  // テスト用のeオブジェクトをシミュレート
+  const testE = {
+    parameter: {
+      action: 'getProperties'
+    },
+    queryString: 'action=getProperties'
+  };
+  
+  console.log("[TEST] testDoGet - テスト開始");
+  const result = doGet(testE);
+  console.log("[TEST] testDoGet - 結果:", result.getContent());
+  return result.getContent();
 }
 
-// ★★★ コメント設定専用のテスト関数 ★★★
-function testCommentSetting() {
+/*
+デバッグ用関数: 現在のスプレッドシート情報を確認
+*/
+function debugSpreadsheetInfo() {
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('inspection_data');
+    console.log("[DEBUG] スプレッドシート名:", spreadsheet.getName());
+    console.log("[DEBUG] スプレッドシートID:", spreadsheet.getId());
     
-    if (!sheet) {
-      console.error("シート 'inspection_data' が見つかりません。");
-      return;
-    }
+    const sheets = spreadsheet.getSheets();
+    console.log("[DEBUG] シート数:", sheets.length);
     
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const currentReadingColIndex = headers.indexOf('今回の指示数');
-    
-    if (currentReadingColIndex === -1) {
-      console.error("「今回の指示数」列が見つかりません。");
-      return;
-    }
-    
-    // テスト用のコメントを設定
-    const testRow = 2; // 2行目でテスト
-    const testCell = sheet.getRange(testRow, currentReadingColIndex + 1);
-    const testComment = "テスト写真: " + new Date().toISOString();
-    
-    console.log(`テストコメント設定開始: 行${testRow}, 列${currentReadingColIndex + 1}`);
-    console.log(`設定するコメント: "${testComment}"`);
-    
-    testCell.setComment(testComment);
-    
-    // 設定確認
-    Utilities.sleep(500); // 少し待つ
-    const verifyComment = testCell.getComment();
-    console.log(`設定後の確認: "${verifyComment}"`);
-    
-    if (verifyComment === testComment) {
-      console.log("✅ コメント設定テスト成功！");
-    } else {
-      console.log("❌ コメント設定テスト失敗");
-    }
-    
-  } catch (error) {
-    console.error("テスト中にエラーが発生しました:", error.message, error.stack);
-  }
-}
-
-// ★★★ 特定の物件・部屋のコメント状況を確認する関数 ★★★
-function checkCommentsForPropertyRoom(propertyId, roomId) {
-  try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('inspection_data');
-    
-    if (!sheet) {
-      console.error("シート 'inspection_data' が見つかりません。");
-      return;
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    
-    const propertyIdColIndex = headers.indexOf('物件ID');
-    const roomIdColIndex = headers.indexOf('部屋ID');
-    const currentReadingColIndex = headers.indexOf('今回の指示数');
-    
-    console.log(`=== 物件ID: ${propertyId}, 部屋ID: ${roomId} のコメント確認 ===`);
-    console.log(`列インデックス - 物件ID: ${propertyIdColIndex}, 部屋ID: ${roomIdColIndex}, 今回の指示数: ${currentReadingColIndex}`);
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (String(row[propertyIdColIndex]).trim() === String(propertyId).trim() && 
-          String(row[roomIdColIndex]).trim() === String(roomId).trim()) {
-        
-        const rowInSheet = i + 1;
-        const cell = sheet.getRange(rowInSheet, currentReadingColIndex + 1);
-        const comment = cell.getComment();
-        const value = cell.getValue();
-        
-        console.log(`行 ${rowInSheet}: 値="${value}", コメント="${comment || '(なし)'}"`);
-      }
-    }
-    
-    console.log("=== コメント確認完了 ===");
-    
-  } catch (error) {
-    console.error("コメント確認中にエラーが発生しました:", error.message, error.stack);
-  }
-}
-
-// 使用例: checkCommentsForPropertyRoom('P001', 'R001');
-
-// ★★★ スプレッドシートの構造とサンプルデータを詳細確認する関数 ★★★
-function inspectSpreadsheetStructure() {
-  try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('inspection_data');
-    
-    if (!sheet) {
-      console.error("シート 'inspection_data' が見つかりません。");
-      return;
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0]; // ヘッダー行
-    
-    console.log("=== 📊 スプレッドシート詳細分析 ===");
-    console.log("シート名: inspection_data");
-    console.log("総行数: " + data.length);
-    console.log("総列数: " + headers.length);
-    
-    // ヘッダーの詳細分析
-    console.log("=== ヘッダー分析 ===");
-    headers.forEach((header, index) => {
-      console.log(`列[${index}]: "${header}" (長さ: ${String(header).length}, 型: ${typeof header})`);
+    sheets.forEach((sheet, index) => {
+      console.log(`[DEBUG] シート${index + 1}: ${sheet.getName()}`);
     });
     
-    // 重要な列のインデックス確認
-    const importantColumns = [
-      '物件名', '物件ID', '部屋ID', '検針日時', 
-      '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数',
-      '今回使用量', '警告フラグ', '写真URL'
-    ];
-    
-    console.log("=== 重要列インデックス確認 ===");
-    importantColumns.forEach(colName => {
-      const index = headers.indexOf(colName);
-      console.log(`「${colName}」: インデックス ${index} ${index === -1 ? '❌ 見つからず' : '✅ 存在'}`);
-    });
-    
-    // サンプルデータの分析（最初の3行）
-    console.log("=== サンプルデータ分析 ===");
-    const sampleRowCount = Math.min(4, data.length); // ヘッダー + 最大3行
-    for (let i = 0; i < sampleRowCount; i++) {
-      console.log(`行${i + 1} ${i === 0 ? '(ヘッダー)' : '(データ)'}:`);
-      const row = data[i];
-      row.forEach((cell, colIndex) => {
-        if (colIndex < 15) { // 最初の15列のみ表示
-          console.log(`  [${colIndex}] "${cell}" (型: ${typeof cell}, 長さ: ${String(cell).length})`);
-        }
-      });
-      console.log("---");
-    }
-    
-    // 前々々回指示数の特別分析
-    const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
-    console.log("=== 前々々回指示数 特別分析 ===");
-    console.log(`列インデックス: ${threeTimesPreviousIndex}`);
-    
-    if (threeTimesPreviousIndex !== -1) {
-      console.log("✅ 前々々回指示数列が存在します");
-      console.log("この列のサンプルデータ（最初の5行）:");
-      for (let i = 1; i < Math.min(6, data.length); i++) { // ヘッダーを除く
-        const value = data[i][threeTimesPreviousIndex];
-        console.log(`  行${i + 1}: "${value}" (型: ${typeof value}, 値: ${value})`);
+    const propertySheet = spreadsheet.getSheetByName('物件マスタ');
+    if (propertySheet) {
+      const data = propertySheet.getDataRange().getValues();
+      console.log("[DEBUG] 物件マスタ行数:", data.length);
+      console.log("[DEBUG] 物件マスタヘッダー:", JSON.stringify(data[0]));
+      if (data.length > 1) {
+        console.log("[DEBUG] 物件マスタ最初のデータ行:", JSON.stringify(data[1]));
       }
-      
-      // 非空の値の数を数える
-      let nonEmptyCount = 0;
-      let numericCount = 0;
-      for (let i = 1; i < data.length; i++) {
-        const value = data[i][threeTimesPreviousIndex];
-        if (value !== null && value !== undefined && String(value).trim() !== '') {
-          nonEmptyCount++;
-          if (!isNaN(parseFloat(value))) {
-            numericCount++;
-          }
-        }
-      }
-      console.log(`非空の値: ${nonEmptyCount}/${data.length - 1}行`);
-      console.log(`数値として解析可能: ${numericCount}/${data.length - 1}行`);
     } else {
-      console.log("❌ 前々々回指示数列が見つかりません");
-      console.log("類似する列名を検索:");
-      headers.forEach((header, index) => {
-        if (String(header).includes('前') || String(header).includes('回') || String(header).includes('指示')) {
-          console.log(`  [${index}]: "${header}"`);
-        }
-      });
+      console.log("[DEBUG] 物件マスタシートが見つかりません");
     }
     
-    console.log("=== 分析完了 ===");
-    
+    return "デバッグ完了";
   } catch (error) {
-    console.error("スプレッドシート分析中にエラーが発生しました:", error.message, error.stack);
+    console.error("[DEBUG] debugSpreadsheetInfo エラー:", error.message, error.stack);
+    return "デバッグ中にエラーが発生しました: " + error.message;
   }
 }
 
-// ★★★ 特定の物件・部屋のデータを詳細表示する関数 ★★★
-function inspectSpecificData(propertyId = 'P000001', roomId = 'R000003') {
+// 基本的なパラメータテスト用の関数
+function simpleParamTest(e) {
+  console.log("[SIMPLE TEST] 開始");
+  
+  if (!e) {
+    console.log("[SIMPLE TEST] eオブジェクトなし");
+    return "eオブジェクトなし";
+  }
+  
+  console.log("[SIMPLE TEST] eオブジェクト存在");
+  console.log("[SIMPLE TEST] e.parameter:", JSON.stringify(e.parameter || {}));
+  console.log("[SIMPLE TEST] e.queryString:", e.queryString || "なし");
+  
+  if (e.parameter) {
+    const paramKeys = Object.keys(e.parameter);
+    console.log("[SIMPLE TEST] パラメータキー:", paramKeys.join(", "));
+    
+    paramKeys.forEach(key => {
+      console.log(`[SIMPLE TEST] ${key} = ${e.parameter[key]}`);
+    });
+  }
+  
+  return {
+    success: true,
+    timestamp: new Date().toISOString(),
+    hasE: !!e,
+    hasParameter: !!(e && e.parameter),
+    parameterCount: e && e.parameter ? Object.keys(e.parameter).length : 0,
+    queryString: e ? e.queryString : null
+  };
+}
+
+// doGetの代替バージョン（テスト用）
+function testDoGetAlternative(e) {
   try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('inspection_data');
+    console.log("[ALT TEST] 代替doGet開始");
     
-    if (!sheet) {
-      console.error("シート 'inspection_data' が見つかりません。");
-      return;
-    }
+    // 基本テスト
+    const basicTest = simpleParamTest(e);
+    console.log("[ALT TEST] 基本テスト結果:", JSON.stringify(basicTest));
     
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    
-    const propertyIdColIndex = headers.indexOf('物件ID');
-    const roomIdColIndex = headers.indexOf('部屋ID');
-    const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
-    
-    console.log(`=== 物件ID: ${propertyId}, 部屋ID: ${roomId} の詳細データ ===`);
-    console.log(`物件ID列インデックス: ${propertyIdColIndex}`);
-    console.log(`部屋ID列インデックス: ${roomIdColIndex}`);
-    console.log(`前々々回指示数列インデックス: ${threeTimesPreviousIndex}`);
-    
-    let foundRows = 0;
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (String(row[propertyIdColIndex]).trim() === String(propertyId).trim() && 
-          String(row[roomIdColIndex]).trim() === String(roomId).trim()) {
-        foundRows++;
-        console.log(`=== 一致する行 ${i + 1} ===`);
-        console.log(`物件ID: "${row[propertyIdColIndex]}"`);
-        console.log(`部屋ID: "${row[roomIdColIndex]}"`);
-        console.log(`検針日時: "${row[headers.indexOf('検針日時')]}"`);
-        console.log(`今回の指示数: "${row[headers.indexOf('今回の指示数')]}"`);
-        console.log(`前回指示数: "${row[headers.indexOf('前回指示数')]}"`);
-        console.log(`前々回指示数: "${row[headers.indexOf('前々回指示数')]}"`);
-        if (threeTimesPreviousIndex !== -1) {
-          const threeTimesPrevValue = row[threeTimesPreviousIndex];
-          console.log(`前々々回指示数: "${threeTimesPrevValue}" (型: ${typeof threeTimesPrevValue})`);
-        } else {
-          console.log(`前々々回指示数: 列が存在しません`);
-        }
-        console.log("---");
+    // パラメータが存在する場合のアクション処理
+    if (e && e.parameter && e.parameter.action) {
+      console.log("[ALT TEST] アクション:", e.parameter.action);
+      
+      switch (e.parameter.action) {
+        case 'getProperties':
+          return { message: "getPropertiesアクションを受信", basicTest: basicTest };
+        case 'test':
+          return { message: "testアクションを受信", basicTest: basicTest };
+        default:
+          return { message: "未知のアクション", action: e.parameter.action, basicTest: basicTest };
       }
     }
     
-    console.log(`総一致行数: ${foundRows}`);
+    return {
+      message: "パラメータまたはアクションなし",
+      basicTest: basicTest
+    };
     
   } catch (error) {
-    console.error("特定データ分析中にエラーが発生しました:", error.message, error.stack);
+    console.log("[ALT TEST] エラー:", error.toString());
+    return {
+      error: error.toString(),
+      stack: error.stack
+    };
   }
 }

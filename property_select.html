@@ -4,20 +4,22 @@
   <title>物件選択 (React + Mantine)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- WOFF SDK -->
+  <!-- WOFF SDK -->
   <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
   
   <!-- ReactとReactDOMのCDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <!-- BabelのCDN (JSXをブラウザで変換するため) -->
+  <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <!-- 外部CSSファイルの読み込み -->
   <link rel="stylesheet" href="property_select.css">
 </head>
 <body>
-  <div id="root"></div>  <script type="text/babel">
+  <div id="root"></div>
+
+  <script type="text/babel">
     const App = () => {
       const [properties, setProperties] = React.useState([]);
       const [searchTerm, setSearchTerm] = React.useState('');
@@ -25,7 +27,7 @@
       const [error, setError] = React.useState(null);
       const [woffInitialized, setWoffInitialized] = React.useState(false);
 
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
+      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbwdq3YyhNKEDyFA39EWw15Rad4M-MRwKLib1iaWMkNdV9jec-x7Hl4_gAGfoDBCSSZYVg/exec';
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
       React.useEffect(() => {
@@ -47,13 +49,23 @@
 
       React.useEffect(() => {
         if (!woffInitialized) return;
-
+        
         const fetchProperties = async () => {
           setLoading(true);
           setError(null);
           try {
-            console.log('[ReactApp] Fetching properties from:', `${gasWebAppUrl}?action=getProperties`);
-            const response = await fetch(`${gasWebAppUrl}?action=getProperties`);
+            const requestUrl = `${gasWebAppUrl}?action=getProperties`;
+            console.log('[ReactApp] Fetching properties from:', requestUrl);
+            console.log('[ReactApp] Request URL breakdown:', {
+              baseUrl: gasWebAppUrl,
+              parameter: 'action=getProperties',
+              fullUrl: requestUrl
+            });
+            
+            const response = await fetch(requestUrl);
+            console.log('[ReactApp] Response status:', response.status);
+            console.log('[ReactApp] Response headers:', response.headers);
+            
             if (!response.ok) {
               throw new Error(`Network response was not ok. Status: ${response.status}`);
             }
@@ -74,7 +86,7 @@
         };
 
         fetchProperties();
-      }, [woffInitialized, gasWebAppUrl]); // gasWebAppUrlも同様に不変だが明示
+      }, [woffInitialized, gasWebAppUrl]);
 
       const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
@@ -87,13 +99,22 @@
             return;
         }
         console.log('[ReactApp] Property selected:', property);
-        setLoading(true); // 部屋情報取得中にローディング表示
-        setError(null); // エラーをクリア
+        setLoading(true);
+        setError(null);
+        
         try {
-          console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id} from URL: ${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`);
-          const roomResponse = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`);
+          const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`;
+          console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id}`);
+          console.log('[ReactApp] Room request URL breakdown:', {
+            baseUrl: gasWebAppUrl,
+            parameters: `action=getRooms&propertyId=${property.id}`,
+            fullUrl: requestUrl
+          });
+          
+          const roomResponse = await fetch(requestUrl);
           
           console.log('[ReactApp] Room Response Status:', roomResponse.status);
+          console.log('[ReactApp] Room Response Headers:', roomResponse.headers);
           if (!roomResponse.ok) {
             const errorText = await roomResponse.text();
             console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
@@ -126,12 +147,10 @@
             console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
             window.location.href = targetUrl;
           }
-          // 画面遷移が成功した場合、ローディング状態は解除不要
         } catch (error) {
           console.error('[ReactApp] Error fetching rooms or navigating:', error);
           setError(`部屋情報の処理中にエラーが発生しました: ${error.message}`);
-          // alert(`部屋情報の処理中にエラーが発生しました: ${error.message}`); // エラーは画面に表示するのでアラートは重複
-          setLoading(false); // エラー時はローディング解除
+          setLoading(false);
         }
       };
 
@@ -140,7 +159,9 @@
         const propertyNameString = String(property.name != null ? property.name : '');
         return propertyIdString.toLowerCase().includes(searchTerm.toLowerCase()) ||
                propertyNameString.toLowerCase().includes(searchTerm.toLowerCase());
-      });        // WOFF SDK初期化前、または初期化エラー時
+      });
+
+      // WOFF SDK初期化前、または初期化エラー時
       if (!woffInitialized && loading) {
         return (
           <div className="mantine-center">
@@ -155,6 +176,7 @@
           </div>
         );
       }
+      
       if (!woffInitialized && error) {
         return (
           <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
@@ -166,7 +188,9 @@
             </div>
           </div>
         );
-      }      // 物件データ取得中の初期ローディング
+      }
+
+      // 物件データ取得中の初期ローディング
       if (loading && properties.length === 0 && woffInitialized) {
         return (
           <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
@@ -195,7 +219,8 @@
           </div>
         );
       }
-        // 物件データ取得エラー (初期ロード時)
+      
+      // 物件データ取得エラー (初期ロード時)
       if (error && properties.length === 0 && woffInitialized) {
         return (
           <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
@@ -217,7 +242,9 @@
             </div>
           </div>
         );
-      }      return (
+      }
+      
+      return (
         <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)', minHeight: '100vh'}}>
           <div style={{maxWidth: '400px', margin: '0 auto'}}>
             <h1 className="mantine-title" style={{marginBottom: 'var(--mantine-spacing-lg)'}}>物件選択</h1>
@@ -232,7 +259,6 @@
               />
             </div>
             
-            {/* 操作中のローディング表示やエラー表示 */}
             {loading && properties.length > 0 && (
               <div className="mantine-center" style={{marginBottom: 'var(--mantine-spacing-md)'}}>
                 <div className="mantine-stack">
@@ -245,6 +271,7 @@
                 </div>
               </div>
             )}
+            
             {error && (
               <div className="mantine-alert" style={{marginBottom: 'var(--mantine-spacing-md)'}}>
                 <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
@@ -257,6 +284,7 @@
                 登録されている物件がありません。
               </p>
             )}
+            
             {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
               <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
                 該当する物件が見つかりません。

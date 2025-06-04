@@ -130,7 +130,58 @@
           console.log(`[room_select] Redirecting to: ${targetUrl}`);
           window.location.href = targetUrl;
         }
-      };      // WOFF SDK初期化前のローディング
+      };      const handleInspectionComplete = async () => {
+        if (!propertyId) {
+          alert('物件IDが見つかりません。');
+          return;
+        }
+
+        try {
+          setLoading(true);
+          
+          // sessionStorageからGAS URLを取得（property_select.htmlで設定されている）
+          let gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+          if (!gasWebAppUrl) {
+            // フォールバック用のデフォルトURL
+            gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
+            console.warn('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。デフォルトURLを使用します:', gasWebAppUrl);
+          }
+          
+          const requestData = {
+            action: 'updateInspectionComplete',
+            propertyId: propertyId
+          };
+
+          console.log('[room_select] 検針完了リクエスト送信:', {
+            url: gasWebAppUrl,
+            data: requestData
+          });
+
+          const response = await fetch(gasWebAppUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+          });
+
+          const result = await response.json();
+
+          if (result.error) {
+            throw new Error(result.error);
+          }
+
+          alert('検針完了日を更新しました。');
+          
+        } catch (error) {
+          console.error('[room_select] 検針完了処理エラー:', error);
+          alert(`検針完了処理でエラーが発生しました: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // WOFF SDK初期化前のローディング
       if (!woffInitialized && loading) {
         return (
           <div className="mantine-container">
@@ -198,8 +249,7 @@
         );
       }      return (
         <div className="mantine-container">
-          <div className="mantine-stack">
-            <button
+          <div className="mantine-stack">            <button
               onClick={handleBackToPropertySelect}
               className="mantine-button variant-outline"
             >
@@ -207,6 +257,14 @@
             </button>
             <h1 className="mantine-title">部屋選択</h1>
             <p className="mantine-subtitle">物件名：{propertyName}</p>
+            
+            <button
+              onClick={handleInspectionComplete}
+              disabled={loading}
+              className="mantine-button variant-filled inspection-complete-btn"
+            >
+              {loading ? '更新中...' : '検針完了'}
+            </button>
 
             {!Array.isArray(rooms) && (
               <div className="mantine-alert">

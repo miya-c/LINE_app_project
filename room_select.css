@@ -242,6 +242,27 @@ body {
   flex-shrink: 0;
 }
 
+/* 検針完了ボタンのスタイル */
+.inspection-complete-btn {
+  background-color: var(--mantine-color-green-6);
+  color: white;
+  margin-bottom: var(--mantine-spacing-md);
+  font-weight: 600;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+  border-radius: var(--mantine-radius-md);
+  transition: background-color 0.2s ease;
+}
+
+.inspection-complete-btn:hover:not(:disabled) {
+  background-color: #40c057;
+}
+
+.inspection-complete-btn:disabled {
+  background-color: var(--mantine-color-gray-3);
+  color: var(--mantine-color-gray-6);
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .mantine-container {
     padding: 0 var(--mantine-spacing-sm);
@@ -252,6 +273,12 @@ body {
   }
   
   .mantine-subtitle {
+    font-size: 1rem;
+  }
+  
+  .inspection-complete-btn {
+    width: 100%;
+    padding: var(--mantine-spacing-md);
     font-size: 1rem;
   }
 }
