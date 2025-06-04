@@ -142,9 +142,9 @@
           // sessionStorageからGAS URLを取得（property_select.htmlで設定されている）
           let gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
           if (!gasWebAppUrl) {
-            // フォールバック用のデフォルトURL
-            gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
-            console.warn('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。デフォルトURLを使用します:', gasWebAppUrl);
+            // フォールバック用のデフォルトURLを最新のものに更新
+            gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbwdMh0hMYwNB05cVD8UPkW-eL-FM7WFN2KUu2vvfYPS-Zx_HYZl17YQxzTHUwcW-3mPSg/exec';
+            console.warn('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。最新のデフォルトURLを使用します:', gasWebAppUrl);
           }
             // 一時的にGETリクエストでCORSエラーを回避
           const requestUrl = `${gasWebAppUrl}?action=updateInspectionComplete&propertyId=${encodeURIComponent(propertyId)}`;
