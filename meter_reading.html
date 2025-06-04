@@ -404,18 +404,24 @@
         if (updatedReadings.length === 0) {
           displayToast('更新するデータがありません。');
           return;
-        }        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        }
+        console.log('[meter_reading] 更新する指示数:', updatedReadings);
         setUpdating(true);
         try {
           gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-          
-          // POSTからGETに変更してCORSエラーを回避
-          const requestUrl = `${gasWebAppUrl}?action=updateMeterReadings&propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(roomId)}&readings=${encodeURIComponent(JSON.stringify(updatedReadings))}`;
-          
-          console.log('[meter_reading] 更新リクエスト送信 (GET方式):', requestUrl);
-          
+          // POSTリクエストで送信（GAS doPost対応）
+          const requestUrl = gasWebAppUrl;
+          const postBody = {
+            action: 'updateMeterReadings',
+            propertyId,
+            roomId,
+            readings: updatedReadings
+          };
+          console.log('[meter_reading] 更新リクエスト送信 (POST方式):', requestUrl, postBody);
           const response = await fetch(requestUrl, {
-            method: 'GET'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(postBody)
           });
 
           if (!response.ok) {
