@@ -1,3 +1,24 @@
+// CORSヘッダーを設定するヘルパー関数
+function createCorsResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+}
+
+// CORSプリフライトリクエスト（OPTIONSメソッド）を処理
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+}
+
 function doGet(e) {
   // 最新のデバッグ情報
   const timestamp = new Date().toISOString();
@@ -29,12 +50,16 @@ function doGet(e) {
     };
     
     console.log("[DEBUG] パラメータが空またはなし - デバッグ情報:", JSON.stringify(debugInfo));
-    
-    return ContentService.createTextOutput(JSON.stringify({ 
+      return ContentService.createTextOutput(JSON.stringify({ 
       error: "リクエストパラメータがありません。",
       debugInfo: debugInfo
     }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
   }
   const action = e.parameter.action;
   console.log("[DEBUG] doGet - actionパラメータ:", action);
@@ -64,13 +89,21 @@ function doGet(e) {
         }
       }
       console.log("[DEBUG] doGet - 処理済み物件数:", properties.length);
-      console.log("[DEBUG] doGet - 返却データ:", JSON.stringify(properties));
-      return ContentService.createTextOutput(JSON.stringify(properties))
-        .setMimeType(ContentService.MimeType.JSON);
+      console.log("[DEBUG] doGet - 返却データ:", JSON.stringify(properties));      return ContentService.createTextOutput(JSON.stringify(properties))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeaders({
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        });
     } catch (error) {
-      console.error("getPropertiesエラー:", error.message, error.stack);
-      return ContentService.createTextOutput(JSON.stringify({ error: "物件データ取得中にエラーが発生しました: " + error.toString() }))
-        .setMimeType(ContentService.MimeType.JSON);
+      console.error("getPropertiesエラー:", error.message, error.stack);      return ContentService.createTextOutput(JSON.stringify({ error: "物件データ取得中にエラーが発生しました: " + error.toString() }))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeaders({
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        });
     }
   // ... （doGet関数の冒頭、getPropertiesの処理は変更なし） ...
 
@@ -298,21 +331,92 @@ function doGet(e) {
           message: "サーバーエラー発生",
           // params: e.parameter ? JSON.stringify(e.parameter) : "no params" // パラメータはエラーログには残すが、クライアントには返さないことも検討
         }
-      };
-      return ContentService.createTextOutput(JSON.stringify(errorResponse))
+      };      return ContentService.createTextOutput(JSON.stringify(errorResponse))
         .setMimeType(ContentService.MimeType.JSON);
-    }  } else {
-    // actionパラメータが 'getProperties' でも 'getRooms' でもない場合
+    }
+  } else if (action == 'updateInspectionComplete') {
+    // 検針完了機能（GETリクエスト対応）
+    console.log("[DEBUG] doGet - updateInspectionCompleteアクション開始");
+    
+    try {
+      const propertyId = e.parameter.propertyId;
+      
+      if (!propertyId) {
+        return createCorsResponse({ error: "'propertyId' パラメータが必要です。" });
+      }
+
+      console.log(`[物件.gs] updateInspectionComplete (GET) - 物件ID: ${propertyId} の検針完了日を更新`);
+
+      // スプレッドシートの取得
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = spreadsheet.getSheetByName('物件マスタ');
+
+      if (!sheet) {
+        return createCorsResponse({ error: "シート '物件マスタ' が見つかりません。" });
+      }
+
+      // データ取得
+      const data = sheet.getDataRange().getValues();
+      const headers = data.shift(); // ヘッダー行を取得
+      
+      const propertyIdColIndex = headers.indexOf('物件ID');
+      const completionDateColIndex = headers.indexOf('検針完了日');
+
+      if (propertyIdColIndex === -1 || completionDateColIndex === -1) {
+        return createCorsResponse({ 
+          error: "必要な列（物件ID、検針完了日）が見つかりません。",
+          foundHeaders: headers 
+        });
+      }
+
+      // 対象物件を検索
+      let targetRowIndex = -1;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i][propertyIdColIndex] === propertyId) {
+          targetRowIndex = i + 2; // ヘッダー行を除いているため+2
+          break;
+        }
+      }
+
+      if (targetRowIndex === -1) {
+        return createCorsResponse({ error: `物件ID '${propertyId}' が見つかりません。` });
+      }
+
+      // 現在の日時を日本時間で取得
+      const now = new Date();
+      const jstOffset = 9 * 60; // JST = UTC + 9時間
+      const jstTime = new Date(now.getTime() + (jstOffset * 60 * 1000));
+      const formattedDate = jstTime.toISOString().split('T')[0]; // YYYY-MM-DD形式
+
+      // 検針完了日を更新
+      sheet.getRange(targetRowIndex, completionDateColIndex + 1).setValue(formattedDate);
+
+      console.log(`[物件.gs] updateInspectionComplete (GET) - 物件ID: ${propertyId} の検針完了日を ${formattedDate} に更新しました。`);
+
+      return createCorsResponse({ 
+        success: true, 
+        message: `物件ID ${propertyId} の検針完了日を ${formattedDate} に更新しました。`,
+        completionDate: formattedDate
+      });
+
+    } catch (error) {
+      console.error("[物件.gs] updateInspectionComplete (GET) エラー:", error.message, error.stack);
+      return createCorsResponse({ 
+        success: false, 
+        error: "検針完了日の更新中にエラーが発生しました: " + error.message 
+      });
+    }
+
+  } else {    // actionパラメータが無効な場合
     console.log("[DEBUG] doGet - 無効なアクション受信:", action);
-    console.log("[DEBUG] doGet - 利用可能なアクション:", ["getProperties", "getRooms"]);
+    console.log("[DEBUG] doGet - 利用可能なアクション:", ["getProperties", "getRooms", "updateInspectionComplete"]);
     console.log("[DEBUG] doGet - クエリ文字列:", e.queryString);
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return createCorsResponse({ 
         error: "無効なアクションです。", 
-        expectedActions: ["getProperties", "getRooms"], 
+        expectedActions: ["getProperties", "getRooms", "updateInspectionComplete"], 
         receivedAction: action, 
         queryString: e.queryString 
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+      });
   }
 }
 
@@ -809,8 +913,7 @@ function doPost(e) {
       console.log(`[物件.gs] updateInspectionComplete - 物件ID: ${propertyId} の検針完了日を ${formattedDate} に更新しました。`);
       
       response = { 
-        success: true, 
-        message: `物件ID ${propertyId} の検針完了日を ${formattedDate} に更新しました。`,
+        success: true,        message: `物件ID ${propertyId} の検針完了日を ${formattedDate} に更新しました。`,
         completionDate: formattedDate
       };
 
@@ -821,8 +924,15 @@ function doPost(e) {
     console.error("[物件.gs] doPostエラー:", error.message, error.stack);
     response = { success: false, error: "サーバー処理中にエラーが発生しました: " + error.message };
   }
+  
+  // CORSヘッダーを設定してレスポンスを返す
   return ContentService.createTextOutput(JSON.stringify(response))
-    .setMimeType(ContentService.MimeType.JSON);
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
 }
 
 /*
@@ -946,3 +1056,4 @@ function testDoGetAlternative(e) {
     };
   }
 }
+
