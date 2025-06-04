@@ -138,13 +138,13 @@
 
         try {
           setLoading(true);
-          
-          // sessionStorageからGAS URLを取得（property_select.htmlで設定されている）
-          let gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+            // sessionStorageからGAS URLを取得（property_select.htmlで設定されている）
+          const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
           if (!gasWebAppUrl) {
-            // フォールバック用のデフォルトURLを最新のものに更新
-            gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbwdMh0hMYwNB05cVD8UPkW-eL-FM7WFN2KUu2vvfYPS-Zx_HYZl17YQxzTHUwcW-3mPSg/exec';
-            console.warn('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。最新のデフォルトURLを使用します:', gasWebAppUrl);
+            alert('エラー: GAS Web AppのURLが設定されていません。物件選択ページから再度アクセスしてください。');
+            console.error('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。');
+            setLoading(false);
+            return;
           }
             // 一時的にGETリクエストでCORSエラーを回避
           const requestUrl = `${gasWebAppUrl}?action=updateInspectionComplete&propertyId=${encodeURIComponent(propertyId)}`;
