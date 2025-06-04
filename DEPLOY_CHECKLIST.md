@@ -50,7 +50,7 @@
 
 ## 🔧 **現在のGAS URL**
 ```
-https://script.google.com/macros/s/AKfycbxAHusba4MsRks4sEfL1cpiFlm1cYv_P7IEkoLStiaaH3KgitcmUx3jFxfmAqpQwNyDCA/exec
+https://script.google.com/macros/s/AKfycbzra0CxJmciDBNons98S3F1jPCYsZqCHl2r-ZeDG6IkGjZ64f0qgEXkZguaIxLwriTUcA/exec
 ```
 
 ## ⚠️ **注意事項**
