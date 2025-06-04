@@ -43,7 +43,9 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'getVersion') {
       console.log("[GAS] バージョン確認リクエスト");
       return createCorsResponse(getGasVersion());
-    }    const timestamp = new Date().toISOString();
+    }
+    
+    const timestamp = new Date().toISOString();
     console.log(`[GAS ${timestamp}] doGet開始 - バージョン: 2025-06-05-v1`);
     
     // パラメータのデバッグ情報
@@ -81,7 +83,8 @@ function doGet(e) {
     else if (action === 'getRooms') {
       return handleGetRooms(e.parameter);
     }
-      // 検針完了日更新
+    
+    // 検針完了日更新
     else if (action === 'updateInspectionComplete') {
       return handleUpdateInspectionComplete(e.parameter);
     }
@@ -244,7 +247,7 @@ function handleUpdateInspectionComplete(params) {
     sheet.getRange(targetRowIndex, completionDateColIndex + 1).setValue(formattedDate);
     
     console.log("[GAS] 検針完了日更新完了 - 物件ID:", propertyId, "日付:", formattedDate);
-      return createCorsResponse({ 
+    return createCorsResponse({ 
       success: true, 
       message: `物件ID ${propertyId} の検針完了日を ${formattedDate} に更新しました。`,
       completionDate: formattedDate
