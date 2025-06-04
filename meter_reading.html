@@ -45,23 +45,17 @@
 
       React.useEffect(() => {
         const initializeWoff = async () => {
-          try {
-            console.log('[meter_reading] WOFFを初期化します。');
-              // sessionStorageからgasWebAppUrlを取得
+          try {            console.log('[meter_reading] WOFFを初期化します。');
+            
+            // sessionStorageからgasWebAppUrlを取得
             gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
             if (!gasWebAppUrl) {
-              // テスト環境では固定のURLを使用
-              if (window.location.protocol === 'file:') {
-                console.log('[meter_reading] Test environment detected. Using default GAS URL.');
-                gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
-                sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
-              } else {
-                console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
-                alert('アプリケーションが正常に起動されていません。物件選択画面から再度お試しください。');
-                window.location.href = 'property_select.html';
-                return;
-              }
+              console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
+              alert('GAS Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
+              window.location.href = 'property_select.html';
+              return;
             }
+            
             console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
 
             if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
