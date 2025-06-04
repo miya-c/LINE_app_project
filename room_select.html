@@ -146,23 +146,16 @@
             gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx07Gsyf32lwmAmEiGWwI0wudfbI1qWm5bmkpBgO2fcTmszYbzTS1N6fz9jZzQuLU8-jg/exec';
             console.warn('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。デフォルトURLを使用します:', gasWebAppUrl);
           }
-          
-          const requestData = {
-            action: 'updateInspectionComplete',
-            propertyId: propertyId
-          };
+            // 一時的にGETリクエストでCORSエラーを回避
+          const requestUrl = `${gasWebAppUrl}?action=updateInspectionComplete&propertyId=${encodeURIComponent(propertyId)}`;
 
-          console.log('[room_select] 検針完了リクエスト送信:', {
-            url: gasWebAppUrl,
-            data: requestData
+          console.log('[room_select] 検針完了リクエスト送信 (GET方式):', {
+            url: requestUrl,
+            propertyId: propertyId
           });
 
-          const response = await fetch(gasWebAppUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
+          const response = await fetch(requestUrl, {
+            method: 'GET'
           });
 
           const result = await response.json();
