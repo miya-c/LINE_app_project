@@ -67,20 +67,29 @@
             
             if (!response.ok) {
               throw new Error(`Network response was not ok. Status: ${response.status}`);
-            }            const data = await response.json();
-            console.log('[ReactApp] GAS Response (properties):', data);
+            }            const data = await response.json();            console.log('[ReactApp] GAS Response (properties):', data);
+            console.log('[ReactApp] Response type:', typeof data);
+            console.log('[ReactApp] Response keys:', data ? Object.keys(data) : 'No keys');
             
             // エラーレスポンスの場合
-            if (data.error) {
+            if (data && data.error) {
               console.error('[ReactApp] GAS Error Response:', data);
               throw new Error(`GASエラー: ${data.error}`);
             }
             
+            // データが null または undefined の場合
+            if (!data) {
+              console.error('[ReactApp] Response data is null or undefined');
+              throw new Error('サーバーからのレスポンスが空です。');
+            }
+            
             // 配列でない場合の対応
             if (Array.isArray(data)) {
+              console.log('[ReactApp] Data is array, setting properties');
               setProperties(data);
             } else if (data.properties && Array.isArray(data.properties)) {
               // propertiesプロパティに配列が含まれている場合
+              console.log('[ReactApp] Data has properties array, setting properties');
               setProperties(data.properties);
             } else if (data.availableSheets) {
               // シートが見つからない場合の特別処理
@@ -105,14 +114,27 @@
 
       const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
-      };
-
-      const handlePropertySelect = async (property) => {
-        if (!property || typeof property.id === 'undefined' || typeof property.name === 'undefined') {
-            console.error('[ReactApp] Invalid property data for selection:', property);
-            alert('選択された物件情報が無効です。');
+      };      const handlePropertySelect = async (property) => {
+        console.log('[ReactApp] handlePropertySelect called with:', property);
+        
+        if (!property) {
+            console.error('[ReactApp] Property is null or undefined');
+            alert('選択された物件情報が無効です。(property is null)');
             return;
         }
+        
+        if (typeof property.id === 'undefined') {
+            console.error('[ReactApp] Property.id is undefined:', property);
+            alert('選択された物件のIDが無効です。(property.id is undefined)');
+            return;
+        }
+        
+        if (typeof property.name === 'undefined') {
+            console.error('[ReactApp] Property.name is undefined:', property);
+            alert('選択された物件の名前が無効です。(property.name is undefined)');
+            return;
+        }
+        
         console.log('[ReactApp] Property selected:', property);
         setLoading(true);
         setError(null);
@@ -134,13 +156,25 @@
             const errorText = await roomResponse.text();
             console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
             throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
-          }
-          const rooms = await roomResponse.json();
+          }          const rooms = await roomResponse.json();
           console.log('[ReactApp] Fetched rooms:', rooms);
+          console.log('[ReactApp] Rooms type:', typeof rooms);
+          console.log('[ReactApp] Rooms array check:', Array.isArray(rooms));
 
-          sessionStorage.setItem('selectedPropertyId', property.id);
-          sessionStorage.setItem('selectedPropertyName', property.name);
+          console.log('[ReactApp] Storing to sessionStorage...');
+          console.log('[ReactApp] - propertyId:', property.id, '(type:', typeof property.id, ')');
+          console.log('[ReactApp] - propertyName:', property.name, '(type:', typeof property.name, ')');
+          console.log('[ReactApp] - rooms length:', Array.isArray(rooms) ? rooms.length : 'not array');
+          
+          sessionStorage.setItem('selectedPropertyId', String(property.id));
+          sessionStorage.setItem('selectedPropertyName', String(property.name));
           sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
+          
+          console.log('[ReactApp] sessionStorage after saving:');
+          console.log('[ReactApp] - selectedPropertyId:', sessionStorage.getItem('selectedPropertyId'));
+          console.log('[ReactApp] - selectedPropertyName:', sessionStorage.getItem('selectedPropertyName'));
+          console.log('[ReactApp] - selectedRooms length:', sessionStorage.getItem('selectedRooms')?.length);
+          
           if (gasWebAppUrl) {
             sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
             console.log('[ReactApp] gasWebAppUrl saved to sessionStorage:', gasWebAppUrl);
@@ -331,10 +365,11 @@
             </div>
           </div>
         </div>
-      );
-    };
+      );    };
 
-    ReactDOM.render(<App />, document.getElementById('root'));
+    // Use React 18 createRoot API instead of ReactDOM.render
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>
