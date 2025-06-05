@@ -405,19 +405,19 @@
         setUpdating(true);
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
-          // POSTリクエストで送信（GAS doPost対応）
-          const requestUrl = currentGasUrl;
-          const postBody = {
+          // GETリクエストで送信（CORS回避のため）
+          const params = new URLSearchParams({
             action: 'updateMeterReadings',
             propertyId,
             roomId,
-            readings: updatedReadings
-          };
-          console.log('[meter_reading] 更新リクエスト送信 (POST方式):', requestUrl, postBody);
+            readings: JSON.stringify(updatedReadings)
+          });
+          
+          const requestUrl = `${currentGasUrl}?${params.toString()}`;
+          console.log('[meter_reading] 更新リクエスト送信 (GET方式):', requestUrl);
+          
           const response = await fetch(requestUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(postBody)
+            method: 'GET'
           });
 
           if (!response.ok) {
@@ -428,7 +428,7 @@
           console.log('[meter_reading] 更新レスポンス:', result);
           
           if (result.success) {
-            displayToast('送信しました');
+            displayToast('検針データが正常に更新されました');
             setInputErrors({}); // Clear errors on success
             await loadMeterReadings(propertyId, roomId);
           } else {
