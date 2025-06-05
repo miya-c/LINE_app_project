@@ -509,7 +509,7 @@ function getActualMeterReadings(propertyId, roomId) {
     // 実際のスプレッドシート処理はコメントアウト（後で有効化）
     /*
     // 検針データスプレッドシートを取得
-    const spreadsheetId = '1SdT6uaFdKo8PSNHD0YTaJ9-AqLrBzqkJ3lOJMnG-jIk';
+    const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
     console.log("[GAS] 検針データスプレッドシートID:", spreadsheetId);
     
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
