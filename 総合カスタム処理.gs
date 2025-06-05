@@ -15,6 +15,11 @@ function safeAlert(title, message) {
 // --- データ連携.gs の内容 ---
 function populateInspectionDataFromMasters() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
   const propertyMasterSheetName = '物件マスタ';
   const roomMasterSheetName = '部屋マスタ';
   const inspectionDataSheetName = 'inspection_data';
@@ -123,6 +128,11 @@ const HEADER_ROWS_FOR_FORMATTING = 1;
 
 function formatPropertyIdsInPropertyMaster() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
   const sheet = ss.getSheetByName(PROPERTY_MASTER_SHEET_NAME_FOR_FORMATTING);
 
   if (!sheet) {
@@ -196,6 +206,11 @@ const HEADER_ROWS_IN_ROOM_MASTER_FOR_FORMATTING = 1;
 
 function formatPropertyIdsInRoomMaster() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
   const sheet = ss.getSheetByName(ROOM_MASTER_FORMAT_TARGET_SHEET_NAME);
 
   if (!sheet) {
@@ -266,6 +281,11 @@ const HEADER_ROWS_CLEANUP = 1;
 
 function cleanUpOrphanedRooms() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
   const roomSheet = ss.getSheetByName(ROOM_MASTER_SHEET_FOR_CLEANUP);
   const propertySheet = ss.getSheetByName(PROPERTY_MASTER_SHEET_FOR_CLEANUP);
 
@@ -326,6 +346,11 @@ function cleanUpOrphanedRooms() {
 // --- 検針データ保存.gs の内容 ---
 function processInspectionDataMonthly() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
   const sourceSheetName = "inspection_data";
   const sourceSheet = ss.getSheetByName(sourceSheetName);
 
@@ -418,7 +443,23 @@ function processInspectionDataMonthly() {
 }
 
 // --- 0.登録用スクリプト.gs の内容 ---
-const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+// スプレッドシートIDを安全に取得する関数
+function getSpreadsheetId() {
+  try {
+    const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    if (activeSpreadsheet) {
+      return activeSpreadsheet.getId();
+    } else {
+      Logger.log('警告: アクティブなスプレッドシートが見つかりません');
+      return null;
+    }
+  } catch (e) {
+    Logger.log(`スプレッドシートID取得エラー: ${e.message}`);
+    return null;
+  }
+}
+
+const SPREADSHEET_ID = getSpreadsheetId();
 const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
 const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
 const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
@@ -431,6 +472,11 @@ const INSPECTION_DATA_HEADERS = [
 
 function createInitialInspectionData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
   const propertyMasterSheet = ss.getSheetByName(PROPERTY_MASTER_SHEET_NAME);
   const roomMasterSheet = ss.getSheetByName(ROOM_MASTER_SHEET_NAME);
   let inspectionDataSheet = ss.getSheetByName(INSPECTION_DATA_SHEET_NAME);
@@ -753,29 +799,35 @@ function forceCreateMenu() {
     
     Logger.log('✅ 総合カスタム処理メニューが正常に作成されました！');
     Logger.log('📋 スプレッドシートのメニューバーを確認してください');
-    
-    // Toastメッセージでユーザーに通知
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      '総合カスタム処理メニューが作成されました！メニューバーを確認してください。', 
-      '成功', 
-      5
-    );
+      // Toastメッセージでユーザーに通知
+    try {
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (activeSpreadsheet) {
+        activeSpreadsheet.toast(
+          '総合カスタム処理メニューが作成されました！メニューバーを確認してください。', 
+          '成功', 
+          5
+        );
+      }
+    } catch (toastError) {
+      Logger.log(`Toast通知エラー: ${toastError.message}`);
+    }
     
     return '成功: メニュー作成完了';
   } catch (e) {
     Logger.log(`❌ 強制メニュー作成エラー: ${e.message}`);
-    Logger.log(`📋 詳細: ${e.stack}`);
-    
-    // エラーの場合もToastで通知
+    Logger.log(`📋 詳細: ${e.stack}`);    // エラーの場合もToastで通知
     try {
-      SpreadsheetApp.getActiveSpreadsheet().toast(
-        `メニュー作成エラー: ${e.message}`, 
-        'エラー', 
-        5
-      );
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (activeSpreadsheet) {
+        activeSpreadsheet.toast(
+          `メニュー作成エラー: ${e.message}`, 
+          'エラー', 
+          5
+        );
+      }
     } catch (toastError) {
-      // Toast表示もできない場合はログのみ
-      Logger.log('Toast表示もできませんでした');
+      Logger.log(`Toast通知エラー: ${toastError.message}`);
     }
     
     return `エラー: ${e.message}`;

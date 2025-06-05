@@ -26,7 +26,7 @@
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState(null);      const [woffInitialized, setWoffInitialized] = React.useState(false);
 
-      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbx_9gmfiUpjBQtIP3J7QKKC7dkDXqK33taJRI7aKi8UoJOlPKsrS1QIC5nuysaCtOqs0A/exec';
+      const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbxlled-ot17rnp-yWMbKJqa8biDFV2XTFtgaWoQOhC7947dpYgn5qA0uSH7e9uKlgMcYA/exec';
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
       React.useEffect(() => {
@@ -67,14 +67,30 @@
             
             if (!response.ok) {
               throw new Error(`Network response was not ok. Status: ${response.status}`);
-            }
-            const data = await response.json();
+            }            const data = await response.json();
             console.log('[ReactApp] GAS Response (properties):', data);
+            
+            // エラーレスポンスの場合
+            if (data.error) {
+              console.error('[ReactApp] GAS Error Response:', data);
+              throw new Error(`GASエラー: ${data.error}`);
+            }
+            
+            // 配列でない場合の対応
             if (Array.isArray(data)) {
               setProperties(data);
+            } else if (data.properties && Array.isArray(data.properties)) {
+              // propertiesプロパティに配列が含まれている場合
+              setProperties(data.properties);
+            } else if (data.availableSheets) {
+              // シートが見つからない場合の特別処理
+              console.error('[ReactApp] Spreadsheet sheets not found:', data.availableSheets);
+              throw new Error('Google Spreadsheetの「物件マスタ」シートが見つかりません。管理者に連絡してください。');
             } else {
               console.error('[ReactApp] Data from GAS is not an array:', data);
-              throw new Error('物件データの形式が正しくありません。');
+              console.error('[ReactApp] Data type:', typeof data);
+              console.error('[ReactApp] Data keys:', Object.keys(data));
+              throw new Error('物件データの形式が正しくありません。管理者に連絡してください。');
             }
           } catch (fetchError) {
             console.error('[ReactApp] Failed to fetch properties:', fetchError);
