@@ -94,11 +94,12 @@
           const rName = urlParams.get('roomName');
 
           console.log('[meter_reading] 🔍 URLパラメータ詳細:');
-          console.log('[meter_reading] - propertyId:', `"${propId}"`, '型:', typeof propId);
+          console.log('[meter_reading] - propertyId:', `"${propId}"`, '型:', typeof propId, 'length:', propId ? propId.length : 'N/A');
           console.log('[meter_reading] - propertyName:', `"${propName}"`, '型:', typeof propName);
-          console.log('[meter_reading] - roomId:', `"${rId}"`, '型:', typeof rId);
+          console.log('[meter_reading] - roomId:', `"${rId}"`, '型:', typeof rId, 'length:', rId ? rId.length : 'N/A');
           console.log('[meter_reading] - roomName:', `"${rName}"`, '型:', typeof rName);
           console.log('[meter_reading] - 完全なURL:', window.location.href);
+          console.log('[meter_reading] - URLSearchParams:', window.location.search);
 
           setPropertyId(propId || 'N/A');
           setPropertyName(propName || 'N/A');
@@ -128,6 +129,10 @@
           
           const fetchUrl = `${currentGasUrl}?action=getMeterReadings&propertyId=${propId}&roomId=${rId}`;
           console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl);
+          console.log('[meter_reading] 送信パラメータ詳細:');
+          console.log('[meter_reading] - propertyId:', `"${propId}"` + ` (length: ${propId.length})`);
+          console.log('[meter_reading] - roomId:', `"${rId}"` + ` (length: ${rId.length})`);
+          console.log('[meter_reading] - エンコード後URL:', encodeURIComponent(propId), encodeURIComponent(rId));
           
           const response = await fetch(fetchUrl);
           if (!response.ok) {

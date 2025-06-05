@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>パルハイツ平田101 データ取得テスト</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>パルハイツ平田101 データ取得テスト</h1>
+    
+    <div class="debug-section">
+        <h2>テスト設定</h2>
+        <label>GAS WebApp URL:</label><br>
+        <input type="text" id="gasUrl" value="https://script.google.com/macros/s/AKfycbzRYXiCD8eptc9nRcVAKC8e36LSsW7QvJvpWIcM3nqjz789U6MfeWpc1dWeAw76ADzM-g/exec" style="width: 100%; margin: 5px 0;">
+        <br>
+        <label>Property ID:</label>
+        <input type="text" id="propertyId" value="パルハイツ平田" style="width: 200px; margin: 5px;">
+        <br>
+        <label>Room ID:</label>
+        <input type="text" id="roomId" value="101" style="width: 200px; margin: 5px;">
+        <br>
+        <button onclick="testMeterReadings()">検針データ取得テスト</button>
+        <button onclick="testProperties()">物件一覧取得テスト</button>
+        <button onclick="testRooms()">部屋一覧取得テスト</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>結果</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = isError ? 'error' : 'success';
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+
+        function logJson(title, data) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.innerHTML = `<h3>${title}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            results.appendChild(div);
+        }
+
+        async function testMeterReadings() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            const propertyId = document.getElementById('propertyId').value;
+            const roomId = document.getElementById('roomId').value;
+            
+            log(`検針データ取得開始 - Property: "${propertyId}", Room: "${roomId}"`);
+            
+            try {
+                const url = `${gasUrl}?action=getMeterReadings&propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(roomId)}`;
+                log(`リクエストURL: ${url}`);
+                
+                const response = await fetch(url);
+                log(`レスポンスステータス: ${response.status}`);
+                
+                const data = await response.json();
+                logJson('検針データレスポンス', data);
+                
+                if (data.readings && Array.isArray(data.readings)) {
+                    log(`検針データ件数: ${data.readings.length}件`);
+                    if (data.readings.length > 0) {
+                        log(`✅ データ取得成功`, false);
+                    } else {
+                        log(`⚠️ データは空配列（初回検針状態）`, true);
+                    }
+                } else {
+                    log(`❌ データが無効な形式`, true);
+                }
+                
+            } catch (error) {
+                log(`❌ エラー: ${error.message}`, true);
+                console.error('テストエラー:', error);
+            }
+        }
+
+        async function testProperties() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            log('物件一覧取得開始');
+            
+            try {
+                const url = `${gasUrl}?action=getProperties`;
+                const response = await fetch(url);
+                const data = await response.json();
+                logJson('物件一覧レスポンス', data);
+                
+                if (Array.isArray(data)) {
+                    log(`物件数: ${data.length}件`);
+                    const targetProperty = data.find(p => p.name.includes('パルハイツ平田'));
+                    if (targetProperty) {
+                        log(`✅ パルハイツ平田発見: ID="${targetProperty.id}", Name="${targetProperty.name}"`);
+                        document.getElementById('propertyId').value = targetProperty.id;
+                    } else {
+                        log(`⚠️ パルハイツ平田が見つかりません`, true);
+                    }
+                }
+            } catch (error) {
+                log(`❌ エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testRooms() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            const propertyId = document.getElementById('propertyId').value;
+            log(`部屋一覧取得開始 - Property: "${propertyId}"`);
+            
+            try {
+                const url = `${gasUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                logJson('部屋一覧レスポンス', data);
+                
+                if (Array.isArray(data)) {
+                    log(`部屋数: ${data.length}件`);
+                    const room101 = data.find(r => r.roomNumber === '101' || r.id === '101');
+                    if (room101) {
+                        log(`✅ 101号室発見: ${JSON.stringify(room101)}`);
+                    } else {
+                        log(`⚠️ 101号室が見つかりません`, true);
+                    }
+                }
+            } catch (error) {
+                log(`❌ エラー: ${error.message}`, true);
+            }
+        }
+
+        // ページ読み込み時に自動テスト実行
+        window.onload = function() {
+            log('テストページが読み込まれました');
+            log('まず物件一覧を取得して正確なIDを確認してください');
+        };
+    </script>
+</body>
+</html>

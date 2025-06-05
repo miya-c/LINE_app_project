@@ -489,23 +489,6 @@ function getActualMeterReadings(propertyId, roomId) {
   try {
     console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
     
-    // まずテストデータを返す（デバッグ用）
-    // console.log("[GAS] 🧪 テストモード: 実際のスプレッドシートを確認する前にテストデータを返します");
-    
-    // const testData = [{
-    //   date: new Date().toISOString().split('T')[0],
-    //   currentReading: '',
-    //   previousReading: '1234',
-    //   previousPreviousReading: '1200',
-    //   threeTimesPrevious: '1150',
-    //   photoUrl: '',
-    //   status: '未入力',
-    //   usage: '34'
-    // }];
-    
-    // console.log("[GAS] 🧪 テストデータを返します:", testData);
-    // return testData;
-    
     // 実際のスプレッドシート処理
     // 検針データスプレッドシートを取得
     const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
@@ -546,6 +529,15 @@ function getActualMeterReadings(propertyId, roomId) {
     console.log("[GAS] 検針データヘッダー:", headers);
     console.log("[GAS] 総行数:", data.length);
     
+    // 「パルハイツ平田」を含むデータをすべて表示（デバッグ用）
+    console.log("[GAS] 🔍 「パルハイツ平田」を含む行を検索中...");
+    for (let i = 1; i < Math.min(data.length, 50); i++) { // 最初の50行まで
+      const row = data[i];
+      if (row[0] && row[0].toString().includes('パルハイツ平田')) {
+        console.log(`[GAS] 「パルハイツ平田」発見 - 行${i}:`, row);
+      }
+    }
+    
     // 最初の数行のデータを表示
     console.log("[GAS] 最初の5行のデータ:", JSON.stringify(data.slice(0, 5)));
     
@@ -560,14 +552,33 @@ function getActualMeterReadings(propertyId, roomId) {
       const rowPropertyId = row[0] ? row[0].toString() : '';
       const rowRoomId = row[1] ? row[1].toString() : '';
       
-      console.log(`[GAS] 行${i}: propertyId="${rowPropertyId}" (型:${typeof row[0]}), roomId="${rowRoomId}" (型:${typeof row[1]})`);
+      // より詳細なデバッグログ
+      if (i <= 20) { // 最初の20行のみ詳細ログ
+        console.log(`[GAS] 行${i}詳細:`);
+        console.log(`  - row[0] (propertyId): "${row[0]}" (型:${typeof row[0]}) -> 文字列化: "${rowPropertyId}"`);
+        console.log(`  - row[1] (roomId): "${row[1]}" (型:${typeof row[1]}) -> 文字列化: "${rowRoomId}"`);
+        console.log(`  - 検索条件: propertyId="${propertyId}", roomId="${roomId}"`);
+      }
       
-      // 完全一致と部分一致の両方でチェック
-      const propertyMatch = rowPropertyId === propertyId || rowPropertyId.trim() === propertyId.trim();
-      const roomMatch = rowRoomId === roomId || rowRoomId.trim() === roomId.trim();
+      // より柔軟なマッチング条件
+      const propertyMatch = 
+        rowPropertyId === propertyId ||
+        rowPropertyId.trim() === propertyId.trim() ||
+        rowPropertyId.toLowerCase().trim() === propertyId.toLowerCase().trim();
+      
+      const roomMatch = 
+        rowRoomId === roomId ||
+        rowRoomId.trim() === roomId.trim() ||
+        rowRoomId.toLowerCase().trim() === roomId.toLowerCase().trim();
+      
+      if (i <= 20) {
+        console.log(`  - propertyMatch: ${propertyMatch} (完全一致: ${rowPropertyId === propertyId}, trim一致: ${rowPropertyId.trim() === propertyId.trim()})`);
+        console.log(`  - roomMatch: ${roomMatch} (完全一致: ${rowRoomId === roomId}, trim一致: ${rowRoomId.trim() === roomId.trim()})`);
+      }
       
       if (propertyMatch && roomMatch) {
         console.log(`[GAS] ✅ マッチした行を発見: 行${i}`);
+        console.log(`[GAS] マッチした行の全データ:`, row);
         const reading = {
           date: row[2] || '',
           currentReading: row[3] ? row[3].toString() : '',
@@ -579,10 +590,6 @@ function getActualMeterReadings(propertyId, roomId) {
           usage: row[9] ? row[9].toString() : ''
         };
         filteredData.push(reading);
-      } else {
-        if (i <= 10) { // 最初の10行のみ詳細ログ
-          console.log(`[GAS] ❌ 行${i} 不一致: propertyMatch=${propertyMatch}, roomMatch=${roomMatch}`);
-        }
       }
     }
     
