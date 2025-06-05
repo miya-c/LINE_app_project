@@ -506,8 +506,7 @@ function getActualMeterReadings(propertyId, roomId) {
     // console.log("[GAS] 🧪 テストデータを返します:", testData);
     // return testData;
     
-    // 実際のスプレッドシート処理はコメントアウト（後で有効化）
-    /*
+    // 実際のスプレッドシート処理
     // 検針データスプレッドシートを取得
     const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
     console.log("[GAS] 検針データスプレッドシートID:", spreadsheetId);
@@ -599,7 +598,6 @@ function getActualMeterReadings(propertyId, roomId) {
     
     // 最新のデータを1つだけ返す（日付順でソート）
     filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
-    // */ // この行を削除
     return filteredData.length > 0 ? [filteredData[0]] : []; // 最新の1件、または空配列
     
   } catch (error) {
