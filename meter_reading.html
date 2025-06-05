@@ -42,20 +42,24 @@
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
-      React.useEffect(() => {
-        const initializeWoff = async () => {
+      React.useEffect(() => {        const initializeWoff = async () => {
           try {            console.log('[meter_reading] WOFFを初期化します。');
-              // sessionStorageからgasWebAppUrlを取得
+              // sessionStorageからgasWebAppUrlを取得（フォールバック付き）
             const urlFromSession = sessionStorage.getItem('gasWebAppUrl');
-            if (!urlFromSession) {
-              console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
-              alert('GAS Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
-              window.location.href = 'property_select.html';
-              return;
-            }
+            const fallbackUrl = 'https://script.google.com/macros/s/AKfycbxTTWidncWsObUx0wyXy_hQI1WCzxFwXgQiD9sjlLSLe5-G_xYH14jV2PnUeJhcrTYO2A/exec';
             
-            setGasWebAppUrl(urlFromSession);
-            console.log('[meter_reading] gasWebAppUrlを取得しました:', urlFromSession);
+            const finalUrl = urlFromSession || fallbackUrl;
+            
+            // 古いURLの場合は新しいURLに強制更新
+            if (finalUrl.includes('AKfycbxZs0r3-UhOqoa-Y6SjXVv8MgGuwbkcQaf6NEel6Kx_MAUEBm1oZnIwUCT3pv7XTwUd0A')) {
+              console.warn('[meter_reading] 古いURL検出。新しいURLに更新します。');
+              setGasWebAppUrl(fallbackUrl);
+              sessionStorage.setItem('gasWebAppUrl', fallbackUrl);
+              console.log('[meter_reading] gasWebAppUrlを更新しました:', fallbackUrl);
+            } else {
+              setGasWebAppUrl(finalUrl);
+              console.log('[meter_reading] gasWebAppUrlを取得しました:', finalUrl);
+            }
 
             if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
               console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');

@@ -137,9 +137,20 @@
         }
 
         try {
-          setLoading(true);
-            // sessionStorageからGAS URLを取得（property_select.htmlで設定されている）
-          const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+          setLoading(true);          // sessionStorageからGAS URLを取得（property_select.htmlで設定されている）
+          let gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+          const fallbackUrl = 'https://script.google.com/macros/s/AKfycbxTTWidncWsObUx0wyXy_hQI1WCzxFwXgQiD9sjlLSLe5-G_xYH14jV2PnUeJhcrTYO2A/exec';
+          
+          // 古いURLの場合は新しいURLに強制更新
+          if (gasWebAppUrl && gasWebAppUrl.includes('AKfycbxZs0r3-UhOqoa-Y6SjXVv8MgGuwbkcQaf6NEel6Kx_MAUEBm1oZnIwUCT3pv7XTwUd0A')) {
+            console.warn('[room_select] 古いURL検出。新しいURLに更新します。');
+            gasWebAppUrl = fallbackUrl;
+            sessionStorage.setItem('gasWebAppUrl', fallbackUrl);
+          } else if (!gasWebAppUrl) {
+            gasWebAppUrl = fallbackUrl;
+            sessionStorage.setItem('gasWebAppUrl', fallbackUrl);
+          }
+          
           if (!gasWebAppUrl) {
             alert('エラー: GAS Web AppのURLが設定されていません。物件選択ページから再度アクセスしてください。');
             console.error('[room_select] gasWebAppUrlがsessionStorageから取得できませんでした。');
