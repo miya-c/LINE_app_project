@@ -262,7 +262,7 @@ function handleGetRooms(params) {
           propertyId: String(row[0]).trim(),
           roomNumber: String(row[1]).trim(),
           id: String(row[1]).trim(),           // room_select.htmlで使用されるid
-          name: String(row[1]).trim() + "号室" // room_select.htmlで使用されるname
+          name: String(row[2]).trim()          // CSVの部屋名（column 2）を直接使用
         });
       }
     }
@@ -273,9 +273,9 @@ function handleGetRooms(params) {
     if (rooms.length === 0) {
       console.log("[GAS DEBUG] 部屋データが見つからないため、テストデータを返します");
       const testRooms = [
-        { propertyId: propertyId, roomNumber: "101", id: "101", name: "101号室" },
-        { propertyId: propertyId, roomNumber: "102", id: "102", name: "102号室" },
-        { propertyId: propertyId, roomNumber: "201", id: "201", name: "201号室" }
+        { propertyId: propertyId, roomNumber: "101", id: "101", name: "101" },
+        { propertyId: propertyId, roomNumber: "102", id: "102", name: "102" },
+        { propertyId: propertyId, roomNumber: "201", id: "201", name: "201" }
       ];
       return createCorsResponse(testRooms);
     }
