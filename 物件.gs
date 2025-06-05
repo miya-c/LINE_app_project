@@ -374,24 +374,16 @@ function handleGetMeterReadings(params) {
     }
     
     // 実際の検針データファイルまたはスプレッドシートから取得する処理
-    // 現在はテストデータを返す
+    // 現在はテストデータを返す（1つのデータのみ）
     const mockReadings = [
-      {
-        date: '2024-01-01',
-        currentReading: '1000',
-        photoUrl: '',
-        usage: '50'
-      },
-      {
-        date: '2024-02-01',
-        currentReading: '1050',
-        photoUrl: '',
-        usage: '45'
-      },
       {
         date: '2024-03-01',
         currentReading: '',
+        previousReading: '1050',
+        previousPreviousReading: '1000',
+        threeTimesPrevious: '950',
         photoUrl: '',
+        status: '未入力',
         usage: ''
       }
     ];

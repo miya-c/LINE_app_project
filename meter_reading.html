@@ -161,7 +161,11 @@
           }
 
           console.log('[meter_reading] Fetched meter readings:', readings);
-          setMeterReadings(Array.isArray(readings) ? readings : []);
+          console.log('[meter_reading] meterReadings length:', Array.isArray(readings) ? readings.length : 'Not an array');
+          // 一時的な修正：データを1つに制限
+          const limitedReadings = Array.isArray(readings) ? readings.slice(0, 1) : [];
+          console.log('[meter_reading] Limited readings to 1:', limitedReadings);
+          setMeterReadings(limitedReadings);
           setLoading(false);
         } catch (error) {
           console.error('[meter_reading] fetchMeterReadings error:', error);
@@ -522,6 +526,8 @@
 
               <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
                 <h3 className="mantine-subtitle desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
+                {/* DEBUG: データ確認 */}
+                {console.log('[meter_reading] Rendering table with meterReadings:', meterReadings, 'Length:', meterReadings.length)}
                 {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
                   <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
