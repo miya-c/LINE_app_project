@@ -490,21 +490,21 @@ function getActualMeterReadings(propertyId, roomId) {
     console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
     
     // まずテストデータを返す（デバッグ用）
-    console.log("[GAS] 🧪 テストモード: 実際のスプレッドシートを確認する前にテストデータを返します");
+    // console.log("[GAS] 🧪 テストモード: 実際のスプレッドシートを確認する前にテストデータを返します");
     
-    const testData = [{
-      date: new Date().toISOString().split('T')[0],
-      currentReading: '',
-      previousReading: '1234',
-      previousPreviousReading: '1200',
-      threeTimesPrevious: '1150',
-      photoUrl: '',
-      status: '未入力',
-      usage: '34'
-    }];
+    // const testData = [{
+    //   date: new Date().toISOString().split('T')[0],
+    //   currentReading: '',
+    //   previousReading: '1234',
+    //   previousPreviousReading: '1200',
+    //   threeTimesPrevious: '1150',
+    //   photoUrl: '',
+    //   status: '未入力',
+    //   usage: '34'
+    // }];
     
-    console.log("[GAS] 🧪 テストデータを返します:", testData);
-    return testData;
+    // console.log("[GAS] 🧪 テストデータを返します:", testData);
+    // return testData;
     
     // 実際のスプレッドシート処理はコメントアウト（後で有効化）
     /*
@@ -599,12 +599,11 @@ function getActualMeterReadings(propertyId, roomId) {
     
     // 最新のデータを1つだけ返す（日付順でソート）
     filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
-    console.log("[GAS] ✅ 最新データを返します:", filteredData[0]);
-    return [filteredData[0]];
-    */
+    // */ // この行を削除
+    return filteredData.length > 0 ? [filteredData[0]] : []; // 最新の1件、または空配列
     
   } catch (error) {
-    console.error("[GAS] getActualMeterReadings エラー:", error);
+    console.error("[GAS] getActualMeterReadings エラー:", error.message, error.stack);
     return [];
   }
 }
