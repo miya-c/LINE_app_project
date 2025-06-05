@@ -81,7 +81,7 @@ function doGet(e) {
         hasParameter: !!(e && e.parameter),
         parameterKeys: e && e.parameter ? Object.keys(e.parameter) : [],
         queryString: e ? e.queryString : null,
-        deploymentVersion: "v3-DEBUG",
+        deploymentVersion: "v4-DEBUG-DETAILED",
         message: "パラメータが空またはなし"
       };
       console.log("[GAS DEBUG] パラメータが空またはなし:", JSON.stringify(debugInfo));
@@ -141,8 +141,8 @@ function doGet(e) {
         error: "無効なアクションです。", 
         expectedActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"], 
         receivedAction: action,
-        deploymentVersion: "v3-DEBUG",
-        debugMessage: "新しいv3-DEBUG版で無効なアクションが受信されました",
+        deploymentVersion: "v4-DEBUG-DETAILED",
+        debugMessage: "新しいv4-DEBUG-DETAILED版で無効なアクションが受信されました",
         timestamp: timestamp,
         queryString: e.queryString
       });
@@ -152,7 +152,7 @@ function doGet(e) {
     console.error("[GAS DEBUG] doGet エラー:", error.message, error.stack);
     return createCorsResponse({ 
       error: "サーバーエラーが発生しました: " + error.message,
-      deploymentVersion: "v3-DEBUG",
+      deploymentVersion: "v4-DEBUG-DETAILED",
       timestamp: new Date().toISOString()
     });
   }
@@ -489,19 +489,70 @@ function getActualMeterReadings(propertyId, roomId) {
   try {
     console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
     
+    // まずテストデータを返す（デバッグ用）
+    console.log("[GAS] 🧪 テストモード: 実際のスプレッドシートを確認する前にテストデータを返します");
+    
+    const testData = [{
+      date: new Date().toISOString().split('T')[0],
+      currentReading: '',
+      previousReading: '1234',
+      previousPreviousReading: '1200',
+      threeTimesPrevious: '1150',
+      photoUrl: '',
+      status: '未入力',
+      usage: '34'
+    }];
+    
+    console.log("[GAS] 🧪 テストデータを返します:", testData);
+    return testData;
+    
+    // 実際のスプレッドシート処理はコメントアウト（後で有効化）
+    /*
     // 検針データスプレッドシートを取得
     const spreadsheetId = '1SdT6uaFdKo8PSNHD0YTaJ9-AqLrBzqkJ3lOJMnG-jIk';
+    console.log("[GAS] 検針データスプレッドシートID:", spreadsheetId);
+    
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    console.log("[GAS] スプレッドシート取得成功");
+    
+    // すべてのシート名を表示
+    const allSheets = spreadsheet.getSheets();
+    console.log("[GAS] 📋 利用可能なシート一覧:", allSheets.map(s => s.getName()));
+    
     const sheet = spreadsheet.getSheetByName('検針データ');
     
     if (!sheet) {
-      console.log("[GAS] 検針データシートが見つかりません");
+      console.log("[GAS] ❌ '検針データ'シートが見つかりません");
+      console.log("[GAS] 利用可能なシート名:", allSheets.map(s => s.getName()));
+      
+      // 代替シート名をチェック
+      const possibleSheetNames = ['検針', 'meter_reading', 'データ', 'Sheet1'];
+      for (const sheetName of possibleSheetNames) {
+        const altSheet = spreadsheet.getSheetByName(sheetName);
+        if (altSheet) {
+          console.log("[GAS] ✅ 代替シート発見:", sheetName);
+          const altData = altSheet.getDataRange().getValues();
+          console.log("[GAS] 代替シートのヘッダー:", altData[0]);
+          break;
+        }
+      }
+      
       return [];
     }
+
+    console.log("[GAS] 検針データシート取得成功");
     
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     console.log("[GAS] 検針データヘッダー:", headers);
+    console.log("[GAS] 総行数:", data.length);
+    
+    // 最初の数行のデータを表示
+    console.log("[GAS] 最初の5行のデータ:", JSON.stringify(data.slice(0, 5)));
+    
+    // 検索対象のpropertyIdとroomIdを詳細表示
+    console.log("[GAS] 🔍 検索対象 propertyId:", `"${propertyId}"`, "型:", typeof propertyId);
+    console.log("[GAS] 🔍 検索対象 roomId:", `"${roomId}"`, "型:", typeof roomId);
     
     // 該当する物件・部屋のデータをフィルタ
     const filteredData = [];
@@ -510,7 +561,14 @@ function getActualMeterReadings(propertyId, roomId) {
       const rowPropertyId = row[0] ? row[0].toString() : '';
       const rowRoomId = row[1] ? row[1].toString() : '';
       
-      if (rowPropertyId === propertyId && rowRoomId === roomId) {
+      console.log(`[GAS] 行${i}: propertyId="${rowPropertyId}" (型:${typeof row[0]}), roomId="${rowRoomId}" (型:${typeof row[1]})`);
+      
+      // 完全一致と部分一致の両方でチェック
+      const propertyMatch = rowPropertyId === propertyId || rowPropertyId.trim() === propertyId.trim();
+      const roomMatch = rowRoomId === roomId || rowRoomId.trim() === roomId.trim();
+      
+      if (propertyMatch && roomMatch) {
+        console.log(`[GAS] ✅ マッチした行を発見: 行${i}`);
         const reading = {
           date: row[2] || '',
           currentReading: row[3] ? row[3].toString() : '',
@@ -522,20 +580,28 @@ function getActualMeterReadings(propertyId, roomId) {
           usage: row[9] ? row[9].toString() : ''
         };
         filteredData.push(reading);
+      } else {
+        if (i <= 10) { // 最初の10行のみ詳細ログ
+          console.log(`[GAS] ❌ 行${i} 不一致: propertyMatch=${propertyMatch}, roomMatch=${roomMatch}`);
+        }
       }
     }
     
     console.log("[GAS] フィルタされた検針データ:", filteredData);
+    console.log("[GAS] フィルタされたデータ件数:", filteredData.length);
     
     // データが見つからない場合は空配列を返す
     if (filteredData.length === 0) {
-      console.log("[GAS] 該当するデータが見つかりませんでした");
+      console.log("[GAS] ❌ 該当するデータが見つかりませんでした");
+      console.log("[GAS] 検索条件:", "propertyId=" + propertyId, "roomId=" + roomId);
       return [];
     }
     
     // 最新のデータを1つだけ返す（日付順でソート）
     filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+    console.log("[GAS] ✅ 最新データを返します:", filteredData[0]);
     return [filteredData[0]];
+    */
     
   } catch (error) {
     console.error("[GAS] getActualMeterReadings エラー:", error);

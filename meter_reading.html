@@ -97,6 +97,13 @@
           const rId = urlParams.get('roomId');
           const rName = urlParams.get('roomName');
 
+          console.log('[meter_reading] 🔍 URLパラメータ詳細:');
+          console.log('[meter_reading] - propertyId:', `"${propId}"`, '型:', typeof propId);
+          console.log('[meter_reading] - propertyName:', `"${propName}"`, '型:', typeof propName);
+          console.log('[meter_reading] - roomId:', `"${rId}"`, '型:', typeof rId);
+          console.log('[meter_reading] - roomName:', `"${rName}"`, '型:', typeof rName);
+          console.log('[meter_reading] - 完全なURL:', window.location.href);
+
           setPropertyId(propId || 'N/A');
           setPropertyName(propName || 'N/A');
           setRoomId(rId || 'N/A');
@@ -109,6 +116,7 @@
             return;
           }
 
+          console.log('[meter_reading] 🚀 検針データ取得開始 - propertyId:', propId, 'roomId:', rId);
           loadMeterReadings(propId, rId);
         };
 
@@ -161,6 +169,22 @@
           }
 
           console.log('[meter_reading] Fetched meter readings:', readings);
+          console.log('[meter_reading] Readings is array?', Array.isArray(readings));
+          console.log('[meter_reading] Readings length:', readings ? readings.length : 'N/A');
+          
+          // データ取得状況を詳細に表示
+          if (Array.isArray(readings) && readings.length > 0) {
+            console.log('[meter_reading] ✅ データ取得成功 - 件数:', readings.length);
+            console.log('[meter_reading] 最初のデータ:', readings[0]);
+          } else if (Array.isArray(readings) && readings.length === 0) {
+            console.log('[meter_reading] ⚠️ データは空配列（初回検針状態）');
+            console.log('[meter_reading] 検索条件 - propertyId:', propId, 'roomId:', rId);
+          } else {
+            console.log('[meter_reading] ❌ データ取得失敗または無効な形式');
+            console.log('[meter_reading] readingsの型:', typeof readings);
+            console.log('[meter_reading] readings値:', readings);
+          }
+          
           setMeterReadings(Array.isArray(readings) ? readings : []);
           setLoading(false);
         } catch (error) {
