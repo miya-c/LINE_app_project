@@ -73,14 +73,8 @@
             await woff.init({ woffId: woffIdForWorks });
             console.log('[meter_reading] WOFFの初期化に成功しました。');
 
-            if (!woff.isLoggedIn()) {
-              console.error("[meter_reading] User is not logged in.");
-              setError('ログインが必要です。LINE WORKSからアクセスしてください。');
-              setLoading(false);
-              return;
-            } else {
-              console.log("[meter_reading] Logged in. OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
-            }
+            // 認証チェックを削除 - 認証なしでアクセス可能
+            console.log("[meter_reading] 認証チェックをスキップします。OS:", woff.getOS(), "Language:", woff.getLanguage(), "Version:", woff.getVersion(), "isInClient:", woff.isInClient());
 
             setWoffInitialized(true);
           } catch (error) {
