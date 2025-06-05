@@ -1,6 +1,6 @@
 // ===================================================
-// 水道検針WOFF GAS Web App - 2025-01-02-v2
-// CORS修正完了版：updateMeterReadings/updateInspectionComplete対応
+// 水道検針WOFF GAS Web App - 2025-01-02-v3
+// CORS修正完了版：doGet関数構造修正・全6アクション対応
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
@@ -22,12 +22,12 @@ function doOptions(e) {
 // バージョン確認用の関数
 function getGasVersion() {
   return {
-    version: "2025-01-02-v2",
+    version: "2025-01-02-v3",
     deployedAt: new Date().toISOString(),
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
-    description: "CORS修正完了版：updateMeterReadings/updateInspectionComplete対応",
+    description: "CORS修正完了版：doGet関数構造修正・全6アクション対応",
     注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください"
   };
 }
@@ -35,13 +35,8 @@ function getGasVersion() {
 // メイン処理関数
 function doGet(e) {
   try {
-    // バージョン確認用の特別なアクション
-    if (e && e.parameter && e.parameter.action === 'getVersion') {
-      console.log("[GAS] バージョン確認リクエスト");
-      return createCorsResponse(getGasVersion());
-    }
-      const timestamp = new Date().toISOString();
-    console.log(`[GAS ${timestamp}] doGet開始 - バージョン: 2025-01-02-v2`);
+    const timestamp = new Date().toISOString();
+    console.log(`[GAS ${timestamp}] doGet開始 - バージョン: 2025-01-02-v3`);
     
     // パラメータのデバッグ情報
     console.log("[GAS] e オブジェクト存在:", !!e);
@@ -69,8 +64,14 @@ function doGet(e) {
     const action = e.parameter.action;
     console.log("[GAS] アクション:", action);
 
+    // バージョン確認
+    if (action === 'getVersion') {
+      console.log("[GAS] バージョン確認リクエスト");
+      return createCorsResponse(getGasVersion());
+    }
+    
     // 物件一覧取得
-    if (action === 'getProperties') {
+    else if (action === 'getProperties') {
       return handleGetProperties();
     }
     
