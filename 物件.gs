@@ -373,25 +373,16 @@ function handleGetMeterReadings(params) {
       });
     }
     
-    // 実際の検針データファイルまたはスプレッドシートから取得する処理
-    // 現在はテストデータを返す（1つのデータのみ）
-    const mockReadings = [
-      {
-        date: '2024-03-01',
-        currentReading: '',
-        previousReading: '1050',
-        previousPreviousReading: '1000',
-        threeTimesPrevious: '950',
-        photoUrl: '',
-        status: '未入力',
-        usage: ''
-      }
-    ];
+    // 実際の検針データから取得する処理
+    console.log("[GAS] 検針データ取得開始 - 実データを検索中");
     
-    console.log("[GAS] 検針データ取得完了");
+    // 実際のスプレッドシートから検針データを取得
+    const readings = getActualMeterReadings(propertyId, roomId);
+    
+    console.log("[GAS] 検針データ取得完了 - 実データ:", readings);
     
     return createCorsResponse({
-      readings: mockReadings,
+      readings: readings,
       debugInfo: {
         propertyId: propertyId,
         roomId: roomId,
@@ -493,6 +484,65 @@ function handleUpdateMeterReadings(params) {
   }
 }
 
+// 実際の検針データを取得する関数
+function getActualMeterReadings(propertyId, roomId) {
+  try {
+    console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
+    
+    // 検針データスプレッドシートを取得
+    const spreadsheetId = '1SdT6uaFdKo8PSNHD0YTaJ9-AqLrBzqkJ3lOJMnG-jIk';
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName('検針データ');
+    
+    if (!sheet) {
+      console.log("[GAS] 検針データシートが見つかりません");
+      return [];
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    console.log("[GAS] 検針データヘッダー:", headers);
+    
+    // 該当する物件・部屋のデータをフィルタ
+    const filteredData = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const rowPropertyId = row[0] ? row[0].toString() : '';
+      const rowRoomId = row[1] ? row[1].toString() : '';
+      
+      if (rowPropertyId === propertyId && rowRoomId === roomId) {
+        const reading = {
+          date: row[2] || '',
+          currentReading: row[3] ? row[3].toString() : '',
+          previousReading: row[4] ? row[4].toString() : '',
+          previousPreviousReading: row[5] ? row[5].toString() : '',
+          threeTimesPrevious: row[6] ? row[6].toString() : '',
+          photoUrl: row[7] || '',
+          status: row[8] || '未入力',
+          usage: row[9] ? row[9].toString() : ''
+        };
+        filteredData.push(reading);
+      }
+    }
+    
+    console.log("[GAS] フィルタされた検針データ:", filteredData);
+    
+    // データが見つからない場合は空配列を返す
+    if (filteredData.length === 0) {
+      console.log("[GAS] 該当するデータが見つかりませんでした");
+      return [];
+    }
+    
+    // 最新のデータを1つだけ返す（日付順でソート）
+    filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return [filteredData[0]];
+    
+  } catch (error) {
+    console.error("[GAS] getActualMeterReadings エラー:", error);
+    return [];
+  }
+}
+
 // GAS doPost: CORS対応・POSTアクション分岐
 function doPost(e) {
   try {
@@ -509,7 +559,8 @@ function doPost(e) {
 
     if (params.action === 'updateMeterReadings') {
       return handleUpdateMeterReadings(params);
-    } else {      return createCorsResponse({
+    } else {
+      return createCorsResponse({
         error: '無効なアクションです（doPost）',
         receivedAction: params.action,
         expected: ['updateMeterReadings']
