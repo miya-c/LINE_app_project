@@ -305,10 +305,11 @@
             )}
           </div>
         </div>
-      );
-    };
+      );    };
 
-    ReactDOM.render(<RoomSelectApp />, document.getElementById('root'));
+    // Use React 18 createRoot API instead of ReactDOM.render
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<RoomSelectApp />);
   </script>
 </body>
 </html>
