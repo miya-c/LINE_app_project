@@ -46,22 +46,18 @@
         const initializeWoff = async () => {
           try {
             console.log('[meter_reading] WOFFを初期化します。');
-            // sessionStorageからgasWebAppUrlを取得（フォールバック付き）
+            // sessionStorageからgasWebAppUrlを取得
             const urlFromSession = sessionStorage.getItem('gasWebAppUrl');
-            const fallbackUrl = 'https://script.google.com/macros/s/AKfycbxlled-ot17rnp-yWMbKJqa8biDFV2XTFtgaWoQOhC7947dpYgn5qA0uSH7e9uKlgMcYA/exec';
             
-            const finalUrl = urlFromSession || fallbackUrl;
-            
-            // 古いURLの場合は新しいURLに強制更新
-            if (finalUrl.includes('AKfycbxZs0r3-UhOqoa-Y6SjXVv8MgGuwbkcQaf6NEel6Kx_MAUEBm1oZnIwUCT3pv7XTwUd0A')) {
-              console.warn('[meter_reading] 古いURL検出。新しいURLに更新します。');
-              setGasWebAppUrl(fallbackUrl);
-              sessionStorage.setItem('gasWebAppUrl', fallbackUrl);
-              console.log('[meter_reading] gasWebAppUrlを更新しました:', fallbackUrl);
-            } else {
-              setGasWebAppUrl(finalUrl);
-              console.log('[meter_reading] gasWebAppUrlを取得しました:', finalUrl);
+            if (!urlFromSession) {
+              console.error('[meter_reading] gasWebAppURLがsessionStorageにありません。');
+              setError('アプリのURLが設定されていません。物件選択画面から再度アクセスしてください。');
+              setLoading(false);
+              return;
             }
+            
+            setGasWebAppUrl(urlFromSession);
+            console.log('[meter_reading] gasWebAppUrlを取得しました:', urlFromSession);
 
             if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
               console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
@@ -126,6 +122,10 @@
       const loadMeterReadings = async (propId, rId) => {
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+          if (!currentGasUrl) {
+            throw new Error('gasWebAppURLが設定されていません。物件選択画面から再度アクセスしてください。');
+          }
+          
           const fetchUrl = `${currentGasUrl}?action=getMeterReadings&propertyId=${propId}&roomId=${rId}`;
           console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl);
           
