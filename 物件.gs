@@ -1,6 +1,6 @@
 // ===================================================
-// 水道検針WOFF GAS Web App - 2025-01-02-v3
-// CORS修正完了版：doGet関数構造修正・全6アクション対応
+// 水道検針WOFF GAS Web App - 2025-01-02-v3-DEBUG
+// CORS修正完了版：doGet関数構造修正・全6アクション対応 - デバッグログ付き
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
@@ -19,16 +19,43 @@ function doOptions(e) {
   return ContentService.createTextOutput('');
 }
 
+// 🔥 デプロイメント確認用テスト関数 🔥
+function testNewDeployment() {
+  const timestamp = new Date().toISOString();
+  console.log(`[GAS DEBUG ${timestamp}] testNewDeployment関数が呼び出されました`);
+  
+  return {
+    deploymentTest: "SUCCESS",
+    version: "v3-DEBUG",
+    timestamp: timestamp,
+    message: "🔥 新しいデプロイメントが正常に動作しています！ 🔥",
+    functionsAvailable: [
+      "doGet", "doPost", "doOptions", 
+      "getGasVersion", "handleGetProperties", "handleGetRooms", 
+      "handleUpdateInspectionComplete", "handleGetMeterReadings", "handleUpdateMeterReadings"
+    ]
+  };
+}
+
 // バージョン確認用の関数
 function getGasVersion() {
-  return {
-    version: "2025-01-02-v3",
-    deployedAt: new Date().toISOString(),
+  const timestamp = new Date().toISOString();
+  console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
+    return {
+    version: "2025-01-02-v3-DEBUG",
+    deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
-    description: "CORS修正完了版：doGet関数構造修正・全6アクション対応",
-    注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください"
+    description: "🔥🔥🔥 v3-DEBUG版が動作中です！ 🔥🔥🔥",
+    注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください",
+    debugInfo: {
+      functionCalled: "getGasVersion",
+      timestamp: timestamp,
+      deploymentCheck: "🔥 v3-DEBUG版が正常に動作しています 🔥",
+      警告: "この値が見えれば新しいバージョンが動作中！",
+      強制確認: "もし古いエラーが出る場合は、GASで「新しいバージョンをデプロイ」してください"
+    }
   };
 }
 
@@ -36,13 +63,14 @@ function getGasVersion() {
 function doGet(e) {
   try {
     const timestamp = new Date().toISOString();
-    console.log(`[GAS ${timestamp}] doGet開始 - バージョン: 2025-01-02-v3`);
+    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: 2025-01-02-v3-DEBUG`);
+    console.log(`[GAS DEBUG] 🔥 新しいバージョンが動作中です! 🔥`);
     
     // パラメータのデバッグ情報
-    console.log("[GAS] e オブジェクト存在:", !!e);
+    console.log("[GAS DEBUG] e オブジェクト存在:", !!e);
     if (e) {
-      console.log("[GAS] e.parameter:", JSON.stringify(e.parameter));
-      console.log("[GAS] e.queryString:", e.queryString);
+      console.log("[GAS DEBUG] e.parameter:", JSON.stringify(e.parameter));
+      console.log("[GAS DEBUG] e.queryString:", e.queryString);
     }
     
     // パラメータが空または存在しない場合
@@ -52,9 +80,11 @@ function doGet(e) {
         hasE: !!e,
         hasParameter: !!(e && e.parameter),
         parameterKeys: e && e.parameter ? Object.keys(e.parameter) : [],
-        queryString: e ? e.queryString : null
+        queryString: e ? e.queryString : null,
+        deploymentVersion: "v3-DEBUG",
+        message: "パラメータが空またはなし"
       };
-      console.log("[GAS] パラメータが空またはなし:", JSON.stringify(debugInfo));
+      console.log("[GAS DEBUG] パラメータが空またはなし:", JSON.stringify(debugInfo));
       return createCorsResponse({ 
         error: "リクエストパラメータがありません。",
         debugInfo: debugInfo
@@ -62,53 +92,68 @@ function doGet(e) {
     }
 
     const action = e.parameter.action;
-    console.log("[GAS] アクション:", action);
+    console.log("[GAS DEBUG] 🎯 受信したアクション:", action);
+    console.log("[GAS DEBUG] 🎯 利用可能なアクション: getProperties, getRooms, updateInspectionComplete, getMeterReadings, updateMeterReadings, getVersion");
 
     // バージョン確認
     if (action === 'getVersion') {
-      console.log("[GAS] バージョン確認リクエスト");
-      return createCorsResponse(getGasVersion());
+      console.log("[GAS DEBUG] ✅ getVersionアクション処理開始");
+      const versionResult = getGasVersion();
+      console.log("[GAS DEBUG] ✅ getVersionレスポンス:", JSON.stringify(versionResult));
+      return createCorsResponse(versionResult);
     }
     
     // 物件一覧取得
     else if (action === 'getProperties') {
+      console.log("[GAS DEBUG] ✅ getPropertiesアクション処理開始");
       return handleGetProperties();
     }
     
     // 部屋一覧取得
     else if (action === 'getRooms') {
+      console.log("[GAS DEBUG] ✅ getRoomsアクション処理開始");
       return handleGetRooms(e.parameter);
     }
     
     // 検針完了日更新
     else if (action === 'updateInspectionComplete') {
+      console.log("[GAS DEBUG] ✅ updateInspectionCompleteアクション処理開始");
       return handleUpdateInspectionComplete(e.parameter);
     }
     
     // 検針データ取得
     else if (action === 'getMeterReadings') {
+      console.log("[GAS DEBUG] ✅ getMeterReadingsアクション処理開始");
       return handleGetMeterReadings(e.parameter);
     }
     
     // 検針データ更新
     else if (action === 'updateMeterReadings') {
+      console.log("[GAS DEBUG] ✅ updateMeterReadingsアクション処理開始");
       return handleUpdateMeterReadings(e.parameter);
     }
     
     // 無効なアクション
     else {
-      console.log("[GAS] 無効なアクション:", action);
+      console.log("[GAS DEBUG] ❌ 無効なアクション:", action);
+      console.log("[GAS DEBUG] ❌ これは新しいv3-DEBUG版です！古いバージョンではありません！");
       return createCorsResponse({ 
         error: "無効なアクションです。", 
         expectedActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"], 
-        receivedAction: action
+        receivedAction: action,
+        deploymentVersion: "v3-DEBUG",
+        debugMessage: "新しいv3-DEBUG版で無効なアクションが受信されました",
+        timestamp: timestamp,
+        queryString: e.queryString
       });
     }
     
   } catch (error) {
-    console.error("[GAS] doGet エラー:", error.message, error.stack);
+    console.error("[GAS DEBUG] doGet エラー:", error.message, error.stack);
     return createCorsResponse({ 
-      error: "サーバーエラーが発生しました: " + error.message 
+      error: "サーバーエラーが発生しました: " + error.message,
+      deploymentVersion: "v3-DEBUG",
+      timestamp: new Date().toISOString()
     });
   }
 }
@@ -418,8 +463,7 @@ function doPost(e) {
 
     if (params.action === 'updateMeterReadings') {
       return handleUpdateMeterReadings(params);
-    } else {
-      return createCorsResponse({
+    } else {      return createCorsResponse({
         error: '無効なアクションです（doPost）',
         receivedAction: params.action,
         expected: ['updateMeterReadings']
