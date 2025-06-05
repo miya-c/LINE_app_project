@@ -770,7 +770,7 @@
               )}
             </div>
             
-            {(!loading && (!Array.isArray(meterReadings) || meterReadings.length >= 0)) && (
+            {(!loading && Array.isArray(meterReadings)) && (
               <div className="fab-container" style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1001}}>
                 <button
                   className="fab-button mantine-button variant-filled"
