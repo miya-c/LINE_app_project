@@ -29,9 +29,8 @@
     </div>
 
     <div class="test-section">
-        <h3>🌐 GAS Web App URL設定</h3>
-        <input type="text" id="gasUrl" class="url-input" 
-               value="https://script.google.com/macros/s/AKfycbw3o3cJNvg3ygVtWHaJ-cQJR7w1rw4gufqmQuDp71w9vky7Vws6ktIlinNvIvRe6-8IxQ/exec"
+        <h3>🌐 GAS Web App URL設定</h3>        <input type="text" id="gasUrl" class="url-input" 
+               value="https://script.google.com/macros/s/AKfycbxZs0r3-UhOqoa-Y6SjXVv8MgGuwbkcQaf6NEel6Kx_MAUEBm1oZnIwUCT3pv7XTwUd0A/exec"
                placeholder="Google Apps Script Web App URL">
         <button onclick="saveUrl()">URL保存</button>
         <div id="url-status"></div>
@@ -107,10 +106,11 @@
                 const result = await makeRequest('getVersion');
                 resultDiv.className = 'result success';
                 resultDiv.textContent = JSON.stringify(result, null, 2);
-                
-                // バージョンチェック
-                if (result.version === '2025-01-02-v2') {
-                    resultDiv.innerHTML += '\n\n✅ 最新バージョンが正常にデプロイされています！';
+                  // バージョンチェック
+                if (result.version === '2025-01-02-v3') {
+                    resultDiv.innerHTML += '\n\n✅ 最新バージョン(v3)が正常にデプロイされています！';
+                } else if (result.version === '2025-01-02-v2') {
+                    resultDiv.innerHTML += '\n\n⚠️ バージョンv2です。v3への更新を推奨します。';
                 } else {
                     resultDiv.innerHTML += '\n\n❌ 古いバージョンです。再デプロイが必要です。';
                 }
