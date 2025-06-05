@@ -34,29 +34,28 @@
       const [modalImageSrc, setModalImageSrc] = React.useState('');
       const [updating, setUpdating] = React.useState(false);
       const [usageStates, setUsageStates] = React.useState({});
-      const [toastMessage, setToastMessage] = React.useState('');
-      const [showToast, setShowToast] = React.useState(false);
+      const [toastMessage, setToastMessage] = React.useState('');      const [showToast, setShowToast] = React.useState(false);
       const [inputErrors, setInputErrors] = React.useState({});
       const [photoStates, setPhotoStates] = React.useState({});
+      const [gasWebAppUrl, setGasWebAppUrl] = React.useState('');
 
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
-      let gasWebAppUrl = '';
 
       React.useEffect(() => {
         const initializeWoff = async () => {
           try {            console.log('[meter_reading] WOFFを初期化します。');
-            
-            // sessionStorageからgasWebAppUrlを取得
-            gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-            if (!gasWebAppUrl) {
+              // sessionStorageからgasWebAppUrlを取得
+            const urlFromSession = sessionStorage.getItem('gasWebAppUrl');
+            if (!urlFromSession) {
               console.error('[meter_reading] gasWebAppUrlがsessionStorageから取得できませんでした。property_select.htmlから正常に遷移してください。');
               alert('GAS Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
               window.location.href = 'property_select.html';
               return;
             }
             
-            console.log('[meter_reading] gasWebAppUrlを取得しました:', gasWebAppUrl);
+            setGasWebAppUrl(urlFromSession);
+            console.log('[meter_reading] gasWebAppUrlを取得しました:', urlFromSession);
 
             if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
               console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
@@ -124,12 +123,10 @@
         };
 
         loadUrlParams();
-      }, [woffInitialized]);
-
-      const loadMeterReadings = async (propId, rId) => {
+      }, [woffInitialized]);      const loadMeterReadings = async (propId, rId) => {
         try {
-          gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-          const fetchUrl = `${gasWebAppUrl}?action=getMeterReadings&propertyId=${propId}&roomId=${rId}`;
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+          const fetchUrl = `${currentGasUrl}?action=getMeterReadings&propertyId=${propId}&roomId=${rId}`;
           console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl);
           
           const response = await fetch(fetchUrl);
@@ -404,13 +401,12 @@
         if (updatedReadings.length === 0) {
           displayToast('更新するデータがありません。');
           return;
-        }
-        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        }        console.log('[meter_reading] 更新する指示数:', updatedReadings);
         setUpdating(true);
         try {
-          gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
           // POSTリクエストで送信（GAS doPost対応）
-          const requestUrl = gasWebAppUrl;
+          const requestUrl = currentGasUrl;
           const postBody = {
             action: 'updateMeterReadings',
             propertyId,
