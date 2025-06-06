@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v5 CORS修正テストツール</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        input[type="url"] {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background-color: #0056b3; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 v5-CORS-FINAL-FIX テストツール</h1>
+        
+        <div class="section warning">
+            <h3>📋 テスト手順</h3>
+            <ol>
+                <li><strong>Google Apps Script</strong> で 物件.gs を新しいデプロイとして作成</li>
+                <li>新しい <strong>Web アプリのURL</strong> を下記に貼り付け</li>
+                <li><strong>「バージョン確認テスト」</strong> で v5 が確認できるかテスト</li>
+                <li><strong>「POST テスト」</strong> で CORS エラーが解決されたかテスト</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h3>🔗 Google Apps Script URL</h3>
+            <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec" 
+                   value="https://script.google.com/macros/s/AKfycby9heEnCsXcNa8MLaRAtehu2lL_rPl2P6-yY7PKy81YUkBEvQa2ZywqVWtMpu3RNZYnmg/exec">
+            <small>注意: 新しいデプロイのURLに更新してください</small>
+        </div>
+
+        <div class="section">
+            <h3>1️⃣ バージョン確認テスト</h3>
+            <button onclick="testVersion()">バージョン確認テスト実行</button>
+            <div id="versionResult" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>2️⃣ POST リクエストテスト（CORS修正確認）</h3>
+            <button onclick="testPost()">POST テスト実行</button>
+            <div id="postResult" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>3️⃣ 期待する結果</h3>
+            <div class="success">
+                <strong>✅ 成功時の表示:</strong><br>
+                - バージョン: "2025-06-06-v5-CORS-FINAL-FIX"<br>
+                - POST レスポンス: success または適切なエラーメッセージ<br>
+                - <strong>CORS エラーなし</strong>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔄 次のステップ</h3>
+            <p>両方のテストが成功したら、<code>property_select.html</code> の URL を新しいデプロイメント URL に更新してください。</p>
+        </div>
+    </div>
+
+    <script>
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            element.textContent += logMessage;
+            
+            if (isError) {
+                element.style.backgroundColor = '#f8d7da';
+                element.style.borderColor = '#f5c6cb';
+            } else {
+                element.style.backgroundColor = '#d4edda';
+                element.style.borderColor = '#c3e6cb';
+            }
+        }
+
+        async function testVersion() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            const resultDiv = document.getElementById('versionResult');
+            resultDiv.textContent = '';
+            
+            if (!gasUrl) {
+                log('versionResult', 'エラー: Google Apps Script URL を入力してください', true);
+                return;
+            }
+
+            try {
+                log('versionResult', '🔄 バージョン確認テスト開始...');
+                log('versionResult', `URL: ${gasUrl}?action=getVersion`);
+                
+                const response = await fetch(`${gasUrl}?action=getVersion`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+
+                log('versionResult', `レスポンス ステータス: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                log('versionResult', '✅ レスポンス受信成功');
+                log('versionResult', `バージョン: ${data.version || '取得失敗'}`);
+                log('versionResult', `説明: ${data.description || 'なし'}`);
+                log('versionResult', `CORS修正済み: ${data.corsFixed || 'false'}`);
+                log('versionResult', `ContentService使用: ${data.contentServiceUsed || 'false'}`);
+                
+                if (data.version && data.version.includes('v5-CORS-FINAL-FIX')) {
+                    log('versionResult', '🎉 v5修正版が正常にデプロイされています！');
+                } else {
+                    log('versionResult', '⚠️ まだ古いバージョンのようです。新しいデプロイが必要かもしれません。', true);
+                }
+
+            } catch (error) {
+                log('versionResult', `❌ エラー発生: ${error.message}`, true);
+                log('versionResult', '考えられる原因:', true);
+                log('versionResult', '- URL が間違っている', true);
+                log('versionResult', '- 新しいデプロイがまだ反映されていない', true);
+                log('versionResult', '- Google Apps Script でエラーが発生している', true);
+            }
+        }
+
+        async function testPost() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            const resultDiv = document.getElementById('postResult');
+            resultDiv.textContent = '';
+            
+            if (!gasUrl) {
+                log('postResult', 'エラー: Google Apps Script URL を入力してください', true);
+                return;
+            }
+
+            try {
+                log('postResult', '🔄 POST リクエストテスト開始...');
+                log('postResult', 'これが成功すれば CORS 問題は解決されています');
+                
+                const testData = {
+                    action: 'updateMeterReadings',
+                    propertyId: 'TEST001',
+                    roomId: '101',
+                    readings: [{
+                        date: '2025-06-07',
+                        currentReading: '12345'
+                    }]
+                };
+
+                log('postResult', `送信データ: ${JSON.stringify(testData, null, 2)}`);
+
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                log('postResult', `レスポンス ステータス: ${response.status} ${response.statusText}`);
+                
+                // レスポンス ヘッダーを確認
+                log('postResult', 'レスポンス ヘッダー:');
+                for (let [key, value] of response.headers.entries()) {
+                    log('postResult', `  ${key}: ${value}`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                log('postResult', '✅ POST リクエスト成功！CORS エラーは解決されました！');
+                log('postResult', `レスポンス: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data.success) {
+                    log('postResult', '🎉 検針データ更新も正常に動作しています！');
+                } else if (data.error) {
+                    log('postResult', `⚠️ 業務エラー (CORSは解決済み): ${data.error}`);
+                }
+
+            } catch (error) {
+                if (error.message.includes('CORS')) {
+                    log('postResult', `❌ CORS エラーがまだ発生しています: ${error.message}`, true);
+                    log('postResult', '修正が必要な可能性があります:', true);
+                    log('postResult', '- 新しいデプロイが正しく作成されていない', true);
+                    log('postResult', '- URLが古いデプロイメントを指している', true);
+                } else {
+                    log('postResult', `❌ その他のエラー: ${error.message}`, true);
+                }
+            }
+        }
+
+        // ページ読み込み時にバージョンテストを自動実行
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('versionResult', '自動テスト実行中...');
+                testVersion();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

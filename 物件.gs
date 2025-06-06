@@ -1,6 +1,7 @@
 // ===================================================
-// 水道検針WOFF GAS Web App - 2025-06-06-v4-CORS-FIX
+// 水道検針WOFF GAS Web App - 2025-06-06-v5-CORS-FINAL-FIX
 // CORS完全解決版：ContentService使用・POSTリクエスト対応
+// doPost ContentService 二重ラップ問題修正版
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
@@ -99,21 +100,21 @@ function getGasVersion() {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
     return {
-    version: "2025-06-06-v4-CORS-FIX",
+    version: "2025-06-06-v5-CORS-FINAL-FIX",
     deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
     corsFixed: true,
     contentServiceUsed: true,
-    description: "🎯 v4-CORS-FIX版：ContentService使用でCORS問題完全解決！",
+    description: "🎯 v5-CORS-FINAL-FIX版：ContentService doPost二重ラップ問題修正！",
     注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
-      deploymentCheck: "✅ v4-CORS-FIX版が正常に動作中 - POSTリクエスト対応完了",
+      deploymentCheck: "✅ v5-CORS-FINAL-FIX版が正常に動作中 - doPost二重ラップ問題解決",
       corsStatus: "ContentServiceでCORS問題解決済み",
       postMethodSupport: "doPost関数でContentService使用",
-      強制確認: "CORS問題が解決された新バージョンです"
+      強制確認: "doPost ContentService二重ラップ問題が修正された新バージョンです"
     }
   };
 }
@@ -122,7 +123,7 @@ function getGasVersion() {
 function doGet(e) {
   try {
     const timestamp = new Date().toISOString();
-    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: 2025-06-06-v4-CORS-FIX`);
+    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: 2025-06-06-v5-CORS-FINAL-FIX`);
     console.log(`[GAS DEBUG] 🎯 CORS問題解決版が動作中です（ContentService使用）!`);
     
     // パラメータのデバッグ情報
@@ -918,39 +919,10 @@ function doPost(e) {
       return ContentService
         .createTextOutput(JSON.stringify(errorResponse))
         .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (params.action === 'updateMeterReadings') {
+    }    if (params.action === 'updateMeterReadings') {
       console.log('[GAS DEBUG] updateMeterReadingsアクション処理開始（doPost）');
-      const result = handleUpdateMeterReadings(params);
-      
-      // handleUpdateMeterReadingsの結果をContentServiceで返す
-      try {
-        // resultがHTMLServiceの場合、JSONレスポンスに変換
-        if (result && typeof result.getContent === 'function') {
-          const htmlContent = result.getContent();
-          // HTMLからJSONデータを抽出
-          const jsonMatch = htmlContent.match(/<script type="application\/json">(.*?)<\/script>/);
-          if (jsonMatch && jsonMatch[1]) {
-            return ContentService
-              .createTextOutput(jsonMatch[1])
-              .setMimeType(ContentService.MimeType.JSON);
-          }
-        }
-        
-        // 直接オブジェクトの場合
-        return ContentService
-          .createTextOutput(JSON.stringify(result))
-          .setMimeType(ContentService.MimeType.JSON);
-          
-      } catch (conversionError) {
-        console.error('[GAS DEBUG] レスポンス変換エラー:', conversionError.message);
-        return ContentService
-          .createTextOutput(JSON.stringify({
-            error: 'レスポンス変換エラー: ' + conversionError.message
-          }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
+      // handleUpdateMeterReadingsは既にContentServiceオブジェクトを返すので、直接返す
+      return handleUpdateMeterReadings(params);
       
     } else {
       console.log('[GAS DEBUG] 無効なアクション（doPost）:', params.action);
