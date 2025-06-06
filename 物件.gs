@@ -107,8 +107,7 @@ function getGasVersion() {
     corsFixed: true,
     contentServiceUsed: true,
     description: "🎯 v4-CORS-FIX版：ContentService使用でCORS問題完全解決！",
-    注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください",
-    debugInfo: {
+    注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
       deploymentCheck: "✅ v4-CORS-FIX版が正常に動作中 - POSTリクエスト対応完了",
@@ -118,10 +117,10 @@ function getGasVersion() {
     }
   };
 }
-}
 
 // メイン処理関数
-function doGet(e) {  try {
+function doGet(e) {
+  try {
     const timestamp = new Date().toISOString();
     console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: 2025-06-06-v4-CORS-FIX`);
     console.log(`[GAS DEBUG] 🎯 CORS問題解決版が動作中です（ContentService使用）!`);
