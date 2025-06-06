@@ -6,17 +6,59 @@
 
 // CORSヘッダーを設定するヘルパー関数
 function createCorsResponse(data) {
-  const jsonOutput = ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  // データの詳細ログ
+  console.log(`[GAS DEBUG] createCorsResponse呼び出し - dataタイプ: ${typeof data}, 値:`, data);
   
-  // GASでは、WebアプリとしてデプロイされたアプリケーションはCORSが自動的に処理される
-  return jsonOutput;
+  // dataがundefinedまたはnullの場合のデフォルト値
+  const safeData = data !== undefined && data !== null ? data : { 
+    error: 'データが提供されませんでした',
+    debugInfo: {
+      dataType: typeof data,
+      dataValue: data,
+      timestamp: new Date().toISOString()
+    }
+  };
+  
+  try {
+    const jsonString = JSON.stringify(safeData);
+    const jsonOutput = ContentService.createTextOutput(jsonString)
+      .setMimeType(ContentService.MimeType.JSON);
+    
+    console.log(`[GAS DEBUG] CORS対応レスポンス生成成功: ${jsonString.length}文字`);
+    return jsonOutput;
+  } catch (error) {
+    // JSON.stringifyでエラーが発生した場合の代替処理
+    console.error('[GAS DEBUG] JSON.stringify エラー:', error.message);
+    const fallbackData = { 
+      error: 'レスポンス生成エラー', 
+      originalError: error.message,
+      dataType: typeof safeData,
+      timestamp: new Date().toISOString()
+    };
+    try {
+      const fallbackJson = JSON.stringify(fallbackData);
+      return ContentService.createTextOutput(fallbackJson)
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (fallbackError) {
+      // 最終的な代替処理
+      console.error('[GAS DEBUG] 代替JSON生成もエラー:', fallbackError.message);
+      return ContentService.createTextOutput('{"error":"致命的なレスポンス生成エラー"}')
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
 }
 
 // CORSプリフライトリクエスト（OPTIONSメソッド）を処理
 function doOptions(e) {
-  // OPTIONSリクエストには空のレスポンスを返す
-  return ContentService.createTextOutput('');
+  const timestamp = new Date().toISOString();
+  console.log(`[GAS DEBUG ${timestamp}] doOptions プリフライトリクエスト処理`);
+  
+  // プリフライトリクエストに対するCORSヘッダー付きレスポンス
+  const response = ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
+  
+  console.log(`[GAS DEBUG] CORSプリフライトレスポンス送信完了`);
+  return response;
 }
 
 // 🔥 デプロイメント確認用テスト関数 🔥
@@ -813,28 +855,64 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
 
 // GAS doPost: CORS対応・POSTアクション分岐
 function doPost(e) {
+  const timestamp = new Date().toISOString();
+  console.log(`[GAS DEBUG ${timestamp}] doPost開始 - POSTリクエスト受信`);
+  
   try {
+    // POSTデータの詳細ログ
+    if (e) {
+      console.log('[GAS DEBUG] eオブジェクト存在:', !!e);
+      console.log('[GAS DEBUG] e.postData存在:', !!(e && e.postData));
+      console.log('[GAS DEBUG] e.postData.contents存在:', !!(e && e.postData && e.postData.contents));
+      
+      if (e.postData) {
+        console.log('[GAS DEBUG] POSTデータタイプ:', e.postData.type);
+        console.log('[GAS DEBUG] POSTデータ長:', e.postData.contents ? e.postData.contents.length : 'null');
+      }
+    }
+    
     let params = {};
     if (e && e.postData && e.postData.contents) {
       try {
         params = JSON.parse(e.postData.contents);
+        console.log('[GAS DEBUG] JSON解析成功 - action:', params.action);
+        console.log('[GAS DEBUG] POSTパラメータキー:', Object.keys(params));
       } catch (parseError) {
-        return createCorsResponse({ error: 'POSTデータのJSON解析に失敗しました: ' + parseError.message });
+        console.error('[GAS DEBUG] JSON解析エラー:', parseError.message);
+        return createCorsResponse({ 
+          error: 'POSTデータのJSON解析に失敗しました: ' + parseError.message,
+          rawData: e.postData.contents ? e.postData.contents.substring(0, 100) : 'null'
+        });
       }
     } else {
-      return createCorsResponse({ error: 'POSTデータがありません。' });
+      console.error('[GAS DEBUG] POSTデータがありません');
+      return createCorsResponse({ 
+        error: 'POSTデータがありません。',
+        debugInfo: {
+          hasE: !!e,
+          hasPostData: !!(e && e.postData),
+          hasContents: !!(e && e.postData && e.postData.contents)
+        }
+      });
     }
 
     if (params.action === 'updateMeterReadings') {
+      console.log('[GAS DEBUG] updateMeterReadingsアクション処理開始（doPost）');
       return handleUpdateMeterReadings(params);
     } else {
+      console.log('[GAS DEBUG] 無効なアクション（doPost）:', params.action);
       return createCorsResponse({
         error: '無効なアクションです（doPost）',
         receivedAction: params.action,
-        expected: ['updateMeterReadings']
+        expected: ['updateMeterReadings'],
+        timestamp: timestamp
       });
     }
   } catch (error) {
-    return createCorsResponse({ error: 'doPostサーバーエラー: ' + error.message });
+    console.error('[GAS DEBUG] doPostサーバーエラー:', error.message, error.stack);
+    return createCorsResponse({ 
+      error: 'doPostサーバーエラー: ' + error.message,
+      timestamp: timestamp
+    });
   }
 }

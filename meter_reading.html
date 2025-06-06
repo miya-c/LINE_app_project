@@ -533,37 +533,79 @@
         if (photoCount > 0) {
           console.log(`[meter_reading] 総写真数: ${photoCount}, 総写真データサイズ: ${Math.round(totalDataSize / 1024)}KB`);
         }
+          setUpdating(true);
         
-        setUpdating(true);
+        const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+        const requestData = {
+          action: 'updateMeterReadings',
+          propertyId,
+          roomId,
+          readings: updatedReadings
+        };
+        
         try {
-          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
-          // POSTリクエストで送信（URL長制限回避）
-          const requestData = {
-            action: 'updateMeterReadings',
-            propertyId,
-            roomId,
-            readings: updatedReadings
-          };
-          
+          // まずPOSTで試行（写真データの場合は必須）
           console.log('[meter_reading] 更新リクエスト送信 (POST方式):', requestData);
           
-          const response = await fetch(currentGasUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-          });          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[meter_reading] サーバーエラー:', response.status, errorText);
-            throw new Error(`サーバーエラー (${response.status}): ${response.statusText || 'Unknown error'}`);
+          let result = null;
+          let usedMethod = 'POST';
+          
+          try {
+            const postResponse = await fetch(currentGasUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestData),
+              mode: 'cors'
+            });            
+            if (postResponse.ok) {
+              result = await postResponse.json();
+              console.log('[meter_reading] POST更新成功:', result);
+            } else {
+              const errorText = await postResponse.text();
+              console.warn('[meter_reading] POST失敗、フォールバックを試行:', postResponse.status, errorText);
+              throw new Error(`POST failed: ${postResponse.status}`);
+            }
+          } catch (postError) {
+            console.warn('[meter_reading] POST方式でエラー、GETフォールバックを試行:', postError.message);
+            
+            // 写真データがある場合はGETフォールバックしない
+            const hasPhotoData = updatedReadings.some(r => r.photoData);
+            if (hasPhotoData) {
+              throw new Error('写真データを含む更新はPOST方式でのみ可能です。CORSエラーが発生している可能性があります。Google Apps Scriptの再デプロイが必要です。');
+            }
+            
+            // 写真なしの場合のみGETフォールバック
+            console.log('[meter_reading] 写真なしデータ、GETフォールバック実行');
+            usedMethod = 'GET (fallback)';
+            
+            const params = new URLSearchParams({
+              action: 'updateMeterReadings',
+              propertyId,
+              roomId,
+              readings: JSON.stringify(updatedReadings)
+            });
+            
+            const getUrl = `${currentGasUrl}?${params}`;
+            console.log('[meter_reading] GETフォールバックURL長:', getUrl.length);
+            
+            if (getUrl.length > 8000) {
+              throw new Error('データサイズが大きすぎます。POSTリクエストが必要です。');
+            }
+            
+            const getResponse = await fetch(getUrl, { method: 'GET' });
+            if (!getResponse.ok) {
+              const errorText = await getResponse.text();
+              throw new Error(`GETフォールバックも失敗 (${getResponse.status}): ${errorText}`);
+            }
+            
+            result = await getResponse.json();
+            console.log('[meter_reading] GETフォールバック成功:', result);
           }
           
-          const result = await response.json();
-          console.log('[meter_reading] 更新レスポンス:', result);
-          
-          if (result.success) {
-            displayToast('検針データが正常に更新されました');
+          if (result && result.success) {
+            displayToast(`検針データが正常に更新されました (${usedMethod})`);
             setInputErrors({}); // Clear errors on success
             
             // 写真状態をリセット
@@ -571,7 +613,7 @@
             
             await loadMeterReadings(propertyId, roomId);
           } else {
-            throw new Error(result.error || '指示数の更新に失敗しました。');
+            throw new Error(result?.error || '指示数の更新に失敗しました。');
           }
         } catch (error) {
           console.error('[meter_reading] handleUpdateReadings error:', error);
