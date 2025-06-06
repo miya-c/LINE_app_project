@@ -280,59 +280,144 @@
             parts.push(`前々々回: ${r.threeTimesPrevious}`);
         }
         return parts; // 配列を直接返す
-      };
-
-      const handleFileSelection = (event, date) => {
+      };      const handleFileSelection = (event, date) => {
         const file = event.target.files[0];
         if (file) {
           console.log('[meter_reading] ファイルが選択されました:', file.name, 'for date:', date);
           
+          // ファイルサイズ検証（10MB制限）
+          const maxSize = 10 * 1024 * 1024; // 10MB
+          if (file.size > maxSize) {
+            console.error('[meter_reading] ファイルサイズが大きすぎます:', Math.round(file.size / 1024 / 1024), 'MB');
+            displayToast(`ファイルサイズが大きすぎます（${Math.round(file.size / 1024 / 1024)}MB）。10MB以下の画像を選択してください。`);
+            return;
+          }
+          
+          // ファイル形式検証
+          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+          if (!allowedTypes.includes(file.type)) {
+            console.error('[meter_reading] サポートされていないファイル形式:', file.type);
+            displayToast(`サポートされていないファイル形式です（${file.type}）。JPEG、PNG、WebP形式の画像を選択してください。`);
+            return;
+          }
+          
+          console.log('[meter_reading] ファイル検証OK - サイズ:', Math.round(file.size / 1024), 'KB, 形式:', file.type);
+          
           const reader = new FileReader();
           reader.onload = (readerEvent) => {
-            const base64PhotoData = readerEvent.target.result;
-            const inputElement = document.querySelector(`input[data-date="${date}"]`);
-            if (inputElement) {
-              inputElement.setAttribute('data-new-photo', base64PhotoData);
-              console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
+            try {
+              const base64PhotoData = readerEvent.target.result;
               
-              // 写真状態を更新
-              setPhotoStates(prev => ({...prev, [date]: true}));
+              // Base64データの検証
+              if (!base64PhotoData || !base64PhotoData.startsWith('data:image/')) {
+                console.error('[meter_reading] 無効なBase64画像データ');
+                displayToast('画像データの処理に失敗しました。別の画像を試してください。');
+                return;
+              }
               
-              displayToast('写真を設定しました。');
-            } else {
-              console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
-              displayToast('写真データを紐付ける入力フィールドが見つかりませんでした。');
+              // Base64データのサイズ再確認
+              const base64Size = (base64PhotoData.length * 3) / 4;
+              if (base64Size > maxSize) {
+                console.error('[meter_reading] Base64データが大きすぎます:', Math.round(base64Size / 1024 / 1024), 'MB');
+                displayToast('画像データが大きすぎます。より小さな画像を選択してください。');
+                return;
+              }
+              
+              // Base64データの形式検証
+              const base64Parts = base64PhotoData.split(',');
+              if (base64Parts.length !== 2 || !base64Parts[1] || base64Parts[1].length === 0) {
+                console.error('[meter_reading] Base64データの形式が正しくありません');
+                displayToast('画像データの形式が正しくありません。別の画像を試してください。');
+                return;
+              }
+              
+              const inputElement = document.querySelector(`input[data-date="${date}"]`);
+              if (inputElement) {
+                inputElement.setAttribute('data-new-photo', base64PhotoData);
+                console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
+                console.log('[meter_reading] Base64データサイズ:', Math.round(base64Size / 1024), 'KB');
+                
+                // 写真状態を更新
+                setPhotoStates(prev => ({...prev, [date]: true}));
+                
+                displayToast('写真を設定しました。');
+              } else {
+                console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
+                displayToast('写真データを紐付ける入力フィールドが見つかりませんでした。');
+              }
+            } catch (error) {
+              console.error('[meter_reading] 写真データ処理エラー:', error);
+              displayToast('写真データの処理中にエラーが発生しました。');
             }
           };
-          reader.onerror = () => {
-            console.error('[meter_reading] File reading error');
-            displayToast('ファイルの読み込み中にエラーが発生しました。');
+          reader.onerror = (error) => {
+            console.error('[meter_reading] File reading error:', error);
+            displayToast('ファイルの読み込み中にエラーが発生しました。別の画像を試してください。');
           };
-          reader.readAsDataURL(file);
+          
+          // ファイル読み込み開始
+          try {
+            reader.readAsDataURL(file);
+          } catch (readError) {
+            console.error('[meter_reading] ファイル読み込み開始エラー:', readError);
+            displayToast('ファイルの読み込みを開始できませんでした。');
+          }
         }
         
+        // クリーンアップ
         if (event.target.parentElement === document.body) {
           document.body.removeChild(event.target);
         }
-      };
-
-      const handleCameraClick = (date) => {
+      };      const handleCameraClick = (date) => {
         console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
         
         try {
+          // ブラウザがFile APIをサポートしているかチェック
+          if (!window.File || !window.FileReader) {
+            console.error('[meter_reading] ブラウザがFile APIをサポートしていません');
+            displayToast('お使いのブラウザは画像アップロードをサポートしていません。最新のブラウザをご利用ください。');
+            return;
+          }
+          
           const fileInput = document.createElement('input');
           fileInput.type = 'file';
-          fileInput.accept = 'image/*';
-          fileInput.capture = 'environment';
+          fileInput.accept = 'image/jpeg,image/png,image/webp'; // より具体的な形式指定
+          fileInput.capture = 'environment'; // 背面カメラを優先
           fileInput.style.display = 'none';
           
-          fileInput.onchange = (e) => handleFileSelection(e, date);
+          // タイムアウト処理を追加
+          const timeout = setTimeout(() => {
+            if (fileInput.parentElement === document.body) {
+              document.body.removeChild(fileInput);
+            }
+            console.log('[meter_reading] ファイル選択がタイムアウトしました');
+          }, 60000); // 60秒後にクリーンアップ
+          
+          fileInput.onchange = (e) => {
+            clearTimeout(timeout);
+            try {
+              handleFileSelection(e, date);
+            } catch (selectionError) {
+              console.error('[meter_reading] ファイル選択処理エラー:', selectionError);
+              displayToast('画像の処理中にエラーが発生しました。');
+            }
+          };
+          
+          // キャンセル処理
+          fileInput.oncancel = () => {
+            clearTimeout(timeout);
+            console.log('[meter_reading] ファイル選択がキャンセルされました');
+            if (fileInput.parentElement === document.body) {
+              document.body.removeChild(fileInput);
+            }
+          };
           
           document.body.appendChild(fileInput);
           fileInput.click();
+          
         } catch (error) {
-          console.error('[meter_reading] 写真の取得または処理に失敗しました:', error);
-          displayToast('写真の処理中に予期せぬエラーが発生しました。');
+          console.error('[meter_reading] カメラ起動エラー:', error);
+          displayToast('カメラの起動に失敗しました。デバイスの設定を確認してください。');
         }
       };
 

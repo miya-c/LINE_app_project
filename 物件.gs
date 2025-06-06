@@ -530,11 +530,6 @@ function handleUpdateMeterReadings(params) {
     // 実際のスプレッドシート更新処理
     console.log("[GAS] 更新対象検針データ:", readings.length, "件");
     
-    // 検針データを実際に保存する処理
-    // 注意: この例では仮想的な処理を行っています
-    // 実際の実装では、物件IDと部屋IDに基づいて適切なスプレッドシートの行を特定し、
-    // 検針データを保存する必要があります
-    
     const updatedReadings = [];
     
     for (let i = 0; i < readings.length; i++) {
@@ -542,62 +537,119 @@ function handleUpdateMeterReadings(params) {
       
       // 各検針データの妥当性をチェック
       if (reading.date && reading.currentReading !== undefined) {
-        // **実際のスプレッドシート更新処理を実装**
-        const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
-        const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-        const sheet = spreadsheet.getSheetByName('inspection_data');
-        
-        if (sheet) {
+        try {
+          // **実際のスプレッドシート更新処理を実装**
+          const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+          const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+          const sheet = spreadsheet.getSheetByName('inspection_data');
+          
+          if (!sheet) {
+            console.error("[GAS] inspection_data シートが見つかりません");
+            continue;
+          }
+
           const data = sheet.getDataRange().getValues();
+          if (data.length < 2) {
+            console.error("[GAS] スプレッドシートにデータが不足しています");
+            continue;
+          }
+
+          // ヘッダーから列インデックスを動的に取得
+          const headers = data[0];
+          const columnIndexes = {
+            propertyId: headers.indexOf('物件ID'),
+            roomId: headers.indexOf('部屋ID'),
+            date: headers.indexOf('検針日時'),
+            currentReading: headers.indexOf('今回の指示数'),
+            previousReading: headers.indexOf('前回指示数'),
+            usage: headers.indexOf('今回使用量'),
+            warningFlag: headers.indexOf('警告フラグ'),
+            photoUrl: headers.indexOf('写真URL')
+          };
+
+          // 必要な列が存在するかチェック
+          const missingColumns = Object.entries(columnIndexes)
+            .filter(([key, index]) => index === -1)
+            .map(([key, index]) => key);
+
+          if (missingColumns.length > 0) {
+            console.error("[GAS] 必要な列が見つかりません:", missingColumns);
+            continue;
+          }
           
           // 対象行を検索して更新
+          let targetRowFound = false;
           for (let j = 1; j < data.length; j++) {
             const row = data[j];
-            const rowPropertyId = String(row[2]).trim(); // 物件IDは列2
-            const rowRoomId = String(row[3]).trim();     // 部屋IDは列3
+            const rowPropertyId = String(row[columnIndexes.propertyId]).trim();
+            const rowRoomId = String(row[columnIndexes.roomId]).trim();
             
             if (rowPropertyId === String(propertyId).trim() && rowRoomId === String(roomId).trim()) {
               console.log(`[GAS] 更新対象行発見: 行${j + 1}`);
+              targetRowFound = true;
               
               const currentDate = new Date().toLocaleDateString('ja-JP');
               
-              // 実際のセル更新
-              sheet.getRange(j + 1, 6).setValue(currentDate);           // 検針日時（列5+1=6）
-              sheet.getRange(j + 1, 10).setValue(reading.currentReading); // 今回の指示数（列9+1=10）
+              // 実際のセル更新（1ベースのインデックスに変換）
+              sheet.getRange(j + 1, columnIndexes.date + 1).setValue(currentDate);
+              sheet.getRange(j + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
               
               // 使用量計算（今回 - 前回）
               const currentReading = parseFloat(reading.currentReading) || 0;
-              const previousReading = parseFloat(row[10]) || 0; // 前回指示数（列10）
+              const previousReading = parseFloat(row[columnIndexes.previousReading]) || 0;
               const usage = previousReading > 0 ? Math.max(0, currentReading - previousReading) : 0;
-              sheet.getRange(j + 1, 9).setValue(usage); // 今回使用量（列8+1=9）
+              sheet.getRange(j + 1, columnIndexes.usage + 1).setValue(usage);
               
               // 写真URLがある場合は更新
               if (reading.photoData) {
-                // Base64データをGoogle Driveに保存してURLを取得
-                const photoUrl = savePhotoToGoogleDrive(reading.photoData, propertyId, roomId, currentDate);
-                if (photoUrl) {
-                  sheet.getRange(j + 1, 14).setValue(photoUrl); // 写真URL（列13+1=14）
+                try {
+                  // Base64データをGoogle Driveに保存してURLを取得
+                  const photoUrl = savePhotoToGoogleDrive(reading.photoData, propertyId, roomId, currentDate);
+                  if (photoUrl) {
+                    sheet.getRange(j + 1, columnIndexes.photoUrl + 1).setValue(photoUrl);
+                    console.log(`[GAS] 写真URL更新完了: ${photoUrl}`);
+                  } else {
+                    console.error("[GAS] 写真保存に失敗しました");
+                  }
+                } catch (photoError) {
+                  console.error("[GAS] 写真保存エラー:", photoError.message);
+                  // 写真保存に失敗しても他の更新は続行
                 }
               }
               
               // 警告フラグを「正常」に設定
-              sheet.getRange(j + 1, 7).setValue('正常'); // 警告フラグ（列6+1=7）
+              sheet.getRange(j + 1, columnIndexes.warningFlag + 1).setValue('正常');
               
               console.log(`[GAS] 行${j + 1}を更新完了 - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
               break; // 対象行は1つだけなので、見つかったら終了
             }
           }
+
+          if (!targetRowFound) {
+            console.error(`[GAS] 対象データが見つかりません - 物件ID: ${propertyId}, 部屋ID: ${roomId}`);
+            continue;
+          }
+        
+          updatedReadings.push({
+            date: reading.date,
+            currentReading: reading.currentReading,
+            photoUrl: reading.photoData ? '写真更新済み' : '',
+            usage: reading.usage || '',
+            updated: true
+          });
+          
+          console.log(`[GAS] 検針データ更新: ${reading.date} - 指示数: ${reading.currentReading}`);
+
+        } catch (updateError) {
+          console.error(`[GAS] 検針データ更新エラー (行${i}):`, updateError.message);
+          // エラーが発生した場合でも他のデータの処理は続行
+          updatedReadings.push({
+            date: reading.date,
+            currentReading: reading.currentReading,
+            error: updateError.message,
+            updated: false
+          });
         }
-        
-        updatedReadings.push({
-          date: reading.date,
-          currentReading: reading.currentReading,
-          photoUrl: reading.photoData ? '写真更新済み' : '',
-          usage: reading.usage || '',
-          updated: true
-        });
-        
-        console.log(`[GAS] 検針データ更新: ${reading.date} - 指示数: ${reading.currentReading}`);
       }
     }
     
@@ -605,8 +657,9 @@ function handleUpdateMeterReadings(params) {
     
     return createCorsResponse({
       success: true,
-      message: `${updatedReadings.length}件の検針データを更新しました。`,
-      updatedCount: updatedReadings.length,
+      message: `${updatedReadings.length}件の検針データを処理しました。`,
+      updatedCount: updatedReadings.filter(r => r.updated).length,
+      errorCount: updatedReadings.filter(r => !r.updated).length,
       propertyId: propertyId,
       roomId: roomId,
       updatedReadings: updatedReadings
@@ -624,49 +677,118 @@ function handleUpdateMeterReadings(params) {
 // Base64写真データをGoogle Driveに保存する関数
 function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
   try {
-    if (!base64PhotoData || !base64PhotoData.startsWith('data:image/')) {
-      console.log('[GAS] savePhotoToGoogleDrive: 無効な写真データ');
+    console.log('[GAS] savePhotoToGoogleDrive 開始');
+    
+    // 入力パラメータの検証
+    if (!base64PhotoData || typeof base64PhotoData !== 'string') {
+      console.error('[GAS] savePhotoToGoogleDrive: 写真データが無効です (空またはstring型でない)');
+      return null;
+    }
+    
+    if (!base64PhotoData.startsWith('data:image/')) {
+      console.error('[GAS] savePhotoToGoogleDrive: 写真データがBase64画像形式ではありません');
+      return null;
+    }
+    
+    if (!propertyId || !roomId) {
+      console.error('[GAS] savePhotoToGoogleDrive: 物件IDまたは部屋IDが不足しています');
+      return null;
+    }
+    
+    // Base64データのサイズ検証（約10MB制限）
+    const base64Size = (base64PhotoData.length * 3) / 4; // Base64のサイズ概算
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (base64Size > maxSize) {
+      console.error(`[GAS] savePhotoToGoogleDrive: ファイルサイズが大きすぎます (${Math.round(base64Size / 1024 / 1024)}MB > 10MB)`);
       return null;
     }
     
     // Google Driveフォルダの準備
     const driveFolderName = "WaterMeterReadingPhotos";
     let driveFolder;
-    const folders = DriveApp.getFoldersByName(driveFolderName);
-    if (folders.hasNext()) {
-      driveFolder = folders.next();
-    } else {
-      driveFolder = DriveApp.createFolder(driveFolderName);
-      console.log(`[GAS] Google Driveにフォルダ '${driveFolderName}' を作成しました。`);
+    try {
+      const folders = DriveApp.getFoldersByName(driveFolderName);
+      if (folders.hasNext()) {
+        driveFolder = folders.next();
+        console.log(`[GAS] 既存のGoogle Driveフォルダを使用: ${driveFolderName}`);
+      } else {
+        driveFolder = DriveApp.createFolder(driveFolderName);
+        console.log(`[GAS] Google Driveにフォルダ '${driveFolderName}' を作成しました。`);
+      }
+    } catch (folderError) {
+      console.error('[GAS] Google Driveフォルダの準備に失敗:', folderError.message);
+      throw new Error('Google Driveフォルダの準備に失敗しました');
     }
     
     // Base64データを処理
-    const base64Data = base64PhotoData.split(',')[1];
+    const dataParts = base64PhotoData.split(',');
+    if (dataParts.length !== 2) {
+      console.error('[GAS] savePhotoToGoogleDrive: Base64データの形式が正しくありません');
+      return null;
+    }
+    
+    const base64Data = dataParts[1];
+    if (!base64Data || base64Data.length === 0) {
+      console.error('[GAS] savePhotoToGoogleDrive: Base64データが空です');
+      return null;
+    }
+    
     const contentType = base64PhotoData.substring(
       base64PhotoData.indexOf(':') + 1, 
       base64PhotoData.indexOf(';')
     );
     
-    const imageBlob = Utilities.newBlob(
-      Utilities.base64Decode(base64Data), 
-      contentType
-    );
+    // サポートされている画像形式の検証
+    const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!supportedTypes.includes(contentType)) {
+      console.error(`[GAS] savePhotoToGoogleDrive: サポートされていない画像形式: ${contentType}`);
+      return null;
+    }
     
-    // ファイル名生成
+    let imageBlob;
+    try {
+      imageBlob = Utilities.newBlob(
+        Utilities.base64Decode(base64Data), 
+        contentType
+      );
+    } catch (blobError) {
+      console.error('[GAS] Base64デコードに失敗:', blobError.message);
+      throw new Error('画像データのデコードに失敗しました');
+    }
+    
+    // ファイル名生成（特殊文字を除去）
     const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
     const fileExtension = contentType.split('/')[1] || 'jpg';
-    const fileName = `meter_${propertyId}_${roomId}_${date}_${timestamp}.${fileExtension}`;
+    const safePropertyId = String(propertyId).replace(/[^a-zA-Z0-9]/g, '');
+    const safeRoomId = String(roomId).replace(/[^a-zA-Z0-9]/g, '');
+    const safeDate = String(date).replace(/[^a-zA-Z0-9]/g, '');
+    const fileName = `meter_${safePropertyId}_${safeRoomId}_${safeDate}_${timestamp}.${fileExtension}`;
     
     // ファイル保存
-    const imageFile = driveFolder.createFile(imageBlob.setName(fileName));
-    const photoUrl = imageFile.getUrl();
+    let imageFile;
+    try {
+      imageFile = driveFolder.createFile(imageBlob.setName(fileName));
+      console.log(`[GAS] ファイル作成成功: ${fileName}`);
+    } catch (fileError) {
+      console.error('[GAS] Google Driveファイル作成に失敗:', fileError.message);
+      throw new Error('Google Driveへのファイル保存に失敗しました');
+    }
     
+    // ファイルを公開可能に設定
+    try {
+      imageFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (sharingError) {
+      console.warn('[GAS] ファイル共有設定に失敗（URLは取得可能）:', sharingError.message);
+    }
+    
+    const photoUrl = imageFile.getUrl();
     console.log(`[GAS] 写真をGoogle Driveに保存しました: ${fileName}, URL: ${photoUrl}`);
+    
     return photoUrl;
     
   } catch (error) {
-    console.error('[GAS] savePhotoToGoogleDrive エラー:', error.message, error.stack);
-    return null;
+    console.error('[GAS] savePhotoToGoogleDrive エラー:', error.message);
+    console.error('[GAS] スタックトレース:', error.stack);    return null;
   }
 }
 
