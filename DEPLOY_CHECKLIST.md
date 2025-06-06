@@ -1,12 +1,51 @@
-# 🚀 デプロイチェックリスト - 2025-06-05
+# 🚀 デプロイチェックリスト - 2025-01-02 CORS修正版
 
 ## ✅ **完了済み**
 - [x] 古いファイルの整理・削除
-- [x] GASスクリプト統合 (`物件.gs` v2025-06-05-v1)
+- [x] GASスクリプト統合 (`物件.gs` v2025-01-02-v2)
 - [x] フロントエンド実装完了
 - [x] 検針完了ボタン実装
-- [x] CORS対応
+- [x] CORS対応完了
 - [x] sessionStorage URL管理
+- [x] GET方式での検針データ更新実装
+- [x] React状態管理修正
+
+## 🎯 **緊急対応が必要**
+
+### ❌ **現在の問題**
+- Google Apps Script が古いバージョンでデプロイされている
+- `updateMeterReadings` と `updateInspectionComplete` が「無効なアクション」エラーになる
+
+### 🔧 **解決方法**
+
+#### 手順1: Google Apps Script の更新・再デプロイ
+```
+1. https://script.google.com/ にアクセス
+2. 既存の水道検針プロジェクトを開く
+3. 現在のコードを全て削除
+4. 物件.gs (v2025-01-02-v2) の内容を全てコピー&ペースト
+5. 保存 (Ctrl+S)
+6. 「デプロイ」→「新しいデプロイ」または「デプロイを管理」→「新しいバージョン」
+7. 実行ユーザーを「自分」、アクセス許可を「全員」に設定
+8. 新しいWeb App URLを取得
+```
+
+#### 手順2: バージョン確認テスト
+```
+新しいURLで以下をテスト:
+https://script.google.com/macros/s/[新しいURL]/exec?action=getVersion
+
+期待される応答:
+{
+  "version": "2025-01-02-v2",
+  "availableActions": ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
+  "description": "CORS修正完了版：updateMeterReadings/updateInspectionComplete対応"
+}
+```
+
+#### 手順3: フロントエンドのURL更新
+- property_select.html で新しいGAS URLに変更
+- テストページで動作確認
 
 ## 🎯 **今すぐ必要なアクション**
 
