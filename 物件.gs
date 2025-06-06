@@ -678,6 +678,8 @@ function handleUpdateMeterReadings(params) {
 function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
   try {
     console.log('[GAS] savePhotoToGoogleDrive 開始');
+    console.log(`[GAS] パラメータ確認 - propertyId: ${propertyId}, roomId: ${roomId}, date: ${date}`);
+    console.log(`[GAS] Base64データサイズ: ${base64PhotoData ? base64PhotoData.length : 'null'} 文字`);
     
     // 入力パラメータの検証
     if (!base64PhotoData || typeof base64PhotoData !== 'string') {
@@ -687,6 +689,7 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
     
     if (!base64PhotoData.startsWith('data:image/')) {
       console.error('[GAS] savePhotoToGoogleDrive: 写真データがBase64画像形式ではありません');
+      console.error(`[GAS] データの開始部分: ${base64PhotoData.substring(0, 50)}...`);
       return null;
     }
     
@@ -703,6 +706,8 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
       return null;
     }
     
+    console.log(`[GAS] Base64データサイズ検証完了: ${Math.round(base64Size / 1024)}KB`);
+    
     // Google Driveフォルダの準備
     const driveFolderName = "WaterMeterReadingPhotos";
     let driveFolder;
@@ -717,6 +722,7 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
       }
     } catch (folderError) {
       console.error('[GAS] Google Driveフォルダの準備に失敗:', folderError.message);
+      console.error('[GAS] フォルダエラーのスタックトレース:', folderError.stack);
       throw new Error('Google Driveフォルダの準備に失敗しました');
     }
     
@@ -724,6 +730,7 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
     const dataParts = base64PhotoData.split(',');
     if (dataParts.length !== 2) {
       console.error('[GAS] savePhotoToGoogleDrive: Base64データの形式が正しくありません');
+      console.error(`[GAS] データ部分の数: ${dataParts.length}, 期待値: 2`);
       return null;
     }
     
@@ -738,21 +745,27 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
       base64PhotoData.indexOf(';')
     );
     
+    console.log(`[GAS] コンテンツタイプ: ${contentType}`);
+    
     // サポートされている画像形式の検証
     const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!supportedTypes.includes(contentType)) {
       console.error(`[GAS] savePhotoToGoogleDrive: サポートされていない画像形式: ${contentType}`);
+      console.error(`[GAS] サポート形式: ${supportedTypes.join(', ')}`);
       return null;
     }
     
     let imageBlob;
     try {
+      console.log('[GAS] Base64デコード開始...');
       imageBlob = Utilities.newBlob(
         Utilities.base64Decode(base64Data), 
         contentType
       );
+      console.log('[GAS] Base64デコード成功');
     } catch (blobError) {
       console.error('[GAS] Base64デコードに失敗:', blobError.message);
+      console.error('[GAS] デコードエラーのスタックトレース:', blobError.stack);
       throw new Error('画像データのデコードに失敗しました');
     }
     
@@ -764,19 +777,25 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
     const safeDate = String(date).replace(/[^a-zA-Z0-9]/g, '');
     const fileName = `meter_${safePropertyId}_${safeRoomId}_${safeDate}_${timestamp}.${fileExtension}`;
     
+    console.log(`[GAS] 生成されたファイル名: ${fileName}`);
+    
     // ファイル保存
     let imageFile;
     try {
+      console.log('[GAS] Google Driveにファイル作成開始...');
       imageFile = driveFolder.createFile(imageBlob.setName(fileName));
       console.log(`[GAS] ファイル作成成功: ${fileName}`);
     } catch (fileError) {
       console.error('[GAS] Google Driveファイル作成に失敗:', fileError.message);
+      console.error('[GAS] ファイル作成エラーのスタックトレース:', fileError.stack);
       throw new Error('Google Driveへのファイル保存に失敗しました');
     }
     
     // ファイルを公開可能に設定
     try {
+      console.log('[GAS] ファイル共有設定開始...');
       imageFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      console.log('[GAS] ファイル共有設定成功');
     } catch (sharingError) {
       console.warn('[GAS] ファイル共有設定に失敗（URLは取得可能）:', sharingError.message);
     }
@@ -785,10 +804,10 @@ function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
     console.log(`[GAS] 写真をGoogle Driveに保存しました: ${fileName}, URL: ${photoUrl}`);
     
     return photoUrl;
-    
-  } catch (error) {
+      } catch (error) {
     console.error('[GAS] savePhotoToGoogleDrive エラー:', error.message);
-    console.error('[GAS] スタックトレース:', error.stack);    return null;
+    console.error('[GAS] スタックトレース:', error.stack);
+    return null;
   }
 }
 

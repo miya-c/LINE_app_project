@@ -283,7 +283,7 @@
       };      const handleFileSelection = (event, date) => {
         const file = event.target.files[0];
         if (file) {
-          console.log('[meter_reading] ファイルが選択されました:', file.name, 'for date:', date);
+          console.log('[meter_reading] ファイルが選択されました:', file.name, 'サイズ:', Math.round(file.size / 1024), 'KB, 形式:', file.type, 'for date:', date);
           
           // ファイルサイズ検証（10MB制限）
           const maxSize = 10 * 1024 * 1024; // 10MB
@@ -303,20 +303,27 @@
           
           console.log('[meter_reading] ファイル検証OK - サイズ:', Math.round(file.size / 1024), 'KB, 形式:', file.type);
           
+          // ファイル読み込み開始をユーザーに通知
+          displayToast('画像を処理中です...');
+          
           const reader = new FileReader();
           reader.onload = (readerEvent) => {
             try {
               const base64PhotoData = readerEvent.target.result;
+              console.log('[meter_reading] Base64変換完了, データサイズ:', base64PhotoData ? base64PhotoData.length : 'null', '文字');
               
               // Base64データの検証
               if (!base64PhotoData || !base64PhotoData.startsWith('data:image/')) {
                 console.error('[meter_reading] 無効なBase64画像データ');
+                console.error('[meter_reading] データの開始部分:', base64PhotoData ? base64PhotoData.substring(0, 50) : 'null');
                 displayToast('画像データの処理に失敗しました。別の画像を試してください。');
                 return;
               }
               
               // Base64データのサイズ再確認
               const base64Size = (base64PhotoData.length * 3) / 4;
+              console.log('[meter_reading] Base64データサイズ確認:', Math.round(base64Size / 1024), 'KB');
+              
               if (base64Size > maxSize) {
                 console.error('[meter_reading] Base64データが大きすぎます:', Math.round(base64Size / 1024 / 1024), 'MB');
                 displayToast('画像データが大きすぎます。より小さな画像を選択してください。');
@@ -327,9 +334,12 @@
               const base64Parts = base64PhotoData.split(',');
               if (base64Parts.length !== 2 || !base64Parts[1] || base64Parts[1].length === 0) {
                 console.error('[meter_reading] Base64データの形式が正しくありません');
+                console.error('[meter_reading] 分割後の部分数:', base64Parts.length);
                 displayToast('画像データの形式が正しくありません。別の画像を試してください。');
                 return;
               }
+              
+              console.log('[meter_reading] Base64データ検証完了');
               
               const inputElement = document.querySelector(`input[data-date="${date}"]`);
               if (inputElement) {
@@ -347,6 +357,7 @@
               }
             } catch (error) {
               console.error('[meter_reading] 写真データ処理エラー:', error);
+              console.error('[meter_reading] エラースタックトレース:', error.stack);
               displayToast('写真データの処理中にエラーが発生しました。');
             }
           };
@@ -357,6 +368,7 @@
           
           // ファイル読み込み開始
           try {
+            console.log('[meter_reading] ファイル読み込み開始...');
             reader.readAsDataURL(file);
           } catch (readError) {
             console.error('[meter_reading] ファイル読み込み開始エラー:', readError);
