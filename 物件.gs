@@ -449,13 +449,57 @@ function handleUpdateMeterReadings(params) {
       
       // 各検針データの妥当性をチェック
       if (reading.date && reading.currentReading !== undefined) {
-        // ここで実際のスプレッドシートに書き込む処理を実装
-        // 例: 特定のシートの特定の行列に値を書き込む
+        // **実際のスプレッドシート更新処理を実装**
+        const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+        const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+        const sheet = spreadsheet.getSheetByName('inspection_data');
+        
+        if (sheet) {
+          const data = sheet.getDataRange().getValues();
+          
+          // 対象行を検索して更新
+          for (let j = 1; j < data.length; j++) {
+            const row = data[j];
+            const rowPropertyId = String(row[2]).trim(); // 物件IDは列2
+            const rowRoomId = String(row[3]).trim();     // 部屋IDは列3
+            
+            if (rowPropertyId === String(propertyId).trim() && rowRoomId === String(roomId).trim()) {
+              console.log(`[GAS] 更新対象行発見: 行${j + 1}`);
+              
+              const currentDate = new Date().toLocaleDateString('ja-JP');
+              
+              // 実際のセル更新
+              sheet.getRange(j + 1, 6).setValue(currentDate);           // 検針日時（列5+1=6）
+              sheet.getRange(j + 1, 10).setValue(reading.currentReading); // 今回の指示数（列9+1=10）
+              
+              // 使用量計算（今回 - 前回）
+              const currentReading = parseFloat(reading.currentReading) || 0;
+              const previousReading = parseFloat(row[10]) || 0; // 前回指示数（列10）
+              const usage = previousReading > 0 ? Math.max(0, currentReading - previousReading) : 0;
+              sheet.getRange(j + 1, 9).setValue(usage); // 今回使用量（列8+1=9）
+              
+              // 写真URLがある場合は更新
+              if (reading.photoData) {
+                // Base64データをGoogle Driveに保存してURLを取得
+                const photoUrl = savePhotoToGoogleDrive(reading.photoData, propertyId, roomId, currentDate);
+                if (photoUrl) {
+                  sheet.getRange(j + 1, 14).setValue(photoUrl); // 写真URL（列13+1=14）
+                }
+              }
+              
+              // 警告フラグを「正常」に設定
+              sheet.getRange(j + 1, 7).setValue('正常'); // 警告フラグ（列6+1=7）
+              
+              console.log(`[GAS] 行${j + 1}を更新完了 - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
+              break; // 対象行は1つだけなので、見つかったら終了
+            }
+          }
+        }
         
         updatedReadings.push({
           date: reading.date,
           currentReading: reading.currentReading,
-          photoUrl: reading.photoUrl || '',
+          photoUrl: reading.photoData ? '写真更新済み' : '',
           usage: reading.usage || '',
           updated: true
         });
@@ -484,129 +528,52 @@ function handleUpdateMeterReadings(params) {
   }
 }
 
-// 実際の検針データを取得する関数
-function getActualMeterReadings(propertyId, roomId) {
+// Base64写真データをGoogle Driveに保存する関数
+function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
   try {
-    console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
-    
-    // 実際のスプレッドシート処理
-    // 検針データスプレッドシートを取得
-    const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
-    console.log("[GAS] 検針データスプレッドシートID:", spreadsheetId);
-    
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    console.log("[GAS] スプレッドシート取得成功");
-    
-    // すべてのシート名を表示
-    const allSheets = spreadsheet.getSheets();
-    console.log("[GAS] 📋 利用可能なシート一覧:", allSheets.map(s => s.getName()));
-      const sheet = spreadsheet.getSheetByName('inspection_data');
-    
-    if (!sheet) {
-      console.log("[GAS] ❌ 'inspection_data'シートが見つかりません");
-      console.log("[GAS] 利用可能なシート名:", allSheets.map(s => s.getName()));
-      
-      // 代替シート名をチェック
-      const possibleSheetNames = ['検針データ', '検針', 'meter_reading', 'データ', 'Sheet1'];
-      for (const sheetName of possibleSheetNames) {
-        const altSheet = spreadsheet.getSheetByName(sheetName);
-        if (altSheet) {
-          console.log("[GAS] ✅ 代替シート発見:", sheetName);
-          const altData = altSheet.getDataRange().getValues();
-          console.log("[GAS] 代替シートのヘッダー:", altData[0]);
-          break;
-        }
-      }
-      
-      return [];
-    }    console.log("[GAS] inspection_dataシート取得成功");
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    console.log("[GAS] inspection_dataヘッダー:", headers);
-    console.log("[GAS] 総行数:", data.length);
-    
-    // 「パルハイツ平田」を含むデータをすべて表示（デバッグ用）
-    console.log("[GAS] 🔍 「パルハイツ平田」を含む行を検索中...");
-    for (let i = 1; i < Math.min(data.length, 50); i++) { // 最初の50行まで
-      const row = data[i];
-      if (row[1] && row[1].toString().includes('パルハイツ平田')) { // 物件名は列1
-        console.log(`[GAS] 「パルハイツ平田」発見 - 行${i}:`, row);
-      }
+    if (!base64PhotoData || !base64PhotoData.startsWith('data:image/')) {
+      console.log('[GAS] savePhotoToGoogleDrive: 無効な写真データ');
+      return null;
     }
     
-    // 最初の数行のデータを表示
-    console.log("[GAS] 最初の5行のデータ:", JSON.stringify(data.slice(0, 5)));
-    
-    // 検索対象のpropertyIdとroomIdを詳細表示
-    console.log("[GAS] 🔍 検索対象 propertyId:", `"${propertyId}"`, "型:", typeof propertyId);
-    console.log("[GAS] 🔍 検索対象 roomId:", `"${roomId}"`, "型:", typeof roomId);
-    
-    // 該当する物件・部屋のデータをフィルタ
-    const filteredData = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const rowPropertyId = row[2] ? row[2].toString() : ''; // 物件IDは列2
-      const rowRoomId = row[3] ? row[3].toString() : '';     // 部屋IDは列3
-      
-      // より詳細なデバッグログ
-      if (i <= 20) { // 最初の20行のみ詳細ログ
-        console.log(`[GAS] 行${i}詳細:`);
-        console.log(`  - row[2] (propertyId): "${row[2]}" (型:${typeof row[2]}) -> 文字列化: "${rowPropertyId}"`);
-        console.log(`  - row[3] (roomId): "${row[3]}" (型:${typeof row[3]}) -> 文字列化: "${rowRoomId}"`);
-        console.log(`  - 検索条件: propertyId="${propertyId}", roomId="${roomId}"`);
-      }
-      
-      // より柔軟なマッチング条件
-      const propertyMatch = 
-        rowPropertyId === propertyId ||
-        rowPropertyId.trim() === propertyId.trim() ||
-        rowPropertyId.toLowerCase().trim() === propertyId.toLowerCase().trim();
-      
-      const roomMatch = 
-        rowRoomId === roomId ||
-        rowRoomId.trim() === roomId.trim() ||
-        rowRoomId.toLowerCase().trim() === roomId.toLowerCase().trim();
-      
-      if (i <= 20) {
-        console.log(`  - propertyMatch: ${propertyMatch} (完全一致: ${rowPropertyId === propertyId}, trim一致: ${rowPropertyId.trim() === propertyId.trim()})`);
-        console.log(`  - roomMatch: ${roomMatch} (完全一致: ${rowRoomId === roomId}, trim一致: ${rowRoomId.trim() === roomId.trim()})`);
-      }
-      
-      if (propertyMatch && roomMatch) {
-        console.log(`[GAS] ✅ マッチした行を発見: 行${i}`);
-        console.log(`[GAS] マッチした行の全データ:`, row);
-        const reading = {
-          date: row[5] || '',                                    // 検針日時は列5
-          currentReading: row[9] ? row[9].toString() : '',       // 今回の指示数は列9
-          previousReading: row[10] ? row[10].toString() : '',    // 前回指示数は列10
-          previousPreviousReading: row[11] ? row[11].toString() : '', // 前々回指示数は列11
-          threeTimesPrevious: row[12] ? row[12].toString() : '', // 前々々回指示数は列12
-          photoUrl: row[13] || '',                               // 写真URLは列13
-          status: row[6] || '未入力',                            // 警告フラグは列6
-          usage: row[8] ? row[8].toString() : ''                 // 今回使用量は列8
-        };
-        filteredData.push(reading);
-      }
+    // Google Driveフォルダの準備
+    const driveFolderName = "WaterMeterReadingPhotos";
+    let driveFolder;
+    const folders = DriveApp.getFoldersByName(driveFolderName);
+    if (folders.hasNext()) {
+      driveFolder = folders.next();
+    } else {
+      driveFolder = DriveApp.createFolder(driveFolderName);
+      console.log(`[GAS] Google Driveにフォルダ '${driveFolderName}' を作成しました。`);
     }
     
-    console.log("[GAS] フィルタされた検針データ:", filteredData);
-    console.log("[GAS] フィルタされたデータ件数:", filteredData.length);
+    // Base64データを処理
+    const base64Data = base64PhotoData.split(',')[1];
+    const contentType = base64PhotoData.substring(
+      base64PhotoData.indexOf(':') + 1, 
+      base64PhotoData.indexOf(';')
+    );
     
-    // データが見つからない場合は空配列を返す
-    if (filteredData.length === 0) {
-      console.log("[GAS] ❌ 該当するデータが見つかりませんでした");
-      console.log("[GAS] 検索条件:", "propertyId=" + propertyId, "roomId=" + roomId);
-      return [];
-    }
+    const imageBlob = Utilities.newBlob(
+      Utilities.base64Decode(base64Data), 
+      contentType
+    );
     
-    // 最新のデータを1つだけ返す（日付順でソート）
-    filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
-    return filteredData.length > 0 ? [filteredData[0]] : []; // 最新の1件、または空配列
+    // ファイル名生成
+    const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
+    const fileExtension = contentType.split('/')[1] || 'jpg';
+    const fileName = `meter_${propertyId}_${roomId}_${date}_${timestamp}.${fileExtension}`;
+    
+    // ファイル保存
+    const imageFile = driveFolder.createFile(imageBlob.setName(fileName));
+    const photoUrl = imageFile.getUrl();
+    
+    console.log(`[GAS] 写真をGoogle Driveに保存しました: ${fileName}, URL: ${photoUrl}`);
+    return photoUrl;
     
   } catch (error) {
-    console.error("[GAS] getActualMeterReadings エラー:", error.message, error.stack);
-    return [];
+    console.error('[GAS] savePhotoToGoogleDrive エラー:', error.message, error.stack);
+    return null;
   }
 }
 
