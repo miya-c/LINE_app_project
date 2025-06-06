@@ -516,29 +516,47 @@
         if (updatedReadings.length === 0) {
           displayToast('更新するデータがありません。');
           return;
+        }        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        
+        // データサイズのチェックとログ出力
+        let totalDataSize = 0;
+        let photoCount = 0;
+        updatedReadings.forEach((reading, index) => {
+          if (reading.photoData) {
+            photoCount++;
+            const photoSize = reading.photoData.length;
+            totalDataSize += photoSize;
+            console.log(`[meter_reading] 写真データ${index + 1}: ${Math.round(photoSize / 1024)}KB`);
+          }
+        });
+        
+        if (photoCount > 0) {
+          console.log(`[meter_reading] 総写真数: ${photoCount}, 総写真データサイズ: ${Math.round(totalDataSize / 1024)}KB`);
         }
-
-        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        
         setUpdating(true);
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
-          // GETリクエストで送信（CORS回避のため）
-          const params = new URLSearchParams({
+          // POSTリクエストで送信（URL長制限回避）
+          const requestData = {
             action: 'updateMeterReadings',
             propertyId,
             roomId,
-            readings: JSON.stringify(updatedReadings)
-          });
+            readings: updatedReadings
+          };
           
-          const requestUrl = `${currentGasUrl}?${params.toString()}`;
-          console.log('[meter_reading] 更新リクエスト送信 (GET方式):', requestUrl);
+          console.log('[meter_reading] 更新リクエスト送信 (POST方式):', requestData);
           
-          const response = await fetch(requestUrl, {
-            method: 'GET'
-          });
-
-          if (!response.ok) {
-            throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
+          const response = await fetch(currentGasUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+          });          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[meter_reading] サーバーエラー:', response.status, errorText);
+            throw new Error(`サーバーエラー (${response.status}): ${response.statusText || 'Unknown error'}`);
           }
           
           const result = await response.json();
@@ -547,6 +565,10 @@
           if (result.success) {
             displayToast('検針データが正常に更新されました');
             setInputErrors({}); // Clear errors on success
+            
+            // 写真状態をリセット
+            setPhotoStates({});
+            
             await loadMeterReadings(propertyId, roomId);
           } else {
             throw new Error(result.error || '指示数の更新に失敗しました。');
