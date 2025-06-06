@@ -466,8 +466,8 @@ const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
 
 const INSPECTION_DATA_HEADERS = [
   '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
-  '検針日時', '警告フラグ', '写真URL', '標準偏差値',
-  '今回使用量', '今回の指示数', '前回指示数', '前々回指示数'
+  '検針日時', '警告フラグ', '標準偏差値', '今回使用量',
+  '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数', '写真URL'
 ];
 
 function createInitialInspectionData() {

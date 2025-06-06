@@ -500,15 +500,14 @@ function getActualMeterReadings(propertyId, roomId) {
     // すべてのシート名を表示
     const allSheets = spreadsheet.getSheets();
     console.log("[GAS] 📋 利用可能なシート一覧:", allSheets.map(s => s.getName()));
-    
-    const sheet = spreadsheet.getSheetByName('検針データ');
+      const sheet = spreadsheet.getSheetByName('inspection_data');
     
     if (!sheet) {
-      console.log("[GAS] ❌ '検針データ'シートが見つかりません");
+      console.log("[GAS] ❌ 'inspection_data'シートが見つかりません");
       console.log("[GAS] 利用可能なシート名:", allSheets.map(s => s.getName()));
       
       // 代替シート名をチェック
-      const possibleSheetNames = ['検針', 'meter_reading', 'データ', 'Sheet1'];
+      const possibleSheetNames = ['検針データ', '検針', 'meter_reading', 'データ', 'Sheet1'];
       for (const sheetName of possibleSheetNames) {
         const altSheet = spreadsheet.getSheetByName(sheetName);
         if (altSheet) {
@@ -520,20 +519,18 @@ function getActualMeterReadings(propertyId, roomId) {
       }
       
       return [];
-    }
-
-    console.log("[GAS] 検針データシート取得成功");
+    }    console.log("[GAS] inspection_dataシート取得成功");
     
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    console.log("[GAS] 検針データヘッダー:", headers);
+    console.log("[GAS] inspection_dataヘッダー:", headers);
     console.log("[GAS] 総行数:", data.length);
     
     // 「パルハイツ平田」を含むデータをすべて表示（デバッグ用）
     console.log("[GAS] 🔍 「パルハイツ平田」を含む行を検索中...");
     for (let i = 1; i < Math.min(data.length, 50); i++) { // 最初の50行まで
       const row = data[i];
-      if (row[0] && row[0].toString().includes('パルハイツ平田')) {
+      if (row[1] && row[1].toString().includes('パルハイツ平田')) { // 物件名は列1
         console.log(`[GAS] 「パルハイツ平田」発見 - 行${i}:`, row);
       }
     }
@@ -549,14 +546,14 @@ function getActualMeterReadings(propertyId, roomId) {
     const filteredData = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const rowPropertyId = row[0] ? row[0].toString() : '';
-      const rowRoomId = row[1] ? row[1].toString() : '';
+      const rowPropertyId = row[2] ? row[2].toString() : ''; // 物件IDは列2
+      const rowRoomId = row[3] ? row[3].toString() : '';     // 部屋IDは列3
       
       // より詳細なデバッグログ
       if (i <= 20) { // 最初の20行のみ詳細ログ
         console.log(`[GAS] 行${i}詳細:`);
-        console.log(`  - row[0] (propertyId): "${row[0]}" (型:${typeof row[0]}) -> 文字列化: "${rowPropertyId}"`);
-        console.log(`  - row[1] (roomId): "${row[1]}" (型:${typeof row[1]}) -> 文字列化: "${rowRoomId}"`);
+        console.log(`  - row[2] (propertyId): "${row[2]}" (型:${typeof row[2]}) -> 文字列化: "${rowPropertyId}"`);
+        console.log(`  - row[3] (roomId): "${row[3]}" (型:${typeof row[3]}) -> 文字列化: "${rowRoomId}"`);
         console.log(`  - 検索条件: propertyId="${propertyId}", roomId="${roomId}"`);
       }
       
@@ -580,14 +577,14 @@ function getActualMeterReadings(propertyId, roomId) {
         console.log(`[GAS] ✅ マッチした行を発見: 行${i}`);
         console.log(`[GAS] マッチした行の全データ:`, row);
         const reading = {
-          date: row[2] || '',
-          currentReading: row[3] ? row[3].toString() : '',
-          previousReading: row[4] ? row[4].toString() : '',
-          previousPreviousReading: row[5] ? row[5].toString() : '',
-          threeTimesPrevious: row[6] ? row[6].toString() : '',
-          photoUrl: row[7] || '',
-          status: row[8] || '未入力',
-          usage: row[9] ? row[9].toString() : ''
+          date: row[5] || '',                                    // 検針日時は列5
+          currentReading: row[9] ? row[9].toString() : '',       // 今回の指示数は列9
+          previousReading: row[10] ? row[10].toString() : '',    // 前回指示数は列10
+          previousPreviousReading: row[11] ? row[11].toString() : '', // 前々回指示数は列11
+          threeTimesPrevious: row[12] ? row[12].toString() : '', // 前々々回指示数は列12
+          photoUrl: row[13] || '',                               // 写真URLは列13
+          status: row[6] || '未入力',                            // 警告フラグは列6
+          usage: row[8] ? row[8].toString() : ''                 // 今回使用量は列8
         };
         filteredData.push(reading);
       }
