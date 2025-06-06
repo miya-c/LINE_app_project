@@ -373,28 +373,121 @@ function handleGetMeterReadings(params) {
       });
     }
     
-    // 実際の検針データから取得する処理
     console.log("[GAS] 検針データ取得開始 - 実データを検索中");
     
     // 実際のスプレッドシートから検針データを取得
     const readings = getActualMeterReadings(propertyId, roomId);
     
     console.log("[GAS] 検針データ取得完了 - 実データ:", readings);
+    console.log("[GAS] readings配列長:", readings ? readings.length : 'null');
     
-    return createCorsResponse({
-      readings: readings,
+    // ✅ フロントエンドが期待する形式でレスポンスを返す
+    const response = {
+      readings: readings || [],
       debugInfo: {
         propertyId: propertyId,
         roomId: roomId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        dataCount: readings ? readings.length : 0,
+        source: "inspection_data sheet",
+        version: "v3-DEBUG"
       }
-    });
+    };
+    
+    console.log("[GAS] 最終レスポンス:", JSON.stringify(response));
+    
+    return createCorsResponse(response);
     
   } catch (error) {
     console.error("[GAS] handleGetMeterReadings エラー:", error.message, error.stack);
     return createCorsResponse({ 
-      error: "検針データの取得中にエラーが発生しました: " + error.message 
+      error: "検針データの取得中にエラーが発生しました: " + error.message,
+      readings: [],
+      debugInfo: {
+        errorDetails: error.message,
+        timestamp: new Date().toISOString()
+      }
     });
+  }
+}
+
+// 実際の検針データを取得する関数
+function getActualMeterReadings(propertyId, roomId) {
+  try {
+    console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
+    
+    const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    
+    // ✅ 正しいシート名を使用
+    const sheet = spreadsheet.getSheetByName('inspection_data');
+    
+    if (!sheet) {
+      console.log("[GAS] ❌ 'inspection_data'シートが見つかりません");
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    console.log("[GAS] inspection_data ヘッダー:", headers);
+    
+    // ヘッダーから列インデックスを取得
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const roomIdIndex = headers.indexOf('部屋ID');
+    const dateIndex = headers.indexOf('検針日時');
+    const currentReadingIndex = headers.indexOf('今回の指示数');
+    const previousReadingIndex = headers.indexOf('前回指示数');
+    const previousPreviousReadingIndex = headers.indexOf('前々回指示数');
+    const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
+    const usageIndex = headers.indexOf('今回使用量');
+    const photoUrlIndex = headers.indexOf('写真URL');
+    const warningFlagIndex = headers.indexOf('警告フラグ');
+    
+    console.log("[GAS] 列インデックス確認:");
+    console.log("[GAS] - 物件ID:", propertyIdIndex);
+    console.log("[GAS] - 部屋ID:", roomIdIndex);
+    console.log("[GAS] - 検針日時:", dateIndex);
+    console.log("[GAS] - 今回の指示数:", currentReadingIndex);
+    
+    // 対象部屋のデータを検索
+    const readings = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const rowPropertyId = String(row[propertyIdIndex]).trim();
+      const rowRoomId = String(row[roomIdIndex]).trim();
+      
+      console.log(`[GAS] 行${i}: propertyId="${rowPropertyId}" roomId="${rowRoomId}"`);
+      
+      if (rowPropertyId === String(propertyId).trim() && 
+          rowRoomId === String(roomId).trim()) {
+        
+        console.log(`[GAS] ✅ マッチング成功: 行${i}`);
+        
+        const reading = {
+          date: row[dateIndex] || '',
+          currentReading: row[currentReadingIndex] || '',
+          previousReading: row[previousReadingIndex] || '',
+          previousPreviousReading: row[previousPreviousReadingIndex] || '',
+          threeTimesPrevious: row[threeTimesPreviousIndex] || '',
+          usage: row[usageIndex] || '',
+          photoUrl: row[photoUrlIndex] || '',
+          status: row[warningFlagIndex] || '未入力'
+        };
+        
+        console.log("[GAS] 作成された検針データ:", reading);
+        readings.push(reading);
+        break; // 通常1部屋につき1レコード
+      }
+    }
+    
+    console.log("[GAS] 最終的な検針データ取得完了:", readings);
+    console.log("[GAS] 返却する配列の長さ:", readings.length);
+    
+    return readings;
+    
+  } catch (error) {
+    console.error("[GAS] getActualMeterReadings エラー:", error.message);
+    return [];
   }
 }
 
