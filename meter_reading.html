@@ -236,15 +236,21 @@
         }
       };
 
-      // Helper function for usage calculation (consistent with original logic)
+      // Helper function for usage calculation (matches backend logic)
       const calculateUsageDisplay = (currentStr, previousStr) => {
         const current = parseFloat(currentStr);
         const previous = parseFloat(previousStr);
-        if (!isNaN(current) && !isNaN(previous) && previousStr && previousStr !== 'N/A') {
+        
+        // 前回データがない場合、または前回が0の場合は現在の値をそのまま使用量とする
+        if (!isNaN(current)) {
+          if (!previousStr || previousStr === 'N/A' || previousStr === '' || previous === 0 || isNaN(previous)) {
+            return current.toString(); // 新規検針の場合：現在の値をそのまま使用量とする
+          }
+          // 前回データがある場合は差分を計算
           const usage = current - previous;
-          return (usage >= 0 ? usage : 0).toString(); // Return as string, ensure non-negative
+          return (usage >= 0 ? usage : 0).toString();
         }
-        return '0'; // Default if cannot calculate
+        return '0'; // 現在の値が無効な場合のデフォルト
       };
 
       // Helper for previous readings text - 配列を返すように修正
@@ -590,7 +596,8 @@
                     <div className="mantine-alert info">
                       <h3 className="mantine-text weight-600">初回検針</h3>
                       <p className="mantine-text">
-                        この部屋の検針データはまだありません。下のフォームから最初の検針データを入力してください。
+                        この部屋の検針データはまだありません。下のフォームから最初の検針データを入力してください。<br/>
+                        <strong>初回検針では、入力された指示数がそのまま今月の使用量として記録されます。</strong>
                       </p>
                     </div>
                     <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)', padding: 'var(--mantine-spacing-md)'}}>
@@ -626,12 +633,16 @@
                               if (e.target.value === '') {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: '初回検針では指示数の入力が必須です。'}));
                                   e.target.style.borderColor = 'var(--mantine-color-red-6)';
+                                  setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' }));
                               } else if (isNaN(numericValue) || numericValue < 0) {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: '0以上の数値を入力してください。'}));
                                   e.target.style.borderColor = 'var(--mantine-color-red-6)';
+                                  setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' }));
                               } else {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
                                   e.target.style.borderColor = '';
+                                  // 初回検針の場合、前回データがないので現在の値をそのまま使用量とする
+                                  setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(e.target.value, '') }));
                               }
                             }}
                           />
@@ -640,6 +651,28 @@
                               {inputErrors[new Date().toISOString().split('T')[0]]}
                             </div>
                           )}
+                        </div>
+                        <div>
+                          <label className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回使用量:</label>
+                          <div style={{
+                            backgroundColor: '#e3f2fd',
+                            border: '1px solid var(--mantine-color-gray-3)',
+                            borderRadius: 'var(--mantine-radius-sm)',
+                            padding: '10px',
+                            fontSize: '1.2rem',
+                            fontWeight: 'bold',
+                            color: 'var(--mantine-color-blue-7)',
+                            minHeight: '44px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            {usageStates[new Date().toISOString().split('T')[0]] !== undefined 
+                              ? `${usageStates[new Date().toISOString().split('T')[0]]}${usageStates[new Date().toISOString().split('T')[0]] !== '-' ? '㎥' : ''}`
+                              : '-'}
+                          </div>
+                          <div style={{ fontSize: '0.85em', color: 'var(--mantine-color-gray-6)', marginTop: '4px' }}>
+                            ※初回検針では、指示数がそのまま使用量になります
+                          </div>
                         </div>
                       </div>
                     </div>
