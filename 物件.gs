@@ -756,11 +756,22 @@ function handleUpdateMeterReadings(params) {
             // 実際のセル更新（1ベースのインデックスに変換）
             sheet.getRange(j + 1, columnIndexes.date + 1).setValue(currentDate);
             sheet.getRange(j + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
-            // 使用量計算（今回 - 前回）
-            const currentReading = parseFloat(reading.currentReading) || 0;
-            const previousReading = parseFloat(row[columnIndexes.previousReading]) || 0;
-            const usage = previousReading > 0 ? Math.max(0, currentReading - previousReading) : 0;
-            console.log(`[GAS] 使用量計算: 今回=${currentReading}, 前回=${previousReading}, 使用量=${usage}`);
+            // ✅ 使用量計算の修正（新規検針データ対応）
+            const currentReadingValue = parseFloat(reading.currentReading) || 0;
+            const previousReadingValue = parseFloat(row[columnIndexes.previousReading]) || 0;
+            
+            let usage;
+            // 前回指示数が0または空の場合（新規検針データ）
+            if (previousReadingValue === 0 || row[columnIndexes.previousReading] === '' || row[columnIndexes.previousReading] === null) {
+              // 新規検針の場合は今回の指示数をそのまま使用量とする
+              usage = currentReadingValue;
+              console.log(`[GAS] 新規検針データ - 今回指示数をそのまま使用量として設定: ${usage}`);
+            } else {
+              // 前回データがある場合は差分を計算
+              usage = Math.max(0, currentReadingValue - previousReadingValue);
+              console.log(`[GAS] 既存データ更新 - 使用量計算: 今回=${currentReadingValue}, 前回=${previousReadingValue}, 使用量=${usage}`);
+            }
+            
             sheet.getRange(j + 1, columnIndexes.usage + 1).setValue(usage);
             // 警告フラグを「正常」に設定
             sheet.getRange(j + 1, columnIndexes.warningFlag + 1).setValue('正常');
@@ -783,10 +794,10 @@ function handleUpdateMeterReadings(params) {
         updatedReadings.push({
           date: effectiveDate, // 修正された日付を使用
           currentReading: reading.currentReading,
-          usage: reading.usage || '',
+          usage: usage || '', // 計算された使用量を返却
           updated: true
         });
-        console.log(`[GAS] 検針データ更新: ${effectiveDate} - 指示数: ${reading.currentReading}`);
+        console.log(`[GAS] 検針データ更新: ${effectiveDate} - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
       } catch (updateError) {
         console.error(`[GAS] 検針データ更新エラー (行${i}):`, updateError.message);
         updatedReadings.push({
@@ -832,7 +843,7 @@ function handleUpdateMeterReadings(params) {
       debugInfo: {
         timestamp: new Date().toISOString(),
         originalReadingsCount: readings.length,
-        version: "v4-ENHANCED-MATCHING"
+        version: "v4-ENHANCED-MATCHING-USAGE-FIX"
       }
     });
     
