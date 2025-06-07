@@ -442,9 +442,15 @@ function processInspectionDataMonthly() {
 }
 
 // --- 0.登録用スクリプト.gs の内容 ---
-// スプレッドシートIDを安全に取得する関数
+// スプレッドシートIDを安全に取得する関数（設定ファイル統合版）
 function getSpreadsheetId() {
   try {
+    // 設定ファイルからIDを取得を試行
+    if (typeof getConfigSpreadsheetId === 'function') {
+      return getConfigSpreadsheetId();
+    }
+    
+    // フォールバック: アクティブなスプレッドシートから取得
     const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     if (activeSpreadsheet) {
       return activeSpreadsheet.getId();
@@ -454,7 +460,8 @@ function getSpreadsheetId() {
     }
   } catch (e) {
     Logger.log(`スプレッドシートID取得エラー: ${e.message}`);
-    return null;
+    // 最終フォールバック
+    return '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
   }
 }
 
@@ -578,13 +585,12 @@ function onOpen() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu('総合カスタム処理');
 
-    menu.addItem('1. 初期検針データ作成 ', 'createInitialInspectionData');
-    menu.addItem('2. マスタから検針データへ物件・部屋反映', 'populateInspectionDataFromMasters');
+    menu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    menu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    menu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
     menu.addSeparator();
-    menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
-    menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
-    menu.addSeparator();
-    menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
+    menu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
+    menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
 
@@ -613,13 +619,12 @@ function createCustomMenu() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu('総合カスタム処理');
 
-    menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
-    menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    menu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    menu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    menu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
     menu.addSeparator();
-    menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
-    menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
-    menu.addSeparator();
-    menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
+    menu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
+    menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
 
@@ -720,13 +725,12 @@ function createCustomMenuOnOpen() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu('総合カスタム処理');
 
-    menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
-    menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    menu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    menu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    menu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
     menu.addSeparator();
-    menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
-    menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
-    menu.addSeparator();
-    menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
+    menu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
+    menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
 
@@ -784,13 +788,12 @@ function forceCreateMenu() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu('総合カスタム処理');
 
-    menu.addItem('1. 初期検針データ作成 (部屋マスタから)', 'createInitialInspectionData');
-    menu.addItem('2. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    menu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    menu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    menu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
     menu.addSeparator();
-    menu.addItem('3. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
-    menu.addItem('4. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
-    menu.addSeparator();
-    menu.addItem('5. 部屋マスタの孤立データ削除 (整合性チェック)', 'cleanUpOrphanedRooms');
+    menu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
+    menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
 

@@ -4,8 +4,20 @@
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
-// スプレッドシートID（実際のIDに変更してください）
-const SPREADSHEET_ID = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+// スプレッドシートIDを設定ファイルから取得
+// getConfigSpreadsheetId() 関数は spreadsheet_config.gs で定義されています
+function getSpreadsheetId() {
+  try {
+    return getConfigSpreadsheetId();
+  } catch (e) {
+    Logger.log(`設定ファイルからスプレッドシートID取得エラー: ${e.message}`);
+    // フォールバック用のID（必要に応じて削除可能）
+    return '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+  }
+}
+
+// 実際に使用されるスプレッドシートID
+const SPREADSHEET_ID = getSpreadsheetId();
 
 // CORSヘッダーを設定するヘルパー関数（シンプル版）
 function createCorsResponse(data) {
