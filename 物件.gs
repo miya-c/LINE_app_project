@@ -489,7 +489,7 @@ function getActualMeterReadings(propertyId, roomId) {
     const headers = data[0];
     console.log("[GAS] inspection_data ヘッダー:", headers);
     
-    // ヘッダーから列インデックスを取得
+    // ヘッダーから列インデックスを取得（写真URL削除）
     const propertyIdIndex = headers.indexOf('物件ID');
     const roomIdIndex = headers.indexOf('部屋ID');
     const dateIndex = headers.indexOf('検針日時');
@@ -498,7 +498,6 @@ function getActualMeterReadings(propertyId, roomId) {
     const previousPreviousReadingIndex = headers.indexOf('前々回指示数');
     const threeTimesPreviousIndex = headers.indexOf('前々々回指示数');
     const usageIndex = headers.indexOf('今回使用量');
-    const photoUrlIndex = headers.indexOf('写真URL');
     const warningFlagIndex = headers.indexOf('警告フラグ');
     
     console.log("[GAS] 列インデックス確認:");
@@ -521,15 +520,82 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
+        // ✅ 日付フィールドの処理を大幅改善
+        let dateValue = row[dateIndex];
+        let formattedDate = '';
+        
+        console.log(`[GAS] 原始日付データ: type="${typeof dateValue}", value="${dateValue}"`);
+        
+        // 日付の処理を強化
+        if (dateValue !== null && dateValue !== undefined && dateValue !== '') {
+          try {
+            if (dateValue instanceof Date) {
+              if (!isNaN(dateValue.getTime())) {
+                formattedDate = dateValue.toISOString().split('T')[0];
+                console.log(`[GAS] Date object変換成功: ${formattedDate}`);
+              } else {
+                console.log("[GAS] 無効なDateオブジェクト、現在日付を使用");
+                formattedDate = new Date().toISOString().split('T')[0];
+              }
+            } else if (typeof dateValue === 'string' && dateValue.trim() !== '') {
+              // 文字列の場合、様々な形式に対応
+              const trimmedDate = dateValue.trim();
+              
+              // YYYY-MM-DD形式の場合
+              if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+                formattedDate = trimmedDate;
+                console.log(`[GAS] YYYY-MM-DD形式確認: ${formattedDate}`);
+              }
+              // YYYY/MM/DD形式の場合
+              else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(trimmedDate)) {
+                const dateParts = trimmedDate.split('/');
+                const year = dateParts[0];
+                const month = dateParts[1].padStart(2, '0');
+                const day = dateParts[2].padStart(2, '0');
+                formattedDate = `${year}-${month}-${day}`;
+                console.log(`[GAS] YYYY/MM/DD形式変換: ${trimmedDate} → ${formattedDate}`);
+              }
+              // その他の文字列形式の場合、Dateオブジェクトで解析を試行
+              else {
+                const parsedDate = new Date(trimmedDate);
+                if (!isNaN(parsedDate.getTime())) {
+                  formattedDate = parsedDate.toISOString().split('T')[0];
+                  console.log(`[GAS] Date.parse成功: ${trimmedDate} → ${formattedDate}`);
+                } else {
+                  console.log(`[GAS] 解析不可能な日付文字列: "${trimmedDate}", 現在日付を使用`);
+                  formattedDate = new Date().toISOString().split('T')[0];
+                }
+              }
+            } else {
+              console.log(`[GAS] 日付値が文字列でもDateでもありません: type="${typeof dateValue}", 現在日付を使用`);
+              formattedDate = new Date().toISOString().split('T')[0];
+            }
+          } catch (dateError) {
+            console.error(`[GAS] 日付変換エラー:`, dateError, `元の値: "${dateValue}"`);
+            formattedDate = new Date().toISOString().split('T')[0];
+          }
+        } else {
+          console.log(`[GAS] 日付フィールドが空またはnull/undefined: "${dateValue}", 現在日付を使用`);
+          formattedDate = new Date().toISOString().split('T')[0];
+        }
+        
+        console.log(`[GAS] 最終的な日付: "${formattedDate}"`);
+        
+        // 最後の安全チェック：まだ空文字の場合は強制的に現在日付を設定
+        if (!formattedDate || formattedDate.trim() === '') {
+          formattedDate = new Date().toISOString().split('T')[0];
+          console.log(`[GAS] 緊急フォールバック: 空文字を現在日付に変更: ${formattedDate}`);
+        }
+        
         const reading = {
-          date: row[dateIndex] || '',
+          date: formattedDate,
           currentReading: row[currentReadingIndex] || '',
           previousReading: row[previousReadingIndex] || '',
           previousPreviousReading: row[previousPreviousReadingIndex] || '',
           threeTimesPrevious: row[threeTimesPreviousIndex] || '',
           usage: row[usageIndex] || '',
-          photoUrl: row[photoUrlIndex] || '',
           status: row[warningFlagIndex] || '未入力'
+          // photoUrl削除済み
         };
         
         console.log("[GAS] 作成された検針データ:", reading);
@@ -552,25 +618,43 @@ function getActualMeterReadings(propertyId, roomId) {
 // 検針データ更新処理
 function handleUpdateMeterReadings(params) {
   try {
-    console.log("[GAS] handleUpdateMeterReadings開始");
-    console.log("[GAS] パラメータ:", JSON.stringify(params));
+    console.log("[GAS] ===== handleUpdateMeterReadings開始 =====");
+    console.log("[GAS] 受信パラメータ全体:", JSON.stringify(params, null, 2));
     
     const propertyId = params.propertyId;
     const roomId = params.roomId;
     let readings = params.readings;
     
+    console.log("[GAS] 抽出されたパラメータ:");
+    console.log("[GAS] - propertyId:", propertyId);
+    console.log("[GAS] - roomId:", roomId);
+    console.log("[GAS] - readings (raw):", readings);
+    console.log("[GAS] - readings type:", typeof readings);
+    
     if (!propertyId || !roomId || !readings) {
-      return createCorsResponse({ 
+      const error = {
         error: "物件ID、部屋ID、検針データがすべて必要です。",
-        receivedParams: params
-      });
+        receivedParams: {
+          hasPropertyId: !!propertyId,
+          hasRoomId: !!roomId,
+          hasReadings: !!readings,
+          propertyId,
+          roomId,
+          readings
+        }
+      };
+      console.log("[GAS] パラメータ不足エラー:", error);
+      return createCorsResponse(error);
     }
     
     // readingsが文字列の場合はJSONとしてパース（GET要求の場合）
     if (typeof readings === 'string') {
       try {
+        console.log("[GAS] readings文字列をJSONパース中...");
         readings = JSON.parse(readings);
+        console.log("[GAS] JSONパース成功:", readings);
       } catch (parseError) {
+        console.error("[GAS] JSONパースエラー:", parseError.message);
         return createCorsResponse({ 
           error: "検針データのJSON解析に失敗しました: " + parseError.message,
           receivedReadings: readings
@@ -579,11 +663,16 @@ function handleUpdateMeterReadings(params) {
     }
     
     if (!Array.isArray(readings)) {
+      console.error("[GAS] readingsが配列ではありません:", typeof readings);
       return createCorsResponse({ 
         error: "検針データは配列形式である必要があります。",
-        receivedType: typeof readings
+        receivedType: typeof readings,
+        receivedValue: readings
       });
     }
+    
+    console.log("[GAS] 有効な検針データ配列:", readings);
+    console.log("[GAS] 配列長:", readings.length);
     
     // 実際のスプレッドシート更新処理
     console.log("[GAS] 更新対象検針データ:", readings.length, "件");
@@ -592,115 +681,159 @@ function handleUpdateMeterReadings(params) {
     
     for (let i = 0; i < readings.length; i++) {
       const reading = readings[i];
+      console.log(`[GAS] 処理中の検針データ ${i + 1}/${readings.length}:`, reading);
       
-      // 各検針データの妥当性をチェック
-      if (reading.date && reading.currentReading !== undefined) {
-        try {
-          // **実際のスプレッドシート更新処理を実装**
-          const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-          const sheet = spreadsheet.getSheetByName('inspection_data');
-          
-          if (!sheet) {
-            console.error("[GAS] inspection_data シートが見つかりません");
-            continue;
-          }
-
-          const data = sheet.getDataRange().getValues();
-          if (data.length < 2) {
-            console.error("[GAS] スプレッドシートにデータが不足しています");
-            continue;
-          }
-
-          // ヘッダーから列インデックスを動的に取得
-          const headers = data[0];
-          const columnIndexes = {
-            propertyId: headers.indexOf('物件ID'),
-            roomId: headers.indexOf('部屋ID'),
-            date: headers.indexOf('検針日時'),
-            currentReading: headers.indexOf('今回の指示数'),
-            previousReading: headers.indexOf('前回指示数'),
-            usage: headers.indexOf('今回使用量'),
-            warningFlag: headers.indexOf('警告フラグ')
-          };
-
-          // 必要な列が存在するかチェック
-          const missingColumns = Object.entries(columnIndexes)
-            .filter(([key, index]) => index === -1)
-            .map(([key, index]) => key);
-
-          if (missingColumns.length > 0) {
-            console.error("[GAS] 必要な列が見つかりません:", missingColumns);
-            continue;
-          }
-          
-          // 対象行を検索して更新
-          let targetRowFound = false;
-          for (let j = 1; j < data.length; j++) {
-            const row = data[j];
-            const rowPropertyId = String(row[columnIndexes.propertyId]).trim();
-            const rowRoomId = String(row[columnIndexes.roomId]).trim();
-            
-            if (rowPropertyId === String(propertyId).trim() && rowRoomId === String(roomId).trim()) {
-              console.log(`[GAS] 更新対象行発見: 行${j + 1}`);
-              targetRowFound = true;
-              
-              const currentDate = new Date().toLocaleDateString('ja-JP');
-              
-              // 実際のセル更新（1ベースのインデックスに変換）
-              sheet.getRange(j + 1, columnIndexes.date + 1).setValue(currentDate);
-              sheet.getRange(j + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
-              
-              // 使用量計算（今回 - 前回）
-              const currentReading = parseFloat(reading.currentReading) || 0;
-              const previousReading = parseFloat(row[columnIndexes.previousReading]) || 0;
-              const usage = previousReading > 0 ? Math.max(0, currentReading - previousReading) : 0;
-              sheet.getRange(j + 1, columnIndexes.usage + 1).setValue(usage);
-              
-              // 警告フラグを「正常」に設定
-              sheet.getRange(j + 1, columnIndexes.warningFlag + 1).setValue('正常');
-              
-              console.log(`[GAS] 行${j + 1}を更新完了 - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
-              break; // 対象行は1つだけなので、見つかったら終了
-            }
-          }
-
-          if (!targetRowFound) {
-            console.error(`[GAS] 対象データが見つかりません - 物件ID: ${propertyId}, 部屋ID: ${roomId}`);
-            continue;
-          }
-        
-          updatedReadings.push({
-            date: reading.date,
-            currentReading: reading.currentReading,
-            usage: reading.usage || '',
-            updated: true
-          });
-          
-          console.log(`[GAS] 検針データ更新: ${reading.date} - 指示数: ${reading.currentReading}`);
-
-        } catch (updateError) {
-          console.error(`[GAS] 検針データ更新エラー (行${i}):`, updateError.message);
-          // エラーが発生した場合でも他のデータの処理は続行
-          updatedReadings.push({
-            date: reading.date,
-            currentReading: reading.currentReading,
-            error: updateError.message,
-            updated: false
-          });
-        }
+      // ✅ 日付の検証と修正を改善
+      let effectiveDate = reading.date;
+      if (!effectiveDate || effectiveDate.trim() === '') {
+        // 空の日付の場合は現在日付（YYYY-MM-DD形式）を設定
+        effectiveDate = new Date().toISOString().split('T')[0];
+        console.log(`[GAS] 空の日付を現在日付に修正: ${effectiveDate}`);
+        // 元のreadingオブジェクトも更新
+        reading.date = effectiveDate;
       }
+      
+      // ✅ データの妥当性チェック（指示数が空でない場合のみ処理）
+      if (reading.currentReading === undefined || reading.currentReading === '' || reading.currentReading === null) {
+        console.log(`[GAS] スキップ - 指示数が空:`, reading);
+        continue;
+      }
+      
+      let skip = false;
+      try {
+        // **実際のスプレッドシート更新処理を実装**
+        const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const sheet = spreadsheet.getSheetByName('inspection_data');
+        if (!sheet) {
+          console.error("[GAS] inspection_data シートが見つかりません");
+          skip = true;
+          throw new Error('inspection_dataシートが見つかりません');
+        }
+        const data = sheet.getDataRange().getValues();
+        if (data.length < 2) {
+          console.error("[GAS] スプレッドシートにデータが不足しています");
+          skip = true;
+          throw new Error('スプレッドシートにデータが不足しています');
+        }
+        // ヘッダーから列インデックスを動的に取得
+        const headers = data[0];
+        const columnIndexes = {
+          propertyId: headers.indexOf('物件ID'),
+          roomId: headers.indexOf('部屋ID'),
+          date: headers.indexOf('検針日時'),
+          currentReading: headers.indexOf('今回の指示数'),
+          previousReading: headers.indexOf('前回指示数'),
+          usage: headers.indexOf('今回使用量'),
+          warningFlag: headers.indexOf('警告フラグ')
+        };
+        // 必要な列が存在するかチェック
+        const missingColumns = Object.entries(columnIndexes)
+          .filter(([key, index]) => index === -1)
+          .map(([key, index]) => key);
+        if (missingColumns.length > 0) {
+          console.error("[GAS] 必要な列が見つかりません:", missingColumns);
+          skip = true;
+          throw new Error('必要な列が見つかりません: ' + missingColumns.join(','));
+        }
+        // 対象行を検索して更新
+        let targetRowFound = false;
+        console.log(`[GAS] 🔍 更新対象検索開始 - 物件ID: "${propertyId}", 部屋ID: "${roomId}"`);
+        for (let j = 1; j < data.length; j++) {
+          const row = data[j];
+          const rowPropertyId = String(row[columnIndexes.propertyId]).trim();
+          const rowRoomId = String(row[columnIndexes.roomId]).trim();
+          console.log(`[GAS] 行${j + 1}: 物件ID="${rowPropertyId}", 部屋ID="${rowRoomId}"`);
+          // ✅ より厳密な文字列比較
+          const propertyIdMatch = rowPropertyId === String(propertyId).trim();
+          const roomIdMatch = rowRoomId === String(roomId).trim();
+          console.log(`[GAS] 行${j + 1} マッチング: 物件ID=${propertyIdMatch}, 部屋ID=${roomIdMatch}`);
+          if (propertyIdMatch && roomIdMatch) {
+            console.log(`[GAS] ✅ 更新対象行発見: 行${j + 1}`);
+            targetRowFound = true;
+            // ✅ 日付形式を統一（日本語形式ではなくYYYY-MM-DD形式を使用）
+            const currentDate = new Date().toISOString().split('T')[0];
+            console.log(`[GAS] 更新開始 - 行${j + 1}, 日付: ${currentDate}, 指示数: ${reading.currentReading}`);
+            // 実際のセル更新（1ベースのインデックスに変換）
+            sheet.getRange(j + 1, columnIndexes.date + 1).setValue(currentDate);
+            sheet.getRange(j + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
+            // 使用量計算（今回 - 前回）
+            const currentReading = parseFloat(reading.currentReading) || 0;
+            const previousReading = parseFloat(row[columnIndexes.previousReading]) || 0;
+            const usage = previousReading > 0 ? Math.max(0, currentReading - previousReading) : 0;
+            console.log(`[GAS] 使用量計算: 今回=${currentReading}, 前回=${previousReading}, 使用量=${usage}`);
+            sheet.getRange(j + 1, columnIndexes.usage + 1).setValue(usage);
+            // 警告フラグを「正常」に設定
+            sheet.getRange(j + 1, columnIndexes.warningFlag + 1).setValue('正常');
+            console.log(`[GAS] ✅ 行${j + 1}を更新完了 - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
+            break; // 対象行は1つだけなので、見つかったら終了
+          }
+        }
+        if (!targetRowFound) {
+          console.error(`[GAS] ❌ 対象データが見つかりません`);
+          console.error(`[GAS] 検索条件 - 物件ID: "${propertyId}", 部屋ID: "${roomId}"`);
+          console.error(`[GAS] 利用可能なデータ行数: ${data.length - 1}`);
+          // 利用可能なデータの最初の数行を表示
+          for (let k = 1; k < Math.min(6, data.length); k++) {
+            const row = data[k];
+            console.error(`[GAS] データ行${k}: 物件ID="${row[columnIndexes.propertyId]}", 部屋ID="${row[columnIndexes.roomId]}"`);
+          }
+          skip = true;
+          throw new Error('対象データが見つかりません');
+        }
+        updatedReadings.push({
+          date: effectiveDate, // 修正された日付を使用
+          currentReading: reading.currentReading,
+          usage: reading.usage || '',
+          updated: true
+        });
+        console.log(`[GAS] 検針データ更新: ${effectiveDate} - 指示数: ${reading.currentReading}`);
+      } catch (updateError) {
+        console.error(`[GAS] 検針データ更新エラー (行${i}):`, updateError.message);
+        updatedReadings.push({
+          date: effectiveDate, // 修正された日付を使用
+          currentReading: reading.currentReading,
+          error: updateError.message,
+          updated: false
+        });
+        skip = true;
+      }
+      if (skip) continue;
     }
     
-    console.log("[GAS] 検針データ更新完了");
+    console.log("[GAS] ===== 検針データ更新処理完了 =====");
+    console.log(`[GAS] 総処理件数: ${updatedReadings.length}`);
+    console.log(`[GAS] 成功件数: ${updatedReadings.filter(r => r.updated).length}`);
+    console.log(`[GAS] エラー件数: ${updatedReadings.filter(r => !r.updated).length}`);
+    
+    const successCount = updatedReadings.filter(r => r.updated).length;
+    const errorCount = updatedReadings.filter(r => !r.updated).length;
+    
+    // メッセージを詳細に
+    let message = '';
+    if (successCount > 0 && errorCount === 0) {
+      message = `✅ ${successCount}件の検針データを正常に更新しました。`;
+    } else if (successCount > 0 && errorCount > 0) {
+      message = `⚠️ ${successCount}件の検針データを更新しました（${errorCount}件でエラーが発生）。`;
+    } else if (successCount === 0 && errorCount > 0) {
+      message = `❌ 検針データの更新に失敗しました（${errorCount}件でエラー）。`;
+    } else {
+      message = `ℹ️ 更新するデータがありませんでした。`;
+    }
     
     return createCorsResponse({
-      success: true,
-      message: `${updatedReadings.length}件の検針データを処理しました。`,
-      updatedCount: updatedReadings.filter(r => r.updated).length,
-      errorCount: updatedReadings.filter(r => !r.updated).length,
+      success: successCount > 0,
+      message: message,
+      updatedCount: successCount,
+      errorCount: errorCount,
+      totalProcessed: updatedReadings.length,
       propertyId: propertyId,
       roomId: roomId,
-      updatedReadings: updatedReadings
+      updatedReadings: updatedReadings,
+      debugInfo: {
+        timestamp: new Date().toISOString(),
+        originalReadingsCount: readings.length,
+        version: "v4-ENHANCED-MATCHING"
+      }
     });
     
   } catch (error) {
