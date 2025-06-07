@@ -26,6 +26,8 @@
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState(null);
       const [woffInitialized, setWoffInitialized] = React.useState(false);
+      const [isNavigating, setIsNavigating] = React.useState(false);
+      const [navigationMessage, setNavigationMessage] = React.useState('');
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
@@ -101,55 +103,55 @@
       }, [woffInitialized]);
 
       const handleBackToPropertySelect = () => {
-        // ローディング画面を表示
-        showLoadingScreen();
+        setIsNavigating(true);
+        setNavigationMessage('画面を切り替えています...');
         // 短い遅延の後に画面遷移
         setTimeout(() => {
           window.location.href = 'property_select.html';
         }, 300);
       };
 
-      const showLoadingScreen = () => {
-        // ローディング画面のHTML
-        const loadingHTML = `
-          <div id="loading-overlay" style="
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 50000;
-          ">
-            <div style="
-              width: 40px;
-              height: 40px;
-              border: 4px solid #f3f3f3;
-              border-top: 4px solid #3498db;
-              border-radius: 50%;
-              animation: spin 1s linear infinite;
-            "></div>
-            <p style="
-              margin-top: 16px;
-              color: #666;
-              font-size: 14px;
-            ">画面を切り替えています...</p>
-            <style>
+      // LoadingOverlayコンポーネント
+      const LoadingOverlay = ({ message }) => (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 50000,
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          <p style={{
+            marginTop: '16px',
+            color: '#666',
+            fontSize: '14px',
+            textAlign: 'center',
+          }}>
+            {message}
+          </p>
+          <style>
+            {`
               @keyframes spin {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
               }
-            </style>
-          </div>
-        `;
-        
-        // ローディング画面をbodyに追加
-        document.body.insertAdjacentHTML('beforeend', loadingHTML);
-      };
+            `}
+          </style>
+        </div>
+      );
 
       const handleRoomSelect = (room) => {
         if (!propertyId || !propertyName || !room) {
@@ -157,6 +159,9 @@
           alert('選択された部屋情報が無効です。');
           return;
         }
+
+        setIsNavigating(true);
+        setNavigationMessage('検針画面に移動しています...');
 
         // meter_reading.html に物件ID、物件名、部屋ID、部屋名を渡して画面遷移
         const params = new URLSearchParams();
@@ -175,8 +180,6 @@
           });
         } else {
           console.log(`[room_select] Redirecting to: ${targetUrl}`);
-          // ローディング画面を表示
-          showLoadingScreen();
           // 短い遅延の後に画面遷移
           setTimeout(() => {
             window.location.href = targetUrl;
@@ -296,6 +299,7 @@
         );
       }      return (
         <div className="mantine-container">
+          {isNavigating && <LoadingOverlay message={navigationMessage} />}
           <div className="mantine-stack">            <button
               onClick={handleBackToPropertySelect}
               className="mantine-button variant-outline"
@@ -330,7 +334,7 @@
                   <div key={room.id} className="mantine-paper">
                     <button
                       onClick={() => handleRoomSelect(room)}
-                      disabled={loading}
+                      disabled={loading || isNavigating}
                       className="room-card"
                     >
                       <div className="room-info">

@@ -35,6 +35,8 @@
       const [toastMessage, setToastMessage] = React.useState('');
       const [showToast, setShowToast] = React.useState(false);
       const [inputErrors, setInputErrors] = React.useState({});
+      const [isNavigating, setIsNavigating] = React.useState(false);
+      const [navigationMessage, setNavigationMessage] = React.useState('');
 
       const [gasWebAppUrl, setGasWebAppUrl] = React.useState('');
 
@@ -198,55 +200,55 @@
       };
 
       const handleBackButton = () => {
-        // ローディング画面を表示
-        showLoadingScreen();
+        setIsNavigating(true);
+        setNavigationMessage('画面を切り替えています...');
         // 短い遅延の後に画面遷移
         setTimeout(() => {
           window.location.href = 'room_select.html';
         }, 300);
       };
 
-      const showLoadingScreen = () => {
-        // ローディング画面のHTML
-        const loadingHTML = `
-          <div id="loading-overlay" style="
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 50000;
-          ">
-            <div style="
-              width: 40px;
-              height: 40px;
-              border: 4px solid #f3f3f3;
-              border-top: 4px solid #3498db;
-              border-radius: 50%;
-              animation: spin 1s linear infinite;
-            "></div>
-            <p style="
-              margin-top: 16px;
-              color: #666;
-              font-size: 14px;
-            ">画面を切り替えています...</p>
-            <style>
+      // LoadingOverlayコンポーネント
+      const LoadingOverlay = ({ message }) => (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 50000,
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          <p style={{
+            marginTop: '16px',
+            color: '#666',
+            fontSize: '14px',
+            textAlign: 'center',
+          }}>
+            {message}
+          </p>
+          <style>
+            {`
               @keyframes spin {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
               }
-            </style>
-          </div>
-        `;
-        
-        // ローディング画面をbodyに追加
-        document.body.insertAdjacentHTML('beforeend', loadingHTML);
-      };
+            `}
+          </style>
+        </div>
+      );
 
       const formatDate = (dateValue) => {
         if (!dateValue) return '';
@@ -511,6 +513,7 @@
       // メインコンテンツ表示
       return (
         <>
+          {isNavigating && <LoadingOverlay message={navigationMessage} />}
           <div className="app-header">
             <button onClick={handleBackButton} className="back-button" aria-label="戻る">
               &lt;
@@ -733,7 +736,7 @@
                 <button
                   className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
-                  disabled={updating}
+                  disabled={updating || isNavigating}
                   title={Array.isArray(meterReadings) && meterReadings.length > 0 ? "指示数を更新" : "初回検針データを保存"}
                   style={{
                       width: '72px',
