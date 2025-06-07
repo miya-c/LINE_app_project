@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAS updatePhotoUrl 機能テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #2c5aa0;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #1d4084;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 GAS updatePhotoUrl 機能テスト</h1>
+        <p>新しく実装した<code>handleUpdatePhotoUrl</code>関数の動作を確認します。</p>
+        
+        <!-- GAS URL設定 -->
+        <div class="test-section">
+            <h3>🔗 GAS WebアプリURL設定</h3>
+            <div class="form-group">
+                <label for="gasUrl">Google Apps Script WebアプリURL:</label>
+                <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec">
+                <small style="color: #666; font-size: 12px;">
+                    ※ 物件.gsをデプロイしたWebアプリのURLを入力してください
+                </small>
+            </div>
+        </div>
+
+        <!-- テストデータ入力 -->
+        <div class="test-section">
+            <h3>📝 テストデータ</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="propertyId">物件ID:</label>
+                    <input type="text" id="propertyId" value="PROP_TEST_001">
+                </div>
+                <div class="form-group">
+                    <label for="roomNumber">部屋番号:</label>
+                    <input type="text" id="roomNumber" value="ROOM_TEST_001">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="photoUrl">写真URL（テスト用）:</label>
+                <input type="url" id="photoUrl" value="https://drive.google.com/file/d/1ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg/view">
+            </div>
+            <div class="form-group">
+                <label for="fileName">ファイル名:</label>
+                <input type="text" id="fileName" value="test_photo_meter.jpg">
+            </div>
+        </div>
+
+        <!-- テスト実行ボタン -->
+        <div class="test-section">
+            <h3>🚀 テスト実行</h3>
+            <button onclick="testBasicConnection()">1. 基本接続テスト</button>
+            <button onclick="testUpdatePhotoUrl()">2. updatePhotoUrl テスト</button>
+            <button onclick="testErrorHandling()">3. エラーハンドリングテスト</button>
+        </div>
+
+        <!-- 結果表示エリア -->
+        <div class="test-section">
+            <h3>📊 テスト結果</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        let testCounter = 0;
+        
+        function addResult(title, result, type = 'info') {
+            testCounter++;
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>Test ${testCounter}: ${title}</strong>\n${JSON.stringify(result, null, 2)}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function testBasicConnection() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            if (!gasUrl) {
+                addResult('基本接続テスト', { error: 'GAS URLが設定されていません' }, 'error');
+                return;
+            }
+
+            try {
+                addResult('基本接続テスト', { status: 'リクエスト送信中...', url: gasUrl }, 'info');
+                
+                const response = await fetch(`${gasUrl}?action=getVersion`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                const result = await response.json();
+                addResult('基本接続テスト', {
+                    status: 'SUCCESS',
+                    httpStatus: response.status,
+                    response: result
+                }, 'success');
+
+            } catch (error) {
+                addResult('基本接続テスト', {
+                    status: 'ERROR',
+                    error: error.message,
+                    stack: error.stack
+                }, 'error');
+            }
+        }
+
+        async function testUpdatePhotoUrl() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            const propertyId = document.getElementById('propertyId').value;
+            const roomNumber = document.getElementById('roomNumber').value;
+            const photoUrl = document.getElementById('photoUrl').value;
+            const fileName = document.getElementById('fileName').value;
+
+            if (!gasUrl || !propertyId || !roomNumber || !photoUrl) {
+                addResult('updatePhotoUrl テスト', { error: '必須フィールドが不足しています' }, 'error');
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    action: 'updatePhotoUrl',
+                    propertyId: propertyId,
+                    roomNumber: roomNumber,
+                    photoUrl: photoUrl,
+                    fileName: fileName,
+                    timestamp: new Date().toISOString()
+                });
+
+                addResult('updatePhotoUrl テスト', {
+                    status: 'リクエスト送信中...',
+                    url: `${gasUrl}?${params.toString()}`
+                }, 'info');
+
+                const response = await fetch(`${gasUrl}?${params}`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                const result = await response.json();
+                addResult('updatePhotoUrl テスト', {
+                    status: 'SUCCESS',
+                    httpStatus: response.status,
+                    response: result
+                }, result.success ? 'success' : 'error');
+
+            } catch (error) {
+                addResult('updatePhotoUrl テスト', {
+                    status: 'ERROR',
+                    error: error.message,
+                    stack: error.stack
+                }, 'error');
+            }
+        }
+
+        async function testErrorHandling() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            if (!gasUrl) {
+                addResult('エラーハンドリングテスト', { error: 'GAS URLが設定されていません' }, 'error');
+                return;
+            }
+
+            try {
+                // 必須パラメータを意図的に省略してエラー処理をテスト
+                const params = new URLSearchParams({
+                    action: 'updatePhotoUrl',
+                    propertyId: '', // 空の値でテスト
+                    roomNumber: '', // 空の値でテスト
+                    photoUrl: '' // 空の値でテスト
+                });
+
+                addResult('エラーハンドリングテスト', {
+                    status: '不正なパラメータでテスト中...',
+                    params: Object.fromEntries(params.entries())
+                }, 'info');
+
+                const response = await fetch(`${gasUrl}?${params}`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                const result = await response.json();
+                addResult('エラーハンドリングテスト', {
+                    status: 'RESPONSE_RECEIVED',
+                    httpStatus: response.status,
+                    response: result,
+                    note: 'エラーが適切に処理されているかチェック'
+                }, result.success ? 'error' : 'success');
+
+            } catch (error) {
+                addResult('エラーハンドリングテスト', {
+                    status: 'NETWORK_ERROR',
+                    error: error.message,
+                    note: 'ネットワークエラーまたはCORS問題'
+                }, 'error');
+            }
+        }
+
+        // ページ読み込み時の初期化
+        window.onload = function() {
+            console.log('GAS updatePhotoUrl テストページが読み込まれました');
+            addResult('初期化', {
+                status: 'テストページ準備完了',
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent
+            }, 'info');
+        };
+    </script>
+</body>
+</html>

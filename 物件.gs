@@ -194,11 +194,16 @@ function doGet(e) {
       console.log("[GAS DEBUG] ✅ getMeterReadingsアクション処理開始");
       return handleGetMeterReadings(e.parameter);
     }
-    
-    // 検針データ更新
+      // 検針データ更新
     else if (action === 'updateMeterReadings') {
       console.log("[GAS DEBUG] ✅ updateMeterReadingsアクション処理開始");
       return handleUpdateMeterReadings(e.parameter);
+    }
+    
+    // 写真URL更新（CORS回避版）
+    else if (action === 'updatePhotoUrl') {
+      console.log("[GAS DEBUG] ✅ updatePhotoUrlアクション処理開始");
+      return handleUpdatePhotoUrl(e.parameter);
     }
     
     // 無効なアクション
@@ -954,5 +959,84 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify(errorResponse))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ===================================================
+// Google Drive API直接アップロード後の写真URL記録関数
+// ===================================================
+
+/**
+ * Google Drive API経由でアップロードされた写真のURLをスプレッドシートに記録
+ * @param {Object} params - GETリクエストのパラメータ
+ * @returns {Object} - 処理結果レスポンス
+ */
+function handleUpdatePhotoUrl(params) {
+  const timestamp = new Date().toISOString();
+  console.log(`[GAS DEBUG ${timestamp}] handleUpdatePhotoUrl開始 - params:`, params);
+  
+  try {
+    // 必須パラメータのチェック
+    const { propertyId, roomNumber, photoUrl, fileName } = params;
+    
+    if (!propertyId || !roomNumber || !photoUrl) {
+      console.error('[GAS ERROR] 必須パラメータが不足:', { propertyId, roomNumber, photoUrl });
+      return createCorsResponse({
+        success: false,
+        error: '必須パラメータが不足しています (propertyId, roomNumber, photoUrl)',
+        received: params,
+        timestamp: timestamp
+      });
+    }
+    
+    // スプレッドシートを開く
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getActiveSheet();
+    const lastRow = sheet.getLastRow();
+    console.log(`[GAS DEBUG] スプレッドシート最終行: ${lastRow}`);
+    
+    // 新しい行にデータを追加
+    const newRow = lastRow + 1;
+    const currentDate = new Date().toLocaleString('ja-JP');
+    
+    // 写真データを記録（従来のsavePhotoToGoogleDrive関数と同様の形式）
+    const rowData = [
+      propertyId,           // A列: 物件ID  
+      roomNumber,           // B列: 部屋番号
+      currentDate,          // C列: 日付
+      photoUrl,             // D列: 写真URL（Google DriveのダイレクトリンクまたはファイルID）
+      fileName || `photo_${propertyId}_${roomNumber}_${Date.now()}.jpg`, // E列: ファイル名
+      'Google Drive API',   // F列: アップロード方法
+      'SUCCESS'             // G列: ステータス
+    ];
+    
+    // スプレッドシートに行を追加
+    sheet.getRange(newRow, 1, 1, rowData.length).setValues([rowData]);
+    
+    console.log(`[GAS DEBUG] 写真URL記録完了 - 行${newRow}:`, rowData);
+    
+    // 成功レスポンス
+    return createCorsResponse({
+      success: true,
+      message: '写真URLがスプレッドシートに正常に記録されました',
+      data: {
+        propertyId: propertyId,
+        roomNumber: roomNumber,
+        photoUrl: photoUrl,
+        fileName: fileName,
+        spreadsheetRow: newRow,
+        recordedAt: currentDate
+      },
+      timestamp: timestamp
+    });
+    
+  } catch (error) {
+    console.error('[GAS ERROR] handleUpdatePhotoUrl エラー:', error.message, error.stack);
+    
+    return createCorsResponse({
+      success: false,
+      error: 'サーバーエラー: ' + error.message,
+      stack: error.stack,
+      timestamp: timestamp
+    });
   }
 }
