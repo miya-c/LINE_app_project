@@ -331,6 +331,16 @@
             dataStart: base64Data.substring(0, 50) + '...'
           });
           
+          // まずPOST通信のテストを実行
+          displayToast('接続をテスト中...');
+          const postTestResult = await testPostConnection();
+          
+          if (!postTestResult) {
+            throw new Error('サーバーとの接続テストに失敗しました。POST通信が利用できません。');
+          }
+          
+          console.log('[meter_reading] POST通信テスト成功');
+          
           // GASにBase64データを送信（POSTリクエスト）
           displayToast('写真をサーバーに送信中...');
           const photoUrl = await uploadPhotoViaPost(base64Data, date, file.name);
@@ -365,6 +375,9 @@
             throw new Error('GAS WebアプリURLが設定されていません');
           }
           
+          console.log('[meter_reading] POSTリクエスト準備開始');
+          console.log('[meter_reading] GAS URL:', currentGasUrl);
+          
           // ファイル拡張子を取得
           const fileExtension = fileName.split('.').pop() || 'jpg';
           
@@ -378,24 +391,50 @@
             fileName: `meter_photo_${propertyId}_${roomId}_${date}_${Date.now()}.${fileExtension}`
           };
           
-          console.log('[meter_reading] 写真アップロードリクエスト送信:', {
+          console.log('[meter_reading] リクエストボディ作成完了:', {
             url: currentGasUrl,
+            action: requestBody.action,
+            propertyId: requestBody.propertyId,
+            roomId: requestBody.roomId,
+            date: requestBody.date,
             dataLength: base64Data.length,
-            fileName: fileName
+            fileName: requestBody.fileName
           });
           
-          const response = await fetch(currentGasUrl, {
+          console.log('[meter_reading] fetch開始...');
+          
+          // より詳細なfetchオプション
+          const fetchOptions = {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            mode: 'cors', // 明示的にCORSモードを指定
+            credentials: 'omit' // 認証情報を送信しない
+          };
+          
+          console.log('[meter_reading] fetchオプション:', fetchOptions);
+          
+          const response = await fetch(currentGasUrl, fetchOptions);
+          
+          console.log('[meter_reading] fetchレスポンス受信:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+            type: response.type,
+            url: response.url,
+            headers: Object.fromEntries(response.headers.entries())
           });
           
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('[meter_reading] レスポンスエラー詳細:', errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
           }
           
+          console.log('[meter_reading] JSON解析開始...');
           const result = await response.json();
           console.log('[meter_reading] 写真アップロードレスポンス:', result);
           
@@ -404,8 +443,29 @@
           }
           
           return result.data?.photoUrl || result.photoUrl;
+          
         } catch (error) {
-          console.error('[meter_reading] 写真アップロードエラー:', error);
+          console.error('[meter_reading] 写真アップロードエラー詳細:', {
+            message: error.message,
+            stack: error.stack,
+            type: error.constructor.name,
+            name: error.name
+          });
+          
+          // ネットワークエラーの詳細分析
+          if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            console.error('[meter_reading] ネットワークエラー分析:', {
+              possibleCauses: [
+                'CORS policy violation',
+                'Network connectivity issue',
+                'GAS endpoint not accessible',
+                'Invalid URL'
+              ],
+              currentUrl: gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl'),
+              userAgent: navigator.userAgent
+            });
+          }
+          
           throw error;
         }
       };const handleCameraClick = (date) => {

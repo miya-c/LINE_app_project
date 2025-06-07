@@ -8,7 +8,7 @@
 // スプレッドシートID（実際のIDに変更してください）
 const SPREADSHEET_ID = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
 
-// CORSヘッダーを設定するヘルパー関数（ContentService使用）
+// CORSヘッダーを設定するヘルパー関数（シンプル版）
 function createCorsResponse(data) {
   // データの詳細ログ
   console.log(`[GAS DEBUG] createCorsResponse呼び出し - dataタイプ: ${typeof data}, 値:`, data);
@@ -24,21 +24,21 @@ function createCorsResponse(data) {
   };
   
   try {
-    // ContentServiceでJSONレスポンスを返す（CORS対応）
+    // JSONデータを準備
     const jsonString = JSON.stringify(safeData);
-    console.log(`[GAS DEBUG] ContentService JSON レスポンス生成: ${jsonString.length}文字`);
+    console.log(`[GAS DEBUG] JSON レスポンス生成: ${jsonString.length}文字`);
     
+    // ContentService（GASでCORSは自動処理される）
     const response = ContentService
       .createTextOutput(jsonString)
       .setMimeType(ContentService.MimeType.JSON);
     
-    // 🔥 追加: CORS対応の強化
-    console.log(`[GAS DEBUG] CORS対応レスポンス生成完了`);
+    console.log(`[GAS DEBUG] ContentService レスポンス生成完了`);
     return response;
     
   } catch (error) {
     // JSON.stringifyでエラーが発生した場合の代替処理
-    console.error('[GAS DEBUG] JSON.stringify エラー:', error.message);
+    console.error('[GAS ERROR] JSON.stringify エラー:', error.message);
     const fallbackData = { 
       error: 'レスポンス生成エラー', 
       originalError: error.message,
@@ -54,7 +54,7 @@ function createCorsResponse(data) {
         
     } catch (fallbackError) {
       // 最終的なフォールバック
-      console.error('[GAS DEBUG] フォールバックJSONも失敗:', fallbackError.message);
+      console.error('[GAS ERROR] フォールバックJSONも失敗:', fallbackError.message);
       return ContentService
         .createTextOutput('{"error":"レスポンス生成に失敗しました","timestamp":"' + new Date().toISOString() + '"}')
         .setMimeType(ContentService.MimeType.JSON);
@@ -906,6 +906,12 @@ function doPost(e) {
       if (e.postData) {
         console.log('[GAS DEBUG] POSTデータタイプ:', e.postData.type);
         console.log('[GAS DEBUG] POSTデータ長:', e.postData.contents ? e.postData.contents.length : 'null');
+        
+        // 最初の500文字を表示（デバッグ用）
+        if (e.postData.contents) {
+          const preview = e.postData.contents.substring(0, 500);
+          console.log('[GAS DEBUG] POSTデータプレビュー:', preview);
+        }
       }
     }
     
@@ -915,60 +921,89 @@ function doPost(e) {
         params = JSON.parse(e.postData.contents);
         console.log('[GAS DEBUG] JSON解析成功 - action:', params.action);
         console.log('[GAS DEBUG] POSTパラメータキー:', Object.keys(params));
+        
+        // actionごとの詳細ログ
+        if (params.action === 'uploadPhotoBase64') {
+          console.log('[GAS DEBUG] 写真アップロード詳細:', {
+            propertyId: params.propertyId,
+            roomId: params.roomId,
+            date: params.date,
+            fileName: params.fileName,
+            photoDataLength: params.photoData ? params.photoData.length : 0
+          });
+        }
+        
       } catch (parseError) {
-        console.error('[GAS DEBUG] JSON解析エラー:', parseError.message);
-        // ContentServiceでJSONレスポンスを返す
+        console.error('[GAS ERROR] JSON解析エラー:', parseError.message);
+        console.error('[GAS ERROR] 生データ:', e.postData.contents.substring(0, 200));
+        
+        // CORSヘッダー付きのエラーレスポンスを返す
         const errorResponse = {
+          success: false,
           error: 'POSTデータのJSON解析に失敗しました: ' + parseError.message,
-          rawData: e.postData.contents ? e.postData.contents.substring(0, 100) : 'null'
+          rawData: e.postData.contents ? e.postData.contents.substring(0, 100) : 'null',
+          timestamp: timestamp
         };
-        return ContentService
-          .createTextOutput(JSON.stringify(errorResponse))
-          .setMimeType(ContentService.MimeType.JSON);
-      }    } else {
-      console.error('[GAS DEBUG] POSTデータがありません');
+        return createCorsResponse(errorResponse);
+      }
+    } else {
+      console.error('[GAS ERROR] POSTデータがありません');
       const errorResponse = {
+        success: false,
         error: 'POSTデータがありません。',
         debugInfo: {
           hasE: !!e,
           hasPostData: !!(e && e.postData),
           hasContents: !!(e && e.postData && e.postData.contents)
-        }
+        },
+        timestamp: timestamp
       };
-      return ContentService
-        .createTextOutput(JSON.stringify(errorResponse))
-        .setMimeType(ContentService.MimeType.JSON);
+      return createCorsResponse(errorResponse);
     }
     
+    // アクション分岐
     if (params.action === 'updateMeterReadings') {
       console.log('[GAS DEBUG] updateMeterReadingsアクション処理開始（doPost）');
-      // handleUpdateMeterReadingsは既にContentServiceオブジェクトを返すので、直接返す
       return handleUpdateMeterReadings(params);
+      
     } else if (params.action === 'uploadPhotoBase64') {
       console.log('[GAS DEBUG] uploadPhotoBase64アクション処理開始（doPost）');
       // POST経由であることを明示するため、第2引数に"POST"を渡す
       return handleUploadPhotoBase64(params, 'POST');
+      
+    } else if (params.action === 'test') {
+      // テスト用エンドポイント
+      console.log('[GAS DEBUG] テストアクション処理');
+      return createCorsResponse({
+        success: true,
+        message: 'POSTテスト成功',
+        receivedData: {
+          action: params.action,
+          parameterCount: Object.keys(params).length,
+          timestamp: timestamp
+        }
+      });
+      
     } else {
-      console.log('[GAS DEBUG] 無効なアクション（doPost）:', params.action);
+      console.log('[GAS ERROR] 無効なアクション（doPost）:', params.action);
       const errorResponse = {
+        success: false,
         error: '無効なアクションです（doPost）',
         receivedAction: params.action,
-        expected: ['updateMeterReadings', 'uploadPhotoBase64'],
+        expected: ['updateMeterReadings', 'uploadPhotoBase64', 'test'],
         timestamp: timestamp
       };
-      return ContentService
-        .createTextOutput(JSON.stringify(errorResponse))
-        .setMimeType(ContentService.MimeType.JSON);
+      return createCorsResponse(errorResponse);
     }
   } catch (error) {
-    console.error('[GAS DEBUG] doPostサーバーエラー:', error.message, error.stack);
+    console.error('[GAS ERROR] doPostサーバーエラー:', error.message, error.stack);
     const errorResponse = {
+      success: false,
       error: 'doPostサーバーエラー: ' + error.message,
+      stack: error.stack,
       timestamp: timestamp
     };
-    return ContentService
-      .createTextOutput(JSON.stringify(errorResponse))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createCorsResponse(errorResponse);
   }
 }
 
