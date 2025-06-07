@@ -944,13 +944,16 @@ function doPost(e) {
       console.log('[GAS DEBUG] updateMeterReadingsアクション処理開始（doPost）');
       // handleUpdateMeterReadingsは既にContentServiceオブジェクトを返すので、直接返す
       return handleUpdateMeterReadings(params);
-      
+    } else if (params.action === 'uploadPhotoBase64') {
+      console.log('[GAS DEBUG] uploadPhotoBase64アクション処理開始（doPost）');
+      // POST経由であることを明示するため、第2引数に"POST"を渡す
+      return handleUploadPhotoBase64(params, 'POST');
     } else {
       console.log('[GAS DEBUG] 無効なアクション（doPost）:', params.action);
       const errorResponse = {
         error: '無効なアクションです（doPost）',
         receivedAction: params.action,
-        expected: ['updateMeterReadings'],
+        expected: ['updateMeterReadings', 'uploadPhotoBase64'],
         timestamp: timestamp
       };
       return ContentService
@@ -1057,7 +1060,7 @@ function handleUpdatePhotoUrl(params) {
  * @param {Object} params - GETリクエストのパラメータ
  * @returns {Object} - 処理結果レスポンス
  */
-function handleUploadPhotoBase64(params) {
+function handleUploadPhotoBase64(params, method) {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] handleUploadPhotoBase64開始 - params:`, params);
   
@@ -1092,7 +1095,8 @@ function handleUploadPhotoBase64(params) {
     console.log(`[GAS DEBUG] 写真保存成功 - URL: ${photoUrl}`);
     
     // スプレッドシートに写真情報を記録
-    const recordResult = updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, params.fileName);
+    const uploadMethod = method === 'POST' ? 'Base64 POST' : 'Base64 GET';
+    const recordResult = updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, params.fileName, uploadMethod);
     
     if (!recordResult.success) {
       console.warn('[GAS WARN] スプレッドシート記録に失敗しましたが、写真は保存されました');
@@ -1135,7 +1139,7 @@ function handleUploadPhotoBase64(params) {
  * @param {string} fileName - ファイル名
  * @returns {Object} - 記録結果
  */
-function updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, fileName) {
+function updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, fileName, uploadMethod) {
   try {
     console.log('[GAS DEBUG] スプレッドシート写真URL記録開始');
     
@@ -1165,7 +1169,7 @@ function updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, fileNam
       date,                 // C列: 日付
       photoUrl,             // D列: 写真URL
       fileName || `photo_${propertyId}_${roomId}_${Date.now()}.jpg`, // E列: ファイル名
-      'Base64 GET',         // F列: アップロード方法
+      uploadMethod || 'Base64 GET', // F列: アップロード方法
       'SUCCESS',            // G列: ステータス
       currentDate           // H列: 記録日時
     ];
