@@ -367,7 +367,56 @@
             document.body.removeChild(event.target);
           }
         }
-      };      // Base64データをPOSTリクエストでGASに送信
+      };      // POST通信テスト用関数
+      const testPostConnection = async () => {
+        try {
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+          if (!currentGasUrl) {
+            console.error('[meter_reading] GAS URLが設定されていません');
+            return false;
+          }
+          
+          console.log('[meter_reading] POST通信テスト開始');
+          
+          const testRequestBody = {
+            action: 'test',
+            timestamp: new Date().toISOString()
+          };
+          
+          const response = await fetch(currentGasUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(testRequestBody),
+            mode: 'cors',
+            credentials: 'omit'
+          });
+          
+          console.log('[meter_reading] テストレスポンス状態:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+          });
+          
+          if (!response.ok) {
+            console.error('[meter_reading] POST通信テスト失敗:', response.status, response.statusText);
+            return false;
+          }
+          
+          const result = await response.json();
+          console.log('[meter_reading] POST通信テスト結果:', result);
+          
+          return result.success === true;
+          
+        } catch (error) {
+          console.error('[meter_reading] POST通信テストエラー:', error);
+          return false;
+        }
+      };
+
+      // Base64データをPOSTリクエストでGASに送信
       const uploadPhotoViaPost = async (base64Data, date, fileName) => {
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
