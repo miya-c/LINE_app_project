@@ -35,7 +35,8 @@ function createCorsResponse(data) {
     // 🔥 追加: CORS対応の強化
     console.log(`[GAS DEBUG] CORS対応レスポンス生成完了`);
     return response;
-        } catch (error) {
+    
+  } catch (error) {
     // JSON.stringifyでエラーが発生した場合の代替処理
     console.error('[GAS DEBUG] JSON.stringify エラー:', error.message);
     const fallbackData = { 
@@ -497,8 +498,7 @@ function getActualMeterReadings(propertyId, roomId) {
   try {
     console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
     
-    const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     
     // ✅ 正しいシート名を使用
     const sheet = spreadsheet.getSheetByName('inspection_data');
@@ -620,8 +620,7 @@ function handleUpdateMeterReadings(params) {
       if (reading.date && reading.currentReading !== undefined) {
         try {
           // **実際のスプレッドシート更新処理を実装**
-          const spreadsheetId = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
-          const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+          const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
           const sheet = spreadsheet.getSheetByName('inspection_data');
           
           if (!sheet) {

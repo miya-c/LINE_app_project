@@ -459,7 +459,7 @@ function getSpreadsheetId() {
   }
 }
 
-const SPREADSHEET_ID = getSpreadsheetId();
+// const SPREADSHEET_ID = getSpreadsheetId(); // ← 他ファイルで定義済みのため重複宣言を削除
 const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
 const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
 const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
