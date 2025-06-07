@@ -336,7 +336,25 @@
           const postTestResult = await testPostConnection();
           
           if (!postTestResult) {
-            throw new Error('サーバーとの接続テストに失敗しました。POST通信が利用できません。');
+            console.warn('[meter_reading] POST通信失敗、GETリクエストに切り替えます');
+            displayToast('POST通信が失敗しました。代替方法でアップロードします...');
+            
+            // Base64データのサイズチェック（GETリクエストの場合）
+            const urlSizeLimit = 8000; // URL長さ制限（8KB程度）
+            if (base64Data.length > urlSizeLimit) {
+              throw new Error(`画像サイズが大きすぎます（${Math.round(base64Data.length/1024)}KB）。${Math.round(urlSizeLimit/1024)}KB以下の画像を選択してください。`);
+            }
+            
+            // GETリクエストで写真アップロード
+            const photoUrl = await uploadPhotoViaGet(base64Data, date, file.name);
+            
+            if (photoUrl) {
+              setPhotoStates(prev => ({...prev, [date]: true}));
+              displayToast('写真をアップロードしました！（GET方式）');
+            } else {
+              throw new Error('写真のアップロードに失敗しました（GET方式）');
+            }
+            return;
           }
           
           console.log('[meter_reading] POST通信テスト成功');
@@ -377,13 +395,16 @@
           }
           
           console.log('[meter_reading] POST通信テスト開始');
+          console.log('[meter_reading] 使用URL:', currentGasUrl);
           
           const testRequestBody = {
             action: 'test',
             timestamp: new Date().toISOString()
           };
           
-          const response = await fetch(currentGasUrl, {
+          console.log('[meter_reading] 送信データ:', testRequestBody);
+          
+          const fetchOptions = {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -392,16 +413,28 @@
             body: JSON.stringify(testRequestBody),
             mode: 'cors',
             credentials: 'omit'
-          });
+          };
+          
+          console.log('[meter_reading] fetchオプション:', fetchOptions);
+          
+          const response = await fetch(currentGasUrl, fetchOptions);
           
           console.log('[meter_reading] テストレスポンス状態:', {
             status: response.status,
             statusText: response.statusText,
-            ok: response.ok
+            ok: response.ok,
+            type: response.type,
+            url: response.url,
+            headers: Object.fromEntries(response.headers.entries())
           });
           
           if (!response.ok) {
-            console.error('[meter_reading] POST通信テスト失敗:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('[meter_reading] POST通信テスト失敗:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorText: errorText
+            });
             return false;
           }
           
@@ -411,7 +444,28 @@
           return result.success === true;
           
         } catch (error) {
-          console.error('[meter_reading] POST通信テストエラー:', error);
+          console.error('[meter_reading] POST通信テストエラー詳細:', {
+            message: error.message,
+            stack: error.stack,
+            type: error.constructor.name,
+            name: error.name
+          });
+          
+          // ネットワークエラーの詳細分析
+          if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            console.error('[meter_reading] ネットワークエラー分析:', {
+              possibleCauses: [
+                'CORS policy violation',
+                'Network connectivity issue', 
+                'GAS endpoint not accessible',
+                'Invalid URL',
+                'Mixed content (HTTP/HTTPS) issue'
+              ],
+              currentUrl: currentGasUrl,
+              userAgent: navigator.userAgent
+            });
+          }
+          
           return false;
         }
       };
