@@ -339,22 +339,29 @@
             console.warn('[meter_reading] POST通信失敗、GETリクエストに切り替えます');
             displayToast('POST通信が失敗しました。代替方法でアップロードします...');
             
-            // Base64データのサイズチェック（GETリクエストの場合）
-            const urlSizeLimit = 8000; // URL長さ制限（8KB程度）
-            if (base64Data.length > urlSizeLimit) {
-              throw new Error(`画像サイズが大きすぎます（${Math.round(base64Data.length/1024)}KB）。${Math.round(urlSizeLimit/1024)}KB以下の画像を選択してください。`);
+            try {
+              // Base64データのサイズチェック（GETリクエストの場合）
+              const urlSizeLimit = 8000; // URL長さ制限（8KB程度）
+              if (base64Data.length > urlSizeLimit) {
+                throw new Error(`画像サイズが大きすぎます（${Math.round(base64Data.length/1024)}KB）。${Math.round(urlSizeLimit/1024)}KB以下の画像を選択してください。`);
+              }
+              
+              console.log('[meter_reading] GETリクエストでの写真アップロードを開始します');
+              
+              // GETリクエストで写真アップロード
+              const photoUrl = await uploadPhotoViaGet(base64Data, date, file.name);
+              
+              if (photoUrl) {
+                setPhotoStates(prev => ({...prev, [date]: true}));
+                displayToast('写真をアップロードしました！（GET方式）');
+              } else {
+                throw new Error('写真のアップロードに失敗しました（GET方式）');
+              }
+              return;
+            } catch (getError) {
+              console.error('[meter_reading] GETリクエストでの写真アップロードも失敗:', getError);
+              throw new Error(`写真のアップロードに失敗しました: ${getError.message}`);
             }
-            
-            // GETリクエストで写真アップロード
-            const photoUrl = await uploadPhotoViaGet(base64Data, date, file.name);
-            
-            if (photoUrl) {
-              setPhotoStates(prev => ({...prev, [date]: true}));
-              displayToast('写真をアップロードしました！（GET方式）');
-            } else {
-              throw new Error('写真のアップロードに失敗しました（GET方式）');
-            }
-            return;
           }
           
           console.log('[meter_reading] POST通信テスト成功');
@@ -571,7 +578,55 @@
           
           throw error;
         }
-      };const handleCameraClick = (date) => {
+      };
+
+      // 代替手段：GETリクエストで写真アップロード（URLパラメータ方式）
+      const uploadPhotoViaGet = async (base64Data, date, fileName) => {
+        try {
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+          if (!currentGasUrl) {
+            throw new Error('GAS WebアプリURLが設定されていません');
+          }
+          
+          console.log('[meter_reading] GETリクエストで写真アップロード開始');
+          
+          // URLパラメータを構築
+          const params = new URLSearchParams({
+            action: 'uploadPhotoBase64',
+            propertyId: propertyId,
+            roomId: roomId,
+            date: date,
+            photoData: base64Data,
+            fileName: fileName
+          });
+          
+          const requestUrl = `${currentGasUrl}?${params}`;
+          console.log('[meter_reading] GET リクエストURL長:', requestUrl.length);
+          
+          const response = await fetch(requestUrl, {
+            method: 'GET'
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          console.log('[meter_reading] GET写真アップロードレスポンス:', result);
+          
+          if (!result.success) {
+            throw new Error(result.error || 'GET写真アップロードに失敗しました');
+          }
+          
+          return result.data?.photoUrl || result.photoUrl;
+          
+        } catch (error) {
+          console.error('[meter_reading] GET写真アップロードエラー:', error);
+          throw error;
+        }
+      };
+      
+      const handleCameraClick = (date) => {
         console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
         
         try {
