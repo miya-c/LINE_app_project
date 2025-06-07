@@ -4,9 +4,8 @@
   <title>検針情報 (React + Mantine)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- WOFF SDK -->
-  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
+    <!-- WOFF SDK -->  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>  <script>
+    // GETリクエストのみ使用版：APIキー不要・CORS完全解決  </script>
   
   <!-- ReactとReactDOMのCDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -280,107 +279,134 @@
             parts.push(`前々々回: ${r.threeTimesPrevious}`);
         }
         return parts; // 配列を直接返す
-      };      const handleFileSelection = (event, date) => {
+      };      // Base64 + GETリクエスト方式（CORS完全解決）
+      const handleFileSelection = async (event, date) => {
         const file = event.target.files[0];
-        if (file) {
-          console.log('[meter_reading] ファイルが選択されました:', file.name, 'サイズ:', Math.round(file.size / 1024), 'KB, 形式:', file.type, 'for date:', date);
-          
-          // ファイルサイズ検証（10MB制限）
-          const maxSize = 10 * 1024 * 1024; // 10MB
-          if (file.size > maxSize) {
-            console.error('[meter_reading] ファイルサイズが大きすぎます:', Math.round(file.size / 1024 / 1024), 'MB');
-            displayToast(`ファイルサイズが大きすぎます（${Math.round(file.size / 1024 / 1024)}MB）。10MB以下の画像を選択してください。`);
-            return;
-          }
-          
-          // ファイル形式検証
-          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-          if (!allowedTypes.includes(file.type)) {
-            console.error('[meter_reading] サポートされていないファイル形式:', file.type);
-            displayToast(`サポートされていないファイル形式です（${file.type}）。JPEG、PNG、WebP形式の画像を選択してください。`);
-            return;
-          }
-          
-          console.log('[meter_reading] ファイル検証OK - サイズ:', Math.round(file.size / 1024), 'KB, 形式:', file.type);
-          
-          // ファイル読み込み開始をユーザーに通知
-          displayToast('画像を処理中です...');
-          
-          const reader = new FileReader();
-          reader.onload = (readerEvent) => {
-            try {
-              const base64PhotoData = readerEvent.target.result;
-              console.log('[meter_reading] Base64変換完了, データサイズ:', base64PhotoData ? base64PhotoData.length : 'null', '文字');
-              
-              // Base64データの検証
-              if (!base64PhotoData || !base64PhotoData.startsWith('data:image/')) {
-                console.error('[meter_reading] 無効なBase64画像データ');
-                console.error('[meter_reading] データの開始部分:', base64PhotoData ? base64PhotoData.substring(0, 50) : 'null');
-                displayToast('画像データの処理に失敗しました。別の画像を試してください。');
-                return;
-              }
-              
-              // Base64データのサイズ再確認
-              const base64Size = (base64PhotoData.length * 3) / 4;
-              console.log('[meter_reading] Base64データサイズ確認:', Math.round(base64Size / 1024), 'KB');
-              
-              if (base64Size > maxSize) {
-                console.error('[meter_reading] Base64データが大きすぎます:', Math.round(base64Size / 1024 / 1024), 'MB');
-                displayToast('画像データが大きすぎます。より小さな画像を選択してください。');
-                return;
-              }
-              
-              // Base64データの形式検証
-              const base64Parts = base64PhotoData.split(',');
-              if (base64Parts.length !== 2 || !base64Parts[1] || base64Parts[1].length === 0) {
-                console.error('[meter_reading] Base64データの形式が正しくありません');
-                console.error('[meter_reading] 分割後の部分数:', base64Parts.length);
-                displayToast('画像データの形式が正しくありません。別の画像を試してください。');
-                return;
-              }
-              
-              console.log('[meter_reading] Base64データ検証完了');
-              
-              const inputElement = document.querySelector(`input[data-date="${date}"]`);
-              if (inputElement) {
-                inputElement.setAttribute('data-new-photo', base64PhotoData);
-                console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
-                console.log('[meter_reading] Base64データサイズ:', Math.round(base64Size / 1024), 'KB');
-                
-                // 写真状態を更新
-                setPhotoStates(prev => ({...prev, [date]: true}));
-                
-                displayToast('写真を設定しました。');
-              } else {
-                console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
-                displayToast('写真データを紐付ける入力フィールドが見つかりませんでした。');
-              }
-            } catch (error) {
-              console.error('[meter_reading] 写真データ処理エラー:', error);
-              console.error('[meter_reading] エラースタックトレース:', error.stack);
-              displayToast('写真データの処理中にエラーが発生しました。');
-            }
-          };
-          reader.onerror = (error) => {
-            console.error('[meter_reading] File reading error:', error);
-            displayToast('ファイルの読み込み中にエラーが発生しました。別の画像を試してください。');
-          };
-          
-          // ファイル読み込み開始
-          try {
-            console.log('[meter_reading] ファイル読み込み開始...');
-            reader.readAsDataURL(file);
-          } catch (readError) {
-            console.error('[meter_reading] ファイル読み込み開始エラー:', readError);
-            displayToast('ファイルの読み込みを開始できませんでした。');
-          }
+        if (!file) {
+          console.log('[meter_reading] ファイルが選択されませんでした');
+          return;
         }
         
-        // クリーンアップ
-        if (event.target.parentElement === document.body) {
-          document.body.removeChild(event.target);
+        console.log('[meter_reading] ファイルが選択されました:', {
+          name: file.name,
+          size: Math.round(file.size / 1024) + 'KB',
+          type: file.type,
+          date: date
+        });
+        
+        // ファイルサイズ検証（10MB制限）
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+          const sizeMB = Math.round(file.size / 1024 / 1024);
+          console.error('[meter_reading] ファイルサイズが大きすぎます:', sizeMB, 'MB');
+          displayToast(`ファイルサイズが大きすぎます（${sizeMB}MB）。10MB以下の画像を選択してください。`);
+          return;
         }
-      };      const handleCameraClick = (date) => {
+        
+        // ファイル形式検証
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          console.error('[meter_reading] サポートされていないファイル形式:', file.type);
+          displayToast(`サポートされていないファイル形式です（${file.type}）。JPEG、PNG、WebP形式の画像を選択してください。`);
+          return;
+        }
+        
+        console.log('[meter_reading] ファイル検証OK:', {
+          size: Math.round(file.size / 1024) + 'KB',
+          type: file.type
+        });
+        
+        try {
+          // ファイルをBase64に変換
+          displayToast('画像を処理中...');
+          const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'));
+            reader.readAsDataURL(file);
+          });
+          
+          console.log('[meter_reading] Base64変換完了:', {
+            dataLength: base64Data.length,
+            dataStart: base64Data.substring(0, 50) + '...'
+          });
+          
+          // GASにBase64データを送信（GETリクエスト）
+          displayToast('写真をサーバーに送信中...');
+          const photoUrl = await uploadPhotoViaGet(base64Data, date, file.name);
+          
+          if (photoUrl) {
+            // 写真状態を更新
+            setPhotoStates(prev => ({...prev, [date]: true}));
+            displayToast('写真をアップロードしました！');
+            
+            console.log('[meter_reading] 写真アップロード完了:', {
+              date: date,
+              url: photoUrl,
+              fileName: file.name
+            });
+          } else {
+            throw new Error('写真のアップロードに失敗しました');
+          }
+        } catch (error) {
+          console.error('[meter_reading] 写真アップロードエラー:', error);
+          displayToast('写真のアップロードに失敗しました: ' + error.message);
+        } finally {
+          // クリーンアップ
+          if (event.target && event.target.parentElement === document.body) {
+            document.body.removeChild(event.target);
+          }
+        }
+      };      // Base64データをGETリクエストでGASに送信
+      const uploadPhotoViaGet = async (base64Data, date, fileName) => {
+        try {
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+          if (!currentGasUrl) {
+            throw new Error('GAS WebアプリURLが設定されていません');
+          }
+          
+          // ファイル拡張子を取得
+          const fileExtension = fileName.split('.').pop() || 'jpg';
+          
+          // リクエストパラメータを構築
+          const params = new URLSearchParams({
+            action: 'uploadPhotoBase64',
+            propertyId: encodeURIComponent(propertyId),
+            roomId: encodeURIComponent(roomId),
+            date: encodeURIComponent(date),
+            photoData: encodeURIComponent(base64Data),
+            fileName: encodeURIComponent(`meter_photo_${propertyId}_${roomId}_${date}_${Date.now()}.${fileExtension}`)
+          });
+          
+          const requestUrl = `${currentGasUrl}?${params}`;
+          
+          console.log('[meter_reading] 写真アップロードリクエスト送信:', {
+            url: currentGasUrl,
+            dataLength: base64Data.length,
+            fileName: fileName
+          });
+          
+          const response = await fetch(requestUrl, {
+            method: 'GET'
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          console.log('[meter_reading] 写真アップロードレスポンス:', result);
+          
+          if (!result.success) {
+            throw new Error(result.error || '写真のアップロードに失敗しました');
+          }
+          
+          return result.photoUrl;
+        } catch (error) {
+          console.error('[meter_reading] 写真アップロードエラー:', error);
+          throw error;
+        }
+      };const handleCameraClick = (date) => {
         console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
         
         try {
@@ -431,23 +457,21 @@
           console.error('[meter_reading] カメラ起動エラー:', error);
           displayToast('カメラの起動に失敗しました。デバイスの設定を確認してください。');
         }
-      };
-
-      const handlePhotoDelete = (date) => {
+      };      const handlePhotoDelete = async (date) => {
         console.log('[meter_reading] 写真削除:', date);
         
-        const inputElement = document.querySelector(`input[data-date="${date}"]`);
-        if (inputElement) {
-          inputElement.removeAttribute('data-new-photo');
-          console.log('[meter_reading] 写真データを削除しました for date:', date);
+        try {
+          // GASに写真削除リクエストを送信（空のphotoDataを送信）
+          displayToast('写真を削除中...');
+          await uploadPhotoViaGet('', date, 'deleted'); // 空のBase64データで削除
           
           // 写真状態を更新
           setPhotoStates(prev => ({...prev, [date]: false}));
           
           displayToast('写真を削除しました。');
-        } else {
-          console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
-          displayToast('削除対象の写真が見つかりませんでした。');
+        } catch (error) {
+          console.error('[meter_reading] 写真削除エラー:', error);
+          displayToast('写真の削除に失敗しました: ' + error.message);
         }
       };
 
@@ -463,9 +487,7 @@
       const hidePhotoModal = () => {
         setShowModal(false);
         setModalImageSrc('');
-      };
-
-      const handleUpdateReadings = async () => {
+      };      const handleUpdateReadings = async () => {
         if (!propertyId || !roomId) {
           displayToast('物件IDまたは部屋IDが取得できませんでした。');
           return;
@@ -477,7 +499,6 @@
         
         numberInputs.forEach(input => {
           const date = input.getAttribute('data-date');
-          const newPhotoData = input.getAttribute('data-new-photo');
           const originalValue = input.getAttribute('data-original-value') || '';
           const currentValue = input.value || '';
           
@@ -491,7 +512,7 @@
             return;
           }
           
-          if (currentValue !== originalValue || newPhotoData) {
+          if (currentValue !== originalValue) {
             const numericValue = parseFloat(currentValue);
             if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
               input.style.borderColor = 'var(--mantine-color-red-6)';
@@ -502,8 +523,8 @@
             
             updatedReadings.push({
               date: date,
-              currentReading: currentValue,
-              photoData: newPhotoData || null
+              currentReading: currentValue
+              // photoDataは除外（Google Drive API経由で既に処理済み）
             });
           }
         });
@@ -516,104 +537,42 @@
         if (updatedReadings.length === 0) {
           displayToast('更新するデータがありません。');
           return;
-        }        console.log('[meter_reading] 更新する指示数:', updatedReadings);
-        
-        // データサイズのチェックとログ出力
-        let totalDataSize = 0;
-        let photoCount = 0;
-        updatedReadings.forEach((reading, index) => {
-          if (reading.photoData) {
-            photoCount++;
-            const photoSize = reading.photoData.length;
-            totalDataSize += photoSize;
-            console.log(`[meter_reading] 写真データ${index + 1}: ${Math.round(photoSize / 1024)}KB`);
-          }
-        });
-        
-        if (photoCount > 0) {
-          console.log(`[meter_reading] 総写真数: ${photoCount}, 総写真データサイズ: ${Math.round(totalDataSize / 1024)}KB`);
         }
-          setUpdating(true);
-        
-        const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
-        const requestData = {
-          action: 'updateMeterReadings',
-          propertyId,
-          roomId,
-          readings: updatedReadings
-        };
+
+        console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        setUpdating(true);
         
         try {
-          // まずPOSTで試行（写真データの場合は必須）
-          console.log('[meter_reading] 更新リクエスト送信 (POST方式):', requestData);
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
           
-          let result = null;
-          let usedMethod = 'POST';
+          // 写真データがないのでGETリクエストを使用（CORS回避）
+          const params = new URLSearchParams({
+            action: 'updateMeterReadings',
+            propertyId,
+            roomId,
+            readings: JSON.stringify(updatedReadings)
+          });
           
-          try {
-            const postResponse = await fetch(currentGasUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(requestData),
-              mode: 'cors'
-            });            
-            if (postResponse.ok) {
-              result = await postResponse.json();
-              console.log('[meter_reading] POST更新成功:', result);
-            } else {
-              const errorText = await postResponse.text();
-              console.warn('[meter_reading] POST失敗、フォールバックを試行:', postResponse.status, errorText);
-              throw new Error(`POST failed: ${postResponse.status}`);
-            }
-          } catch (postError) {
-            console.warn('[meter_reading] POST方式でエラー、GETフォールバックを試行:', postError.message);
-            
-            // 写真データがある場合はGETフォールバックしない
-            const hasPhotoData = updatedReadings.some(r => r.photoData);
-            if (hasPhotoData) {
-              throw new Error('写真データを含む更新はPOST方式でのみ可能です。CORSエラーが発生している可能性があります。Google Apps Scriptの再デプロイが必要です。');
-            }
-            
-            // 写真なしの場合のみGETフォールバック
-            console.log('[meter_reading] 写真なしデータ、GETフォールバック実行');
-            usedMethod = 'GET (fallback)';
-            
-            const params = new URLSearchParams({
-              action: 'updateMeterReadings',
-              propertyId,
-              roomId,
-              readings: JSON.stringify(updatedReadings)
-            });
-            
-            const getUrl = `${currentGasUrl}?${params}`;
-            console.log('[meter_reading] GETフォールバックURL長:', getUrl.length);
-            
-            if (getUrl.length > 8000) {
-              throw new Error('データサイズが大きすぎます。POSTリクエストが必要です。');
-            }
-            
-            const getResponse = await fetch(getUrl, { method: 'GET' });
-            if (!getResponse.ok) {
-              const errorText = await getResponse.text();
-              throw new Error(`GETフォールバックも失敗 (${getResponse.status}): ${errorText}`);
-            }
-            
-            result = await getResponse.json();
-            console.log('[meter_reading] GETフォールバック成功:', result);
+          const requestUrl = `${currentGasUrl}?${params}`;
+          console.log('[meter_reading] 更新リクエスト送信 (GET方式):', requestUrl);
+          
+          const response = await fetch(requestUrl, {
+            method: 'GET'
+          });
+
+          if (!response.ok) {
+            throw new Error('ネットワークの応答が正しくありませんでした。ステータス: ' + response.status);
           }
           
-          if (result && result.success) {
-            displayToast(`検針データが正常に更新されました (${usedMethod})`);
+          const result = await response.json();
+          console.log('[meter_reading] 更新レスポンス:', result);
+          
+          if (result.success) {
+            displayToast('検針データが正常に更新されました');
             setInputErrors({}); // Clear errors on success
-            
-            // 写真状態をリセット
-            setPhotoStates({});
-            
             await loadMeterReadings(propertyId, roomId);
           } else {
-            throw new Error(result?.error || '指示数の更新に失敗しました。');
+            throw new Error(result.error || '指示数の更新に失敗しました。');
           }
         } catch (error) {
           console.error('[meter_reading] handleUpdateReadings error:', error);

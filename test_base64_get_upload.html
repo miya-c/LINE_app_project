@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 + GETリクエスト写真アップロードテスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .header h1 {
+            color: #2c5aa0;
+            margin-bottom: 10px;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .success-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+        .danger-btn {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .photo-preview {
+            max-width: 300px;
+            max-height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .test-result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Base64 + GETリクエスト写真アップロードテスト</h1>
+            <p>新しいAPIキー不要・CORS完全解決版のテスト</p>
+        </div>
+
+        <!-- GAS設定セクション -->
+        <div class="section">
+            <h3>⚙️ Google Apps Script設定</h3>
+            <div class="form-group">
+                <label for="gasUrl">GAS WebアプリURL:</label>
+                <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" required>
+                <small style="color: #666; font-size: 12px;">
+                    ※ Google Apps Scriptで「ウェブアプリとして展開」したURLを貼り付けてください
+                </small>
+            </div>
+        </div>
+
+        <!-- テスト情報セクション -->
+        <div class="section">
+            <h3>📋 テストデータ</h3>
+            <div class="form-group">
+                <label for="propertyId">物件ID:</label>
+                <input type="text" id="propertyId" value="TEST_PROPERTY_001" required>
+            </div>
+            <div class="form-group">
+                <label for="roomId">部屋ID:</label>
+                <input type="text" id="roomId" value="TEST_ROOM_001" required>
+            </div>
+            <div class="form-group">
+                <label for="testDate">テスト日付:</label>
+                <input type="date" id="testDate" required>
+            </div>
+        </div>
+
+        <!-- 写真選択セクション -->
+        <div class="section">
+            <h3>📸 写真選択</h3>
+            <div class="form-group">
+                <label for="photoInput">テスト用写真を選択:</label>
+                <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" required>
+                <small style="color: #666; font-size: 12px;">
+                    ※ JPEG、PNG、WebP形式 / 最大10MB
+                </small>
+            </div>
+            <div id="photoPreview"></div>
+            <div id="photoInfo"></div>
+        </div>
+
+        <!-- テスト実行セクション -->
+        <div class="section">
+            <h3>🚀 テスト実行</h3>
+            <div class="progress-bar" id="progressBarContainer" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div style="text-align: center;">
+                <button onclick="testConnection()" id="connectionBtn">1. 接続テスト</button>
+                <button onclick="testUploadPhoto()" id="uploadBtn" class="success-btn" disabled>2. 写真アップロードテスト</button>
+                <button onclick="clearResults()" class="danger-btn">結果クリア</button>
+            </div>
+        </div>
+
+        <!-- 結果表示セクション -->
+        <div class="section">
+            <h3>📊 テスト結果</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPhotoData = null;
+        let selectedPhotoFile = null;
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 今日の日付を設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('testDate').value = today;
+            
+            // ファイル選択イベント
+            document.getElementById('photoInput').addEventListener('change', handleFileSelection);
+            
+            showMessage('📝 Base64 + GETリクエスト写真アップロードテストページを読み込みました。', 'info');
+            showMessage('📋 手順: 1) GAS URL入力 → 2) 写真選択 → 3) 接続テスト → 4) 写真アップロードテスト', 'info');
+        });
+
+        // ファイル選択処理
+        function handleFileSelection(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // ファイルサイズ検証（10MB制限）
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showMessage(`❌ ファイルサイズが大きすぎます（${Math.round(file.size / 1024 / 1024)}MB）。10MB以下の画像を選択してください。`, 'error');
+                return;
+            }
+
+            // ファイル形式検証
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                showMessage(`❌ サポートされていないファイル形式です（${file.type}）。JPEG、PNG、WebP形式の画像を選択してください。`, 'error');
+                return;
+            }
+
+            selectedPhotoFile = file;
+            
+            // Base64変換とプレビュー表示
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                selectedPhotoData = e.target.result;
+                
+                // プレビュー表示
+                const preview = document.getElementById('photoPreview');
+                preview.innerHTML = `
+                    <h4>📸 選択された画像:</h4>
+                    <img src="${selectedPhotoData}" class="photo-preview" alt="選択された画像">
+                `;
+                
+                // ファイル情報表示
+                const info = document.getElementById('photoInfo');
+                info.innerHTML = `
+                    <div class="message info">
+                        <strong>📄 ファイル情報:</strong><br>
+                        ファイル名: ${file.name}<br>
+                        サイズ: ${Math.round(file.size / 1024)} KB<br>
+                        形式: ${file.type}<br>
+                        Base64サイズ: ${Math.round(selectedPhotoData.length / 1024)} KB
+                    </div>
+                `;
+                
+                document.getElementById('uploadBtn').disabled = false;
+                showMessage('✅ 画像を選択しました。接続テスト後にアップロードテストが可能です。', 'success');
+            };
+
+            reader.onerror = function() {
+                showMessage('❌ ファイルの読み込み中にエラーが発生しました。', 'error');
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // 1. 接続テスト
+        async function testConnection() {
+            const gasUrl = document.getElementById('gasUrl').value;
+            
+            if (!gasUrl) {
+                showMessage('❌ GAS WebアプリURLを入力してください。', 'error');
+                return;
+            }
+
+            const connectionBtn = document.getElementById('connectionBtn');
+            connectionBtn.disabled = true;
+            connectionBtn.textContent = '接続中...';
+
+            try {
+                showMessage('🔄 GASとの接続をテスト中...', 'info');
+                
+                // バージョン情報を取得して接続確認
+                const params = new URLSearchParams({
+                    action: 'getVersion'
+                });
+
+                const response = await fetch(`${gasUrl}?${params}`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                showTestResult('接続テスト', {
+                    status: 'SUCCESS',
+                    httpStatus: response.status,
+                    gasVersion: result.version || 'バージョン情報なし',
+                    corsFixed: result.corsFixed || false,
+                    availableActions: result.availableActions || [],
+                    response: result
+                }, 'success');
+
+                showMessage('✅ GASとの接続が成功しました！', 'success');
+                
+                // アップロードテストボタンを有効化
+                if (selectedPhotoData) {
+                    document.getElementById('uploadBtn').disabled = false;
+                }
+
+            } catch (error) {
+                showTestResult('接続テスト', {
+                    status: 'ERROR',
+                    error: error.message,
+                    url: gasUrl,
+                    troubleshooting: [
+                        '1. GAS URLが正しいか確認',
+                        '2. GASが「全員」がアクセス可能で展開されているか確認',
+                        '3. ネットワーク接続を確認'
+                    ]
+                }, 'error');
+
+                showMessage(`❌ 接続テストが失敗しました: ${error.message}`, 'error');
+            } finally {
+                connectionBtn.disabled = false;
+                connectionBtn.textContent = '1. 接続テスト';
+            }
+        }
+
+        // 2. 写真アップロードテスト
+        async function testUploadPhoto() {
+            if (!selectedPhotoData) {
+                showMessage('❌ まず写真を選択してください。', 'error');
+                return;
+            }
+
+            const gasUrl = document.getElementById('gasUrl').value;
+            const propertyId = document.getElementById('propertyId').value;
+            const roomId = document.getElementById('roomId').value;
+            const testDate = document.getElementById('testDate').value;
+
+            if (!gasUrl || !propertyId || !roomId || !testDate) {
+                showMessage('❌ すべての必須フィールドを入力してください。', 'error');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'アップロード中...';
+
+            const progressContainer = document.getElementById('progressBarContainer');
+            const progressFill = document.getElementById('progressFill');
+            progressContainer.style.display = 'block';
+
+            try {
+                showMessage('📤 Base64 + GETリクエスト写真アップロードを開始...', 'info');
+                updateProgress(20);
+                
+                // ファイル名を生成
+                const fileExtension = selectedPhotoFile.name.split('.').pop() || 'jpg';
+                const fileName = `test_meter_${propertyId}_${roomId}_${testDate}_${Date.now()}.${fileExtension}`;
+                
+                updateProgress(40);
+                
+                // GETリクエストでBase64データを送信
+                const params = new URLSearchParams({
+                    action: 'uploadPhotoBase64',
+                    propertyId: encodeURIComponent(propertyId),
+                    roomId: encodeURIComponent(roomId),
+                    date: encodeURIComponent(testDate),
+                    photoData: encodeURIComponent(selectedPhotoData),
+                    fileName: encodeURIComponent(fileName)
+                });
+
+                const requestUrl = `${gasUrl}?${params}`;
+                
+                showMessage(`📡 リクエスト送信中... (データサイズ: ${Math.round(selectedPhotoData.length / 1024)}KB)`, 'info');
+                updateProgress(60);
+
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                updateProgress(80);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                updateProgress(100);
+
+                if (result.success) {
+                    showTestResult('写真アップロードテスト', {
+                        status: 'SUCCESS',
+                        httpStatus: response.status,
+                        photoUrl: result.data?.photoUrl || 'URLなし',
+                        fileName: result.data?.fileName || fileName,
+                        spreadsheetRecorded: result.data?.spreadsheetRecorded || false,
+                        spreadsheetRow: result.data?.spreadsheetRow || null,
+                        fileSize: Math.round(selectedPhotoData.length / 1024) + 'KB',
+                        method: 'Base64 + GET Request',
+                        response: result
+                    }, 'success');
+
+                    showMessage('🎉 写真アップロードが完了しました！', 'success');
+                    showMessage(`📁 Google Driveに保存されました: ${result.data?.fileName || fileName}`, 'info');
+                    
+                    if (result.data?.photoUrl) {
+                        showMessage(`🔗 写真URL: ${result.data.photoUrl}`, 'info');
+                    }
+
+                } else {
+                    throw new Error(result.error || '写真のアップロードに失敗しました');
+                }
+
+            } catch (error) {
+                showTestResult('写真アップロードテスト', {
+                    status: 'ERROR',
+                    error: error.message,
+                    fileSize: Math.round(selectedPhotoData.length / 1024) + 'KB',
+                    method: 'Base64 + GET Request',
+                    troubleshooting: [
+                        '1. 写真サイズが10MB以下か確認',
+                        '2. Base64データが正しい形式か確認',
+                        '3. GASのGoogle Drive権限を確認',
+                        '4. スプレッドシートIDが正しく設定されているか確認'
+                    ]
+                }, 'error');
+
+                showMessage(`❌ 写真アップロードが失敗しました: ${error.message}`, 'error');
+
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '2. 写真アップロードテスト';
+                progressContainer.style.display = 'none';
+                updateProgress(0);
+            }
+        }
+
+        // プログレスバー更新
+        function updateProgress(percent) {
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = percent + '%';
+        }
+
+        // テスト結果表示
+        function showTestResult(testName, data, type) {
+            const results = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `
+                <strong>[${timestamp}] ${testName}</strong><br>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            results.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // メッセージ表示
+        function showMessage(text, type = 'info') {
+            const results = document.getElementById('testResults');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${text}`;
+            results.appendChild(messageDiv);
+            
+            // 自動スクロール
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 結果クリア
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            showMessage('🗑️ テスト結果をクリアしました。', 'info');
+        }
+    </script>
+</body>
+</html>
