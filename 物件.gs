@@ -1,7 +1,6 @@
 // ===================================================
 // 水道検針WOFF GAS Web App - 2025-06-07-v8-GET-ONLY
 // GETリクエストのみ使用：APIキー不要・CORS完全解決版
-// 写真アップロード機能：Base64→Google Drive→スプレッドシート記録
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
@@ -203,18 +202,6 @@ function doGet(e) {
       return handleUpdateMeterReadings(e.parameter);
     }
     
-    // 写真URL更新（CORS回避版）
-    else if (action === 'updatePhotoUrl') {
-      console.log("[GAS DEBUG] ✅ updatePhotoUrlアクション処理開始");
-      return handleUpdatePhotoUrl(e.parameter);
-    }
-    
-    // Base64写真アップロード（GETリクエスト）
-    else if (action === 'uploadPhotoBase64') {
-      console.log("[GAS DEBUG] ✅ uploadPhotoBase64アクション処理開始");
-      return handleUploadPhotoBase64(e.parameter);
-    }
-    
     // 無効なアクション
     else {
       console.log("[GAS DEBUG] ❌ 無効なアクション:", action);
@@ -286,12 +273,8 @@ function handleGetProperties() {
     
     // 必ず配列を返すことを保証
     if (properties.length === 0) {
-      console.log("[GAS DEBUG] 物件データが空のため、テストデータを返します");
-      const testProperties = [
-        { id: "TEST001", name: "テスト物件1" },
-        { id: "TEST002", name: "テスト物件2" }
-      ];
-      return createCorsResponse(testProperties);
+      console.log("[GAS DEBUG] 物件データが空です");
+      return createCorsResponse([]);
     }
     
     return createCorsResponse(properties);
@@ -323,12 +306,11 @@ function handleGetRooms(params) {
     
     if (!sheet) {
       console.log("[GAS DEBUG] ERROR: 部屋マスタシートが見つかりません");
-      // テストデータを返す
-      const testRooms = [
-        { propertyId: propertyId, roomNumber: "101", id: "101", name: "101号室" },
-        { propertyId: propertyId, roomNumber: "102", id: "102", name: "102号室" }
-      ];
-      return createCorsResponse(testRooms);
+      return createCorsResponse({ 
+        error: "シート '部屋マスタ' が見つかりません。",
+        availableSheets: sheetNames,
+        debugInfo: "v3-DEBUG版でシートエラー"
+      });
     }
     
     const data = sheet.getDataRange().getValues();
@@ -351,15 +333,10 @@ function handleGetRooms(params) {
     
     console.log("[GAS DEBUG] 取得部屋数:", rooms.length);
     
-    // データが見つからない場合はテストデータを返す
+    // データが見つからない場合は空の配列を返す
     if (rooms.length === 0) {
-      console.log("[GAS DEBUG] 部屋データが見つからないため、テストデータを返します");
-      const testRooms = [
-        { propertyId: propertyId, roomNumber: "101", id: "101", name: "101" },
-        { propertyId: propertyId, roomNumber: "102", id: "102", name: "102" },
-        { propertyId: propertyId, roomNumber: "201", id: "201", name: "201" }
-      ];
-      return createCorsResponse(testRooms);
+      console.log("[GAS DEBUG] 指定された物件IDに対応する部屋データが見つかりません");
+      return createCorsResponse([]);
     }
     
     return createCorsResponse(rooms);
@@ -643,8 +620,7 @@ function handleUpdateMeterReadings(params) {
             currentReading: headers.indexOf('今回の指示数'),
             previousReading: headers.indexOf('前回指示数'),
             usage: headers.indexOf('今回使用量'),
-            warningFlag: headers.indexOf('警告フラグ'),
-            photoUrl: headers.indexOf('写真URL')
+            warningFlag: headers.indexOf('警告フラグ')
           };
 
           // 必要な列が存在するかチェック
@@ -680,23 +656,6 @@ function handleUpdateMeterReadings(params) {
               const usage = previousReading > 0 ? Math.max(0, currentReading - previousReading) : 0;
               sheet.getRange(j + 1, columnIndexes.usage + 1).setValue(usage);
               
-              // 写真URLがある場合は更新
-              if (reading.photoData) {
-                try {
-                  // Base64データをGoogle Driveに保存してURLを取得
-                  const photoUrl = savePhotoToGoogleDrive(reading.photoData, propertyId, roomId, currentDate);
-                  if (photoUrl) {
-                    sheet.getRange(j + 1, columnIndexes.photoUrl + 1).setValue(photoUrl);
-                    console.log(`[GAS] 写真URL更新完了: ${photoUrl}`);
-                  } else {
-                    console.error("[GAS] 写真保存に失敗しました");
-                  }
-                } catch (photoError) {
-                  console.error("[GAS] 写真保存エラー:", photoError.message);
-                  // 写真保存に失敗しても他の更新は続行
-                }
-              }
-              
               // 警告フラグを「正常」に設定
               sheet.getRange(j + 1, columnIndexes.warningFlag + 1).setValue('正常');
               
@@ -713,7 +672,6 @@ function handleUpdateMeterReadings(params) {
           updatedReadings.push({
             date: reading.date,
             currentReading: reading.currentReading,
-            photoUrl: reading.photoData ? '写真更新済み' : '',
             usage: reading.usage || '',
             updated: true
           });
@@ -754,143 +712,6 @@ function handleUpdateMeterReadings(params) {
   }
 }
 
-// Base64写真データをGoogle Driveに保存する関数
-function savePhotoToGoogleDrive(base64PhotoData, propertyId, roomId, date) {
-  try {
-    console.log('[GAS] savePhotoToGoogleDrive 開始');
-    console.log(`[GAS] パラメータ確認 - propertyId: ${propertyId}, roomId: ${roomId}, date: ${date}`);
-    console.log(`[GAS] Base64データサイズ: ${base64PhotoData ? base64PhotoData.length : 'null'} 文字`);
-    
-    // 入力パラメータの検証
-    if (!base64PhotoData || typeof base64PhotoData !== 'string') {
-      console.error('[GAS] savePhotoToGoogleDrive: 写真データが無効です (空またはstring型でない)');
-      return null;
-    }
-    
-    if (!base64PhotoData.startsWith('data:image/')) {
-      console.error('[GAS] savePhotoToGoogleDrive: 写真データがBase64画像形式ではありません');
-      console.error(`[GAS] データの開始部分: ${base64PhotoData.substring(0, 50)}...`);
-      return null;
-    }
-    
-    if (!propertyId || !roomId) {
-      console.error('[GAS] savePhotoToGoogleDrive: 物件IDまたは部屋IDが不足しています');
-      return null;
-    }
-    
-    // Base64データのサイズ検証（約10MB制限）
-    const base64Size = (base64PhotoData.length * 3) / 4; // Base64のサイズ概算
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (base64Size > maxSize) {
-      console.error(`[GAS] savePhotoToGoogleDrive: ファイルサイズが大きすぎます (${Math.round(base64Size / 1024 / 1024)}MB > 10MB)`);
-      return null;
-    }
-    
-    console.log(`[GAS] Base64データサイズ検証完了: ${Math.round(base64Size / 1024)}KB`);
-    
-    // Google Driveフォルダの準備
-    const driveFolderName = "WaterMeterReadingPhotos";
-    let driveFolder;
-    try {
-      const folders = DriveApp.getFoldersByName(driveFolderName);
-      if (folders.hasNext()) {
-        driveFolder = folders.next();
-        console.log(`[GAS] 既存のGoogle Driveフォルダを使用: ${driveFolderName}`);
-      } else {
-        driveFolder = DriveApp.createFolder(driveFolderName);
-        console.log(`[GAS] Google Driveにフォルダ '${driveFolderName}' を作成しました。`);
-      }
-    } catch (folderError) {
-      console.error('[GAS] Google Driveフォルダの準備に失敗:', folderError.message);
-      console.error('[GAS] フォルダエラーのスタックトレース:', folderError.stack);
-      throw new Error('Google Driveフォルダの準備に失敗しました');
-    }
-    
-    // Base64データを処理
-    const dataParts = base64PhotoData.split(',');
-    if (dataParts.length !== 2) {
-      console.error('[GAS] savePhotoToGoogleDrive: Base64データの形式が正しくありません');
-      console.error(`[GAS] データ部分の数: ${dataParts.length}, 期待値: 2`);
-      return null;
-    }
-    
-    const base64Data = dataParts[1];
-    if (!base64Data || base64Data.length === 0) {
-      console.error('[GAS] savePhotoToGoogleDrive: Base64データが空です');
-      return null;
-    }
-    
-    const contentType = base64PhotoData.substring(
-      base64PhotoData.indexOf(':') + 1, 
-      base64PhotoData.indexOf(';')
-    );
-    
-    console.log(`[GAS] コンテンツタイプ: ${contentType}`);
-    
-    // サポートされている画像形式の検証
-    const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!supportedTypes.includes(contentType)) {
-      console.error(`[GAS] savePhotoToGoogleDrive: サポートされていない画像形式: ${contentType}`);
-      console.error(`[GAS] サポート形式: ${supportedTypes.join(', ')}`);
-      return null;
-    }
-    
-    let imageBlob;
-    try {
-      console.log('[GAS] Base64デコード開始...');
-      imageBlob = Utilities.newBlob(
-        Utilities.base64Decode(base64Data), 
-        contentType
-      );
-      console.log('[GAS] Base64デコード成功');
-    } catch (blobError) {
-      console.error('[GAS] Base64デコードに失敗:', blobError.message);
-      console.error('[GAS] デコードエラーのスタックトレース:', blobError.stack);
-      throw new Error('画像データのデコードに失敗しました');
-    }
-    
-    // ファイル名生成（特殊文字を除去）
-    const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
-    const fileExtension = contentType.split('/')[1] || 'jpg';
-    const safePropertyId = String(propertyId).replace(/[^a-zA-Z0-9]/g, '');
-    const safeRoomId = String(roomId).replace(/[^a-zA-Z0-9]/g, '');
-    const safeDate = String(date).replace(/[^a-zA-Z0-9]/g, '');
-    const fileName = `meter_${safePropertyId}_${safeRoomId}_${safeDate}_${timestamp}.${fileExtension}`;
-    
-    console.log(`[GAS] 生成されたファイル名: ${fileName}`);
-    
-    // ファイル保存
-    let imageFile;
-    try {
-      console.log('[GAS] Google Driveにファイル作成開始...');
-      imageFile = driveFolder.createFile(imageBlob.setName(fileName));
-      console.log(`[GAS] ファイル作成成功: ${fileName}`);
-    } catch (fileError) {
-      console.error('[GAS] Google Driveファイル作成に失敗:', fileError.message);
-      console.error('[GAS] ファイル作成エラーのスタックトレース:', fileError.stack);
-      throw new Error('Google Driveへのファイル保存に失敗しました');
-    }
-    
-    // ファイルを公開可能に設定
-    try {
-      console.log('[GAS] ファイル共有設定開始...');
-      imageFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      console.log('[GAS] ファイル共有設定成功');
-    } catch (sharingError) {
-      console.warn('[GAS] ファイル共有設定に失敗（URLは取得可能）:', sharingError.message);
-    }
-    
-    const photoUrl = imageFile.getUrl();
-    console.log(`[GAS] 写真をGoogle Driveに保存しました: ${fileName}, URL: ${photoUrl}`);
-    
-    return photoUrl;
-      } catch (error) {
-    console.error('[GAS] savePhotoToGoogleDrive エラー:', error.message);
-    console.error('[GAS] スタックトレース:', error.stack);
-    return null;
-  }
-}
-
 // GAS doPost: CORS対応・POSTアクション分岐
 function doPost(e) {
   const timestamp = new Date().toISOString();
@@ -922,16 +743,7 @@ function doPost(e) {
         console.log('[GAS DEBUG] JSON解析成功 - action:', params.action);
         console.log('[GAS DEBUG] POSTパラメータキー:', Object.keys(params));
         
-        // actionごとの詳細ログ
-        if (params.action === 'uploadPhotoBase64') {
-          console.log('[GAS DEBUG] 写真アップロード詳細:', {
-            propertyId: params.propertyId,
-            roomId: params.roomId,
-            date: params.date,
-            fileName: params.fileName,
-            photoDataLength: params.photoData ? params.photoData.length : 0
-          });
-        }
+        // デバッグログ処理
         
       } catch (parseError) {
         console.error('[GAS ERROR] JSON解析エラー:', parseError.message);
@@ -966,11 +778,6 @@ function doPost(e) {
       console.log('[GAS DEBUG] updateMeterReadingsアクション処理開始（doPost）');
       return handleUpdateMeterReadings(params);
       
-    } else if (params.action === 'uploadPhotoBase64') {
-      console.log('[GAS DEBUG] uploadPhotoBase64アクション処理開始（doPost）');
-      // POST経由であることを明示するため、第2引数に"POST"を渡す
-      return handleUploadPhotoBase64(params, 'POST');
-      
     } else if (params.action === 'test') {
       // テスト用エンドポイント
       console.log('[GAS DEBUG] テストアクション処理');
@@ -990,7 +797,7 @@ function doPost(e) {
         success: false,
         error: '無効なアクションです（doPost）',
         receivedAction: params.action,
-        expected: ['updateMeterReadings', 'uploadPhotoBase64', 'test'],
+        expected: ['updateMeterReadings', 'test'],
         timestamp: timestamp
       };
       return createCorsResponse(errorResponse);
@@ -1004,228 +811,5 @@ function doPost(e) {
       timestamp: timestamp
     };
     return createCorsResponse(errorResponse);
-  }
-}
-
-// ===================================================
-// Google Drive API直接アップロード後の写真URL記録関数
-// ===================================================
-
-/**
- * Google Drive API経由でアップロードされた写真のURLをスプレッドシートに記録
- * @param {Object} params - GETリクエストのパラメータ
- * @returns {Object} - 処理結果レスポンス
- */
-function handleUpdatePhotoUrl(params) {
-  const timestamp = new Date().toISOString();
-  console.log(`[GAS DEBUG ${timestamp}] handleUpdatePhotoUrl開始 - params:`, params);
-  
-  try {
-    // 必須パラメータのチェック
-    const { propertyId, roomNumber, photoUrl, fileName } = params;
-    
-    if (!propertyId || !roomNumber || !photoUrl) {
-      console.error('[GAS ERROR] 必須パラメータが不足:', { propertyId, roomNumber, photoUrl });
-      return createCorsResponse({
-        success: false,
-        error: '必須パラメータが不足しています (propertyId, roomNumber, photoUrl)',
-        received: params,
-        timestamp: timestamp
-      });
-    }
-    
-    // スプレッドシートを開く
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getActiveSheet();
-    const lastRow = sheet.getLastRow();
-    console.log(`[GAS DEBUG] スプレッドシート最終行: ${lastRow}`);
-    
-    // 新しい行にデータを追加
-    const newRow = lastRow + 1;
-    const currentDate = new Date().toLocaleString('ja-JP');
-    
-    // 写真データを記録（従来のsavePhotoToGoogleDrive関数と同様の形式）
-    const rowData = [
-      propertyId,           // A列: 物件ID  
-      roomNumber,           // B列: 部屋番号
-      currentDate,          // C列: 日付
-      photoUrl,             // D列: 写真URL（Google DriveのダイレクトリンクまたはファイルID）
-      fileName || `photo_${propertyId}_${roomNumber}_${Date.now()}.jpg`, // E列: ファイル名
-      'Google Drive API',   // F列: アップロード方法
-      'SUCCESS'             // G列: ステータス
-    ];
-    
-    // スプレッドシートに行を追加
-    sheet.getRange(newRow, 1, 1, rowData.length).setValues([rowData]);
-    
-    console.log(`[GAS DEBUG] 写真URL記録完了 - 行${newRow}:`, rowData);
-    
-    // 成功レスポンス
-    return createCorsResponse({
-      success: true,
-      message: '写真URLがスプレッドシートに正常に記録されました',
-      data: {
-        propertyId: propertyId,
-        roomNumber: roomNumber,
-        photoUrl: photoUrl,
-        fileName: fileName,
-        spreadsheetRow: newRow,
-        recordedAt: currentDate
-      },
-      timestamp: timestamp
-    });
-    
-  } catch (error) {
-    console.error('[GAS ERROR] handleUpdatePhotoUrl エラー:', error.message, error.stack);
-    
-    return createCorsResponse({
-      success: false,
-      error: 'サーバーエラー: ' + error.message,
-      stack: error.stack,
-      timestamp: timestamp
-    });
-  }
-}
-
-// ===================================================
-// Base64写真アップロード処理（GETリクエスト版）
-// ===================================================
-
-/**
- * GETリクエスト経由でBase64写真データをGoogle Driveに保存
- * @param {Object} params - GETリクエストのパラメータ
- * @returns {Object} - 処理結果レスポンス
- */
-function handleUploadPhotoBase64(params, method) {
-  const timestamp = new Date().toISOString();
-  console.log(`[GAS DEBUG ${timestamp}] handleUploadPhotoBase64開始 - params:`, params);
-  
-  try {
-    // 必須パラメータのチェック
-    const { propertyId, roomId, date, photoData } = params;
-    
-    if (!propertyId || !roomId || !date || !photoData) {
-      console.error('[GAS ERROR] 必須パラメータが不足:', { propertyId, roomId, date, photoDataLength: photoData ? photoData.length : 0 });
-      return createCorsResponse({
-        success: false,
-        error: '必須パラメータが不足しています（propertyId, roomId, date, photoData）',
-        timestamp: timestamp
-      });
-    }
-    
-    console.log(`[GAS DEBUG] パラメータ検証完了 - propertyId: ${propertyId}, roomId: ${roomId}, date: ${date}`);
-    console.log(`[GAS DEBUG] Base64データサイズ: ${photoData.length} 文字`);
-    
-    // Base64写真をGoogle Driveに保存
-    const photoUrl = savePhotoToGoogleDrive(photoData, propertyId, roomId, date);
-    
-    if (!photoUrl) {
-      console.error('[GAS ERROR] 写真の保存に失敗しました');
-      return createCorsResponse({
-        success: false,
-        error: 'Google Driveへの写真保存に失敗しました',
-        timestamp: timestamp
-      });
-    }
-    
-    console.log(`[GAS DEBUG] 写真保存成功 - URL: ${photoUrl}`);
-    
-    // スプレッドシートに写真情報を記録
-    const uploadMethod = method === 'POST' ? 'Base64 POST' : 'Base64 GET';
-    const recordResult = updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, params.fileName, uploadMethod);
-    
-    if (!recordResult.success) {
-      console.warn('[GAS WARN] スプレッドシート記録に失敗しましたが、写真は保存されました');
-    }
-    
-    // 成功レスポンス
-    return createCorsResponse({
-      success: true,
-      message: 'Base64写真アップロードが完了しました',
-      data: {
-        propertyId: propertyId,
-        roomId: roomId,
-        date: date,
-        photoUrl: photoUrl,
-        fileName: params.fileName || 'unknown',
-        spreadsheetRecorded: recordResult.success,
-        spreadsheetRow: recordResult.row || null
-      },
-      timestamp: timestamp
-    });
-    
-  } catch (error) {
-    console.error('[GAS ERROR] handleUploadPhotoBase64 エラー:', error.message, error.stack);
-    
-    return createCorsResponse({
-      success: false,
-      error: 'サーバーエラー: ' + error.message,
-      stack: error.stack,
-      timestamp: timestamp
-    });
-  }
-}
-
-/**
- * スプレッドシートに写真URL情報を記録
- * @param {string} propertyId - 物件ID
- * @param {string} roomId - 部屋ID
- * @param {string} date - 日付
- * @param {string} photoUrl - 写真URL
- * @param {string} fileName - ファイル名
- * @returns {Object} - 記録結果
- */
-function updatePhotoUrlInSpreadsheet(propertyId, roomId, date, photoUrl, fileName, uploadMethod) {
-  try {
-    console.log('[GAS DEBUG] スプレッドシート写真URL記録開始');
-    
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-    
-    // 写真記録用シートの取得または作成
-    let photoSheet;
-    try {
-      photoSheet = spreadsheet.getSheetByName('写真記録');
-    } catch (e) {
-      console.log('[GAS DEBUG] 写真記録シートが存在しないため作成します');
-      photoSheet = spreadsheet.insertSheet('写真記録');
-      
-      // ヘッダー行を追加
-      const headers = ['物件ID', '部屋ID', '日付', '写真URL', 'ファイル名', 'アップロード方法', 'ステータス', '記録日時'];
-      photoSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      photoSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-    }
-    
-    // 新しい行のデータを準備
-    const currentDate = new Date().toISOString();
-    const newRow = photoSheet.getLastRow() + 1;
-    
-    const rowData = [
-      propertyId,           // A列: 物件ID  
-      roomId,               // B列: 部屋ID
-      date,                 // C列: 日付
-      photoUrl,             // D列: 写真URL
-      fileName || `photo_${propertyId}_${roomId}_${Date.now()}.jpg`, // E列: ファイル名
-      uploadMethod || 'Base64 GET', // F列: アップロード方法
-      'SUCCESS',            // G列: ステータス
-      currentDate           // H列: 記録日時
-    ];
-    
-    // スプレッドシートに行を追加
-    photoSheet.getRange(newRow, 1, 1, rowData.length).setValues([rowData]);
-    
-    console.log(`[GAS DEBUG] スプレッドシート記録完了 - 行${newRow}:`, rowData);
-    
-    return {
-      success: true,
-      row: newRow,
-      data: rowData
-    };
-    
-  } catch (error) {
-    console.error('[GAS ERROR] スプレッドシート記録エラー:', error.message, error.stack);
-    
-    return {
-      success: false,
-      error: error.message
-    };
   }
 }

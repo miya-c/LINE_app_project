@@ -4,8 +4,9 @@
   <title>検針情報 (React + Mantine)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- WOFF SDK -->  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>  <script>
-    // GETリクエストのみ使用版：APIキー不要・CORS完全解決  </script>
+  
+  <!-- WOFF SDK -->
+  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
   
   <!-- ReactとReactDOMのCDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -29,13 +30,14 @@
       const [roomName, setRoomName] = React.useState('');
       const [meterReadings, setMeterReadings] = React.useState([]);
       const [debugInfo, setDebugInfo] = React.useState(null);
-
+      const [showModal, setShowModal] = React.useState(false);
+      const [modalImageSrc, setModalImageSrc] = React.useState('');
       const [updating, setUpdating] = React.useState(false);
       const [usageStates, setUsageStates] = React.useState({});
       const [toastMessage, setToastMessage] = React.useState('');
       const [showToast, setShowToast] = React.useState(false);
       const [inputErrors, setInputErrors] = React.useState({});
-
+      const [photoStates, setPhotoStates] = React.useState({});
       const [gasWebAppUrl, setGasWebAppUrl] = React.useState('');
 
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
@@ -44,18 +46,22 @@
         const initializeWoff = async () => {
           try {
             console.log('[meter_reading] WOFFを初期化します。');
-            // sessionStorageからgasWebAppUrlを取得
+            // sessionStorageからgasWebAppUrlを取得（フォールバック付き）
             const urlFromSession = sessionStorage.getItem('gasWebAppUrl');
+            const fallbackUrl = 'https://script.google.com/macros/s/AKfycbxlled-ot17rnp-yWMbKJqa8biDFV2XTFtgaWoQOhC7947dpYgn5qA0uSH7e9uKlgMcYA/exec';
             
-            if (!urlFromSession) {
-              console.error('[meter_reading] gasWebAppURLがsessionStorageにありません。');
-              setError('アプリのURLが設定されていません。物件選択画面から再度アクセスしてください。');
-              setLoading(false);
-              return;
+            const finalUrl = urlFromSession || fallbackUrl;
+            
+            // 古いURLの場合は新しいURLに強制更新
+            if (finalUrl.includes('AKfycbxZs0r3-UhOqoa-Y6SjXVv8MgGuwbkcQaf6NEel6Kx_MAUEBm1oZnIwUCT3pv7XTwUd0A')) {
+              console.warn('[meter_reading] 古いURL検出。新しいURLに更新します。');
+              setGasWebAppUrl(fallbackUrl);
+              sessionStorage.setItem('gasWebAppUrl', fallbackUrl);
+              console.log('[meter_reading] gasWebAppUrlを更新しました:', fallbackUrl);
+            } else {
+              setGasWebAppUrl(finalUrl);
+              console.log('[meter_reading] gasWebAppUrlを取得しました:', finalUrl);
             }
-            
-            setGasWebAppUrl(urlFromSession);
-            console.log('[meter_reading] gasWebAppUrlを取得しました:', urlFromSession);
 
             if (typeof woff === 'undefined' || typeof woff.init !== 'function') {
               console.error('[meter_reading] WOFF SDKが正しく読み込まれていません。');
@@ -91,14 +97,6 @@
           const rId = urlParams.get('roomId');
           const rName = urlParams.get('roomName');
 
-          console.log('[meter_reading] 🔍 URLパラメータ詳細:');
-          console.log('[meter_reading] - propertyId:', `"${propId}"`, '型:', typeof propId, 'length:', propId ? propId.length : 'N/A');
-          console.log('[meter_reading] - propertyName:', `"${propName}"`, '型:', typeof propName);
-          console.log('[meter_reading] - roomId:', `"${rId}"`, '型:', typeof rId, 'length:', rId ? rId.length : 'N/A');
-          console.log('[meter_reading] - roomName:', `"${rName}"`, '型:', typeof rName);
-          console.log('[meter_reading] - 完全なURL:', window.location.href);
-          console.log('[meter_reading] - URLSearchParams:', window.location.search);
-
           setPropertyId(propId || 'N/A');
           setPropertyName(propName || 'N/A');
           setRoomId(rId || 'N/A');
@@ -111,7 +109,6 @@
             return;
           }
 
-          console.log('[meter_reading] 🚀 検針データ取得開始 - propertyId:', propId, 'roomId:', rId);
           loadMeterReadings(propId, rId);
         };
 
@@ -121,16 +118,8 @@
       const loadMeterReadings = async (propId, rId) => {
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
-          if (!currentGasUrl) {
-            throw new Error('gasWebAppURLが設定されていません。物件選択画面から再度アクセスしてください。');
-          }
-          
           const fetchUrl = `${currentGasUrl}?action=getMeterReadings&propertyId=${propId}&roomId=${rId}`;
           console.log('[meter_reading] Fetching meter readings from URL:', fetchUrl);
-          console.log('[meter_reading] 送信パラメータ詳細:');
-          console.log('[meter_reading] - propertyId:', `"${propId}"` + ` (length: ${propId.length})`);
-          console.log('[meter_reading] - roomId:', `"${rId}"` + ` (length: ${rId.length})`);
-          console.log('[meter_reading] - エンコード後URL:', encodeURIComponent(propId), encodeURIComponent(rId));
           
           const response = await fetch(fetchUrl);
           if (!response.ok) {
@@ -172,22 +161,6 @@
           }
 
           console.log('[meter_reading] Fetched meter readings:', readings);
-          console.log('[meter_reading] Readings is array?', Array.isArray(readings));
-          console.log('[meter_reading] Readings length:', readings ? readings.length : 'N/A');
-          
-          // データ取得状況を詳細に表示
-          if (Array.isArray(readings) && readings.length > 0) {
-            console.log('[meter_reading] ✅ データ取得成功 - 件数:', readings.length);
-            console.log('[meter_reading] 最初のデータ:', readings[0]);
-          } else if (Array.isArray(readings) && readings.length === 0) {
-            console.log('[meter_reading] ⚠️ データは空配列（初回検針状態）');
-            console.log('[meter_reading] 検索条件 - propertyId:', propId, 'roomId:', rId);
-          } else {
-            console.log('[meter_reading] ❌ データ取得失敗または無効な形式');
-            console.log('[meter_reading] readingsの型:', typeof readings);
-            console.log('[meter_reading] readings値:', readings);
-          }
-          
           setMeterReadings(Array.isArray(readings) ? readings : []);
           setLoading(false);
         } catch (error) {
@@ -280,6 +253,78 @@
         return parts; // 配列を直接返す
       };
 
+      const handleFileSelection = (event, date) => {
+        const file = event.target.files[0];
+        if (file) {
+          console.log('[meter_reading] ファイルが選択されました:', file.name, 'for date:', date);
+          
+          const reader = new FileReader();
+          reader.onload = (readerEvent) => {
+            const base64PhotoData = readerEvent.target.result;
+            const inputElement = document.querySelector(`input[data-date="${date}"]`);
+            if (inputElement) {
+              inputElement.setAttribute('data-new-photo', base64PhotoData);
+              console.log('[meter_reading] 写真データをdata-new-photo属性に設定しました for date:', date);
+              
+              // 写真状態を更新
+              setPhotoStates(prev => ({...prev, [date]: true}));
+              
+              displayToast('写真を設定しました。');
+            } else {
+              console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
+              displayToast('写真データを紐付ける入力フィールドが見つかりませんでした。');
+            }
+          };
+          reader.onerror = () => {
+            console.error('[meter_reading] File reading error');
+            displayToast('ファイルの読み込み中にエラーが発生しました。');
+          };
+          reader.readAsDataURL(file);
+        }
+        
+        if (event.target.parentElement === document.body) {
+          document.body.removeChild(event.target);
+        }
+      };
+
+      const handleCameraClick = (date) => {
+        console.log('[meter_reading] カメラボタンクリック (HTML Media Capture): date=', date);
+        
+        try {
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = 'image/*';
+          fileInput.capture = 'environment';
+          fileInput.style.display = 'none';
+          
+          fileInput.onchange = (e) => handleFileSelection(e, date);
+          
+          document.body.appendChild(fileInput);
+          fileInput.click();
+        } catch (error) {
+          console.error('[meter_reading] 写真の取得または処理に失敗しました:', error);
+          displayToast('写真の処理中に予期せぬエラーが発生しました。');
+        }
+      };
+
+      const handlePhotoDelete = (date) => {
+        console.log('[meter_reading] 写真削除:', date);
+        
+        const inputElement = document.querySelector(`input[data-date="${date}"]`);
+        if (inputElement) {
+          inputElement.removeAttribute('data-new-photo');
+          console.log('[meter_reading] 写真データを削除しました for date:', date);
+          
+          // 写真状態を更新
+          setPhotoStates(prev => ({...prev, [date]: false}));
+          
+          displayToast('写真を削除しました。');
+        } else {
+          console.error('[meter_reading] 対応する指示数入力フィールドが見つかりません for date:', date);
+          displayToast('削除対象の写真が見つかりませんでした。');
+        }
+      };
+
       const displayToast = (message) => {
         setToastMessage(message);
         setShowToast(true);
@@ -290,8 +335,11 @@
       };
 
       const hidePhotoModal = () => {
-        // 空の関数（写真機能は削除済み）
-      };      const handleUpdateReadings = async () => {
+        setShowModal(false);
+        setModalImageSrc('');
+      };
+
+      const handleUpdateReadings = async () => {
         if (!propertyId || !roomId) {
           displayToast('物件IDまたは部屋IDが取得できませんでした。');
           return;
@@ -303,6 +351,7 @@
         
         numberInputs.forEach(input => {
           const date = input.getAttribute('data-date');
+          const newPhotoData = input.getAttribute('data-new-photo');
           const originalValue = input.getAttribute('data-original-value') || '';
           const currentValue = input.value || '';
           
@@ -316,7 +365,7 @@
             return;
           }
           
-          if (currentValue !== originalValue) {
+          if (currentValue !== originalValue || newPhotoData) {
             const numericValue = parseFloat(currentValue);
             if (currentValue && (isNaN(numericValue) || numericValue < 0)) {
               input.style.borderColor = 'var(--mantine-color-red-6)';
@@ -327,7 +376,8 @@
             
             updatedReadings.push({
               date: date,
-              currentReading: currentValue
+              currentReading: currentValue,
+              photoData: newPhotoData || null
             });
           }
         });
@@ -344,11 +394,9 @@
 
         console.log('[meter_reading] 更新する指示数:', updatedReadings);
         setUpdating(true);
-        
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
-          
-          // GETリクエストを使用（CORS回避）
+          // GETリクエストで送信（CORS回避のため）
           const params = new URLSearchParams({
             action: 'updateMeterReadings',
             propertyId,
@@ -356,7 +404,7 @@
             readings: JSON.stringify(updatedReadings)
           });
           
-          const requestUrl = `${currentGasUrl}?${params}`;
+          const requestUrl = `${currentGasUrl}?${params.toString()}`;
           console.log('[meter_reading] 更新リクエスト送信 (GET方式):', requestUrl);
           
           const response = await fetch(requestUrl, {
@@ -483,6 +531,7 @@
                         <th>今回使用量</th>
                         <th>状態</th>
                         <th>前回履歴</th>
+                        <th>写真</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -580,6 +629,32 @@
                                 <div>-</div>
                               )}
                             </td>
+                            <td data-label="写真">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button 
+                                  className="mantine-button variant-filled" 
+                                  data-date-button={dateForDataAttribute} 
+                                  onClick={() => handleCameraClick(dateForDataAttribute)}
+                                  style={{
+                                    backgroundColor: photoStates[dateForDataAttribute] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
+                                  }}
+                                >
+                                  {photoStates[dateForDataAttribute] ? '変更 📸' : '写真を追加/変更 📸'}
+                                </button>
+                                {photoStates[dateForDataAttribute] && (
+                                  <button 
+                                    className="mantine-button variant-outline" 
+                                    onClick={() => handlePhotoDelete(dateForDataAttribute)}
+                                    style={{
+                                      borderColor: 'var(--mantine-color-red-6)',
+                                      color: 'var(--mantine-color-red-6)'
+                                    }}
+                                  >
+                                    削除 🗑️
+                                  </button>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
@@ -641,11 +716,58 @@
                             </div>
                           )}
                         </div>
+                        <div>
+                          <label className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>写真:</label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button
+                              className="mantine-button variant-filled"
+                              style={{ 
+                                width: '100%', 
+                                fontSize: '1rem', 
+                                padding: '10px 0',
+                                backgroundColor: photoStates[new Date().toISOString().split('T')[0]] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
+                              }}
+                              data-date-button={new Date().toISOString().split('T')[0]}
+                              onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
+                            >
+                              {photoStates[new Date().toISOString().split('T')[0]] ? '変更 📸' : '写真を追加 📸'}
+                            </button>
+                            {photoStates[new Date().toISOString().split('T')[0]] && (
+                              <button
+                                className="mantine-button variant-outline"
+                                style={{ 
+                                  width: '100%', 
+                                  fontSize: '1rem', 
+                                  padding: '10px 0',
+                                  borderColor: 'var(--mantine-color-red-6)',
+                                  color: 'var(--mantine-color-red-6)'
+                                }}
+                                onClick={() => handlePhotoDelete(new Date().toISOString().split('T')[0])}
+                              >
+                                削除 🗑️
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
+              
+              {showModal && (
+                <div className="modal-overlay" onClick={hidePhotoModal}>
+                  <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={hidePhotoModal}
+                      className="modal-close"
+                    >
+                      &times;
+                    </button>
+                    <img src={modalImageSrc} alt="検針写真" className="modal-image" />
+                  </div>
+                </div>
+              )}
             </div>
             
             {(!loading && !error) && (

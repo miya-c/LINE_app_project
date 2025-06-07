@@ -300,7 +300,7 @@ body {
   }
   .mantine-table td[data-label="今回指示数(㎥)"],
   .mantine-table td[data-label="前回履歴"],
-  .mantine-table td[data-label="写真"] {
+  .mantine-table td[data-label="状態"] {
     border-right: none;
     padding-left: var(--mantine-spacing-sm);
     padding-right: var(--mantine-spacing-sm);
@@ -313,10 +313,6 @@ body {
     font-size: 1.4rem;
     padding: 20px;
     min-height: 60px;
-  }
-
-  .mantine-table td[data-label="写真"] .mantine-button {
-    width: auto;
   }
 
   .mantine-table td[data-label="状態"] span {
@@ -341,54 +337,7 @@ body {
   box-shadow: 0 0 0 2px var(--mantine-color-blue-light);
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--mantine-spacing-md);
-}
 
-.modal-content {
-  position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-}
-
-.modal-image {
-  width: 100%;
-  height: auto;
-  border-radius: var(--mantine-radius-md);
-}
-
-.modal-close {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background-color: white;
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  color: var(--mantine-color-gray-7);
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.modal-close:hover {
-  background-color: var(--mantine-color-gray-1);
-}
 
 /* インラインエラー表示 */
 .inline-error {
@@ -472,8 +421,7 @@ body {
       "date date"
       "reading history"
       "usage history"
-      "status ."
-      "photo photo";
+      "status .";
     gap: 8px; /* 16px → 8px に縮小してスペース確保 */
     margin-bottom: 2em;
     margin-left: 0;
@@ -543,14 +491,6 @@ body {
     border-left: 1px solid var(--mantine-color-gray-2);
   }
 
-  /* 写真ボタン - グリッド全幅の下部に配置 */
-  .mantine-table td[data-label="写真"] {
-    grid-area: photo;
-    grid-column: 1 / -1; /* 全幅に配置 */
-    border-top: 1px solid var(--mantine-color-gray-2);
-    padding: 12px 8px;
-    text-align: center;
-  }
   /* 共通のtdスタイル */
   .mantine-table td {
     display: block;
@@ -597,26 +537,7 @@ body {
     border-radius: 6px;
     box-sizing: border-box;
     min-height: 60px;
-  }  /* 写真ボタンのスタイル */
-  .mantine-table td[data-label="写真"] .mantine-button {
-    width: 100%;
-    font-size: 1.1rem;
-    padding: 12px;
-    box-sizing: border-box;
-  }
-
-  .mantine-table td[data-label="写真"] div {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .mantine-table td[data-label="写真"]::before {
-    margin-bottom: 8px;
-    display: block;
-  }
-  /* 状態表示の調整 */
+  }  /* 状態表示の調整 */
   .mantine-table td[data-label="状態"] span {
     display: inline-block;
     padding: 8px 12px;
@@ -633,8 +554,7 @@ body {
       "date date"
       "reading ."
       "usage ."
-      "status ."
-      "photo photo";
+      "status .";
   }
   .mantine-table td:last-child {
     border-bottom: none;

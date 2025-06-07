@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>検針データ取得デバッグ</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { border: 1px solid #ccc; margin: 10px 0; padding: 15px; }
+        .debug-title { font-weight: bold; color: #333; margin-bottom: 10px; }
+        .log-output { background: #f5f5f5; padding: 10px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
+        .test-button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .test-button:hover { background: #0056b3; }
+        .input-group { margin: 10px 0; }
+        .input-group label { display: inline-block; width: 120px; }
+        .input-group input { padding: 5px; margin-left: 10px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>検針データ取得デバッグツール</h1>
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function DebugApp() {
+            const [gasUrl, setGasUrl] = useState('');
+            const [propertyId, setPropertyId] = useState('');
+            const [roomId, setRoomId] = useState('');
+            const [logs, setLogs] = useState('');
+            const [testResults, setTestResults] = useState('');
+
+            const addLog = (message) => {
+                const timestamp = new Date().toLocaleTimeString();
+                setLogs(prev => prev + `[${timestamp}] ${message}\n`);
+            };
+
+            useEffect(() => {
+                // URLパラメータから初期値を取得
+                const urlParams = new URLSearchParams(window.location.search);
+                const propId = urlParams.get('propertyId') || '';
+                const rId = urlParams.get('roomId') || '';
+                
+                setPropertyId(propId);
+                setRoomId(rId);
+                
+                addLog(`URLパラメータから取得: propertyId="${propId}", roomId="${rId}"`);
+                
+                // 保存されたGAS URLを取得
+                const savedUrl = sessionStorage.getItem('gasWebAppUrl');
+                if (savedUrl) {
+                    setGasUrl(savedUrl);
+                    addLog(`保存されたGAS URL: ${savedUrl}`);
+                }
+            }, []);
+
+            const testGasConnection = async () => {
+                if (!gasUrl) {
+                    addLog('❌ GAS URLが入力されていません');
+                    return;
+                }
+
+                try {
+                    addLog('🚀 GAS接続テスト開始...');
+                    const response = await fetch(`${gasUrl}?action=getVersion`);
+                    const result = await response.json();
+                    addLog('✅ GAS接続成功');
+                    addLog(`レスポンス: ${JSON.stringify(result, null, 2)}`);
+                    setTestResults(JSON.stringify(result, null, 2));
+                } catch (error) {
+                    addLog(`❌ GAS接続エラー: ${error.message}`);
+                }
+            };
+
+            const testMeterReadings = async () => {
+                if (!gasUrl || !propertyId || !roomId) {
+                    addLog('❌ GAS URL、物件ID、部屋IDがすべて必要です');
+                    return;
+                }
+
+                try {
+                    addLog('🔍 検針データ取得テスト開始...');
+                    addLog(`リクエスト: propertyId="${propertyId}", roomId="${roomId}"`);
+                    
+                    const fetchUrl = `${gasUrl}?action=getMeterReadings&propertyId=${propertyId}&roomId=${roomId}`;
+                    addLog(`リクエストURL: ${fetchUrl}`);
+                    
+                    const response = await fetch(fetchUrl);
+                    const result = await response.json();
+                    
+                    addLog('✅ 検針データ取得完了');
+                    addLog(`レスポンス: ${JSON.stringify(result, null, 2)}`);
+                    setTestResults(JSON.stringify(result, null, 2));
+                    
+                    if (result.readings && Array.isArray(result.readings)) {
+                        addLog(`📊 取得データ件数: ${result.readings.length}件`);
+                    }
+                    
+                } catch (error) {
+                    addLog(`❌ 検針データ取得エラー: ${error.message}`);
+                }
+            };
+
+            const clearLogs = () => {
+                setLogs('');
+                setTestResults('');
+            };
+
+            return (
+                <div>
+                    <div className="debug-section">
+                        <div className="debug-title">設定</div>
+                        <div className="input-group">
+                            <label>GAS URL:</label>
+                            <input 
+                                type="text" 
+                                value={gasUrl} 
+                                onChange={(e) => setGasUrl(e.target.value)}
+                                placeholder="https://script.google.com/macros/s/.../exec"
+                            />
+                        </div>
+                        <div className="input-group">
+                            <label>物件ID:</label>
+                            <input 
+                                type="text" 
+                                value={propertyId} 
+                                onChange={(e) => setPropertyId(e.target.value)}
+                                placeholder="例: P001"
+                            />
+                        </div>
+                        <div className="input-group">
+                            <label>部屋ID:</label>
+                            <input 
+                                type="text" 
+                                value={roomId} 
+                                onChange={(e) => setRoomId(e.target.value)}
+                                placeholder="例: R001"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="debug-section">
+                        <div className="debug-title">テスト実行</div>
+                        <button className="test-button" onClick={testGasConnection}>
+                            GAS接続テスト
+                        </button>
+                        <button className="test-button" onClick={testMeterReadings}>
+                            検針データ取得テスト
+                        </button>
+                        <button className="test-button" onClick={clearLogs}>
+                            ログクリア
+                        </button>
+                    </div>
+
+                    <div className="debug-section">
+                        <div className="debug-title">実行ログ</div>
+                        <div className="log-output">{logs}</div>
+                    </div>
+
+                    {testResults && (
+                        <div className="debug-section">
+                            <div className="debug-title">最新のレスポンス</div>
+                            <div className="log-output">{testResults}</div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<DebugApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

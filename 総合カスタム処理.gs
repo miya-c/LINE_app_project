@@ -395,7 +395,7 @@ function processInspectionDataMonthly() {
 
     const columnsToCopy = [
       "記録ID", "物件名", "物件ID", "部屋ID", "部屋名",
-      "検針日時", "今回使用量", "今回の指示数", "前回指示数", "写真URL"
+      "検針日時", "今回使用量", "今回の指示数", "前回指示数"
     ];
     const columnIndicesToCopy = columnsToCopy.map(header => sourceHeaders.indexOf(header));    if (columnIndicesToCopy.some(index => index === -1)) {
       const missingColumns = columnsToCopy.filter((_, i) => columnIndicesToCopy[i] === -1);
@@ -419,10 +419,9 @@ function processInspectionDataMonthly() {
     const previousReadingIndex = sourceHeaders.indexOf("前回指示数");
     const prevPrevReadingIndex = sourceHeaders.indexOf("前々回指示数");
     const threeTimesPreviousReadingIndex = sourceHeaders.indexOf("前々々回指示数");
-    const photoUrlIndex = sourceHeaders.indexOf("写真URL");
 
-    if ([currentReadingIndex, previousReadingIndex, prevPrevReadingIndex, threeTimesPreviousReadingIndex, photoUrlIndex].some(index => index === -1)) {
-      safeAlert('エラー', "指示数関連の列または写真URL列のいずれかが見つかりません。");
+    if ([currentReadingIndex, previousReadingIndex, prevPrevReadingIndex, threeTimesPreviousReadingIndex].some(index => index === -1)) {
+      safeAlert('エラー', "指示数関連の列のいずれかが見つかりません。");
       return;
     }
 
@@ -432,9 +431,9 @@ function processInspectionDataMonthly() {
       sourceSheet.getRange(i + 1, prevPrevReadingIndex + 1).setValue(row[previousReadingIndex]);
       sourceSheet.getRange(i + 1, previousReadingIndex + 1).setValue(row[currentReadingIndex]);
       sourceSheet.getRange(i + 1, currentReadingIndex + 1).setValue("");
-      sourceSheet.getRange(i + 1, photoUrlIndex + 1).setValue("");    }
-    safeAlert('完了', `シート "${sourceSheetName}" の指示数データと写真URLが更新されました。`);
-    Logger.log(`シート "${sourceSheetName}" の指示数データと写真URLが更新されました。`);
+    }
+    safeAlert('完了', `シート "${sourceSheetName}" の指示数データが更新されました。`);
+    Logger.log(`シート "${sourceSheetName}" の指示数データが更新されました。`);
 
   } catch (e) {
     Logger.log(`検針データ保存処理中にエラーが発生しました: ${e.message}\n${e.stack}`);
@@ -467,7 +466,7 @@ const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
 const INSPECTION_DATA_HEADERS = [
   '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
   '検針日時', '警告フラグ', '標準偏差値', '今回使用量',
-  '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数', '写真URL'
+  '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数'
 ];
 
 function createInitialInspectionData() {
