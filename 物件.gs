@@ -112,15 +112,15 @@ function getGasVersion() {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
     return {
-    version: "2025-06-07-v7-CORS-FINAL",
+    version: "v5-NEW-RECORD-CREATION",
     deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
     corsFixed: true,
     contentServiceUsed: true,
-    description: "🎯 v7-CORS-FINAL版：doOptions修正・構文エラー解決・CORS完全対応！",
-    注意: "このバージョンをGoogle Apps Scriptに貼り付けて再デプロイしてください",    debugInfo: {
+    description: "🎯 v5-NEW-RECORD-CREATION版：新規レコード自動作成機能対応！",
+    注意: "このバージョンでは物件/部屋の組み合わせが見つからない場合、自動的に新しいレコードを作成します",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
       deploymentCheck: "✅ v7-CORS-FINAL版が正常に動作中 - 構文エラー修正完了",
@@ -134,7 +134,7 @@ function getGasVersion() {
 // メイン処理関数
 function doGet(e) {
   try {
-    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: 2025-06-07-v7-CORS-FINAL`);
+    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v5-NEW-RECORD-CREATION`);
     console.log(`[GAS DEBUG] 🎯 CORS問題解決版が動作中です（ContentService使用）!`);
     
     // パラメータのデバッグ情報
@@ -737,6 +737,7 @@ function handleUpdateMeterReadings(params) {
         }
         // 対象行を検索して更新
         let targetRowFound = false;
+        let usage = 0; // 使用量を格納する変数（スコープを広げる）
         console.log(`[GAS] 🔍 更新対象検索開始 - 物件ID: "${propertyId}", 部屋ID: "${roomId}"`);
         for (let j = 1; j < data.length; j++) {
           const row = data[j];
@@ -760,7 +761,6 @@ function handleUpdateMeterReadings(params) {
             const currentReadingValue = parseFloat(reading.currentReading) || 0;
             const previousReadingValue = parseFloat(row[columnIndexes.previousReading]) || 0;
             
-            let usage;
             // 前回指示数が0または空の場合（新規検針データ）
             if (previousReadingValue === 0 || row[columnIndexes.previousReading] === '' || row[columnIndexes.previousReading] === null) {
               // 新規検針の場合は今回の指示数をそのまま使用量とする
@@ -780,16 +780,30 @@ function handleUpdateMeterReadings(params) {
           }
         }
         if (!targetRowFound) {
-          console.error(`[GAS] ❌ 対象データが見つかりません`);
-          console.error(`[GAS] 検索条件 - 物件ID: "${propertyId}", 部屋ID: "${roomId}"`);
-          console.error(`[GAS] 利用可能なデータ行数: ${data.length - 1}`);
-          // 利用可能なデータの最初の数行を表示
-          for (let k = 1; k < Math.min(6, data.length); k++) {
-            const row = data[k];
-            console.error(`[GAS] データ行${k}: 物件ID="${row[columnIndexes.propertyId]}", 部屋ID="${row[columnIndexes.roomId]}"`);
-          }
-          skip = true;
-          throw new Error('対象データが見つかりません');
+          console.log(`[GAS] 🆕 対象データが見つからないため、新しいレコードを作成します`);
+          console.log(`[GAS] 新規レコード - 物件ID: "${propertyId}", 部屋ID: "${roomId}"`);
+          
+          // 新しい行を追加
+          const newRowIndex = data.length; // 新しい行のインデックス（1ベース）
+          const currentDate = new Date().toISOString().split('T')[0];
+          const currentReadingValue = parseFloat(reading.currentReading) || 0;
+          
+          // 新規レコードの場合、前回指示数は0、使用量は今回の指示数
+          const previousReading = 0;
+          usage = currentReadingValue; // 新規レコードの使用量を設定
+          
+          console.log(`[GAS] 新規レコード作成 - 行${newRowIndex + 1}, 日付: ${currentDate}, 指示数: ${reading.currentReading}, 使用量: ${usage}`);
+          
+          // 新しい行にデータを設定
+          sheet.getRange(newRowIndex + 1, columnIndexes.propertyId + 1).setValue(propertyId);
+          sheet.getRange(newRowIndex + 1, columnIndexes.roomId + 1).setValue(roomId);
+          sheet.getRange(newRowIndex + 1, columnIndexes.date + 1).setValue(currentDate);
+          sheet.getRange(newRowIndex + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
+          sheet.getRange(newRowIndex + 1, columnIndexes.previousReading + 1).setValue(previousReading);
+          sheet.getRange(newRowIndex + 1, columnIndexes.usage + 1).setValue(usage);
+          sheet.getRange(newRowIndex + 1, columnIndexes.warningFlag + 1).setValue('正常');
+          
+          console.log(`[GAS] ✅ 新規レコード作成完了 - 行${newRowIndex + 1}, 物件ID: ${propertyId}, 部屋ID: ${roomId}, 指示数: ${reading.currentReading}, 使用量: ${usage}`);
         }
         updatedReadings.push({
           date: effectiveDate, // 修正された日付を使用
@@ -843,7 +857,7 @@ function handleUpdateMeterReadings(params) {
       debugInfo: {
         timestamp: new Date().toISOString(),
         originalReadingsCount: readings.length,
-        version: "v4-ENHANCED-MATCHING-USAGE-FIX"
+        version: "v5-NEW-RECORD-CREATION"
       }
     });
     
