@@ -48,6 +48,11 @@
         initializeWoff();
       }, [woffIdForWorks]);
 
+      // コンポーネントマウント時にスクロール位置をリセット
+      React.useEffect(() => {
+        window.scrollTo(0, 0);
+      }, []);
+
       React.useEffect(() => {
         if (!woffInitialized) return;
         
@@ -138,6 +143,10 @@
         }
         
         console.log('[ReactApp] Property selected:', property);
+        
+        // ✅ 画面遷移前にページの最上部にスクロール
+        window.scrollTo(0, 0);
+        
         setIsNavigating(true);
         setNavigationMessage('部屋情報を読み込んでいます...');
         
