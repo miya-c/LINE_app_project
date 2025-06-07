@@ -101,6 +101,11 @@
       }, [woffInitialized]);
 
       const handleBackToPropertySelect = () => {
+        // 画面遷移前に現在の画面を非表示にする
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+          rootElement.style.display = 'none';
+        }
         window.location.href = 'property_select.html';
       };
 
@@ -128,6 +133,11 @@
           });
         } else {
           console.log(`[room_select] Redirecting to: ${targetUrl}`);
+          // 画面遷移前に現在の画面を非表示にする
+          const rootElement = document.getElementById('root');
+          if (rootElement) {
+            rootElement.style.display = 'none';
+          }
           window.location.href = targetUrl;
         }
       };      const handleInspectionComplete = async () => {

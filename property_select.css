@@ -34,12 +34,18 @@ body {
   background-color: var(--mantine-color-gray-0);
   position: relative;
   z-index: 500; /* 物件選択画面のz-index */
+  overflow: hidden; /* スクロール制御 */
 }
 
 #root {
   min-height: 100vh;
-  position: relative;
+  position: fixed; /* モバイル画面遷移問題の修正 */
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 501; /* 物件選択画面のrootのz-index */
+  background-color: var(--mantine-color-gray-0);
+  overflow-y: auto; /* #rootのみスクロール可能 */
 }
 
 .mantine-container {

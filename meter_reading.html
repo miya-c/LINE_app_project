@@ -198,6 +198,11 @@
       };
 
       const handleBackButton = () => {
+        // 画面遷移前に現在の画面を非表示にする
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+          rootElement.style.display = 'none';
+        }
         window.location.href = 'room_select.html';
       };
 
