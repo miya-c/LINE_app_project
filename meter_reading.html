@@ -331,9 +331,9 @@
             dataStart: base64Data.substring(0, 50) + '...'
           });
           
-          // GASにBase64データを送信（GETリクエスト）
+          // GASにBase64データを送信（POSTリクエスト）
           displayToast('写真をサーバーに送信中...');
-          const photoUrl = await uploadPhotoViaGet(base64Data, date, file.name);
+          const photoUrl = await uploadPhotoViaPost(base64Data, date, file.name);
           
           if (photoUrl) {
             // 写真状態を更新
@@ -357,8 +357,8 @@
             document.body.removeChild(event.target);
           }
         }
-      };      // Base64データをGETリクエストでGASに送信
-      const uploadPhotoViaGet = async (base64Data, date, fileName) => {
+      };      // Base64データをPOSTリクエストでGASに送信
+      const uploadPhotoViaPost = async (base64Data, date, fileName) => {
         try {
           const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
           if (!currentGasUrl) {
@@ -368,17 +368,15 @@
           // ファイル拡張子を取得
           const fileExtension = fileName.split('.').pop() || 'jpg';
           
-          // リクエストパラメータを構築
-          const params = new URLSearchParams({
+          // リクエストボディを構築
+          const requestBody = {
             action: 'uploadPhotoBase64',
-            propertyId: encodeURIComponent(propertyId),
-            roomId: encodeURIComponent(roomId),
-            date: encodeURIComponent(date),
-            photoData: encodeURIComponent(base64Data),
-            fileName: encodeURIComponent(`meter_photo_${propertyId}_${roomId}_${date}_${Date.now()}.${fileExtension}`)
-          });
-          
-          const requestUrl = `${currentGasUrl}?${params}`;
+            propertyId: propertyId,
+            roomId: roomId,
+            date: date,
+            photoData: base64Data,
+            fileName: `meter_photo_${propertyId}_${roomId}_${date}_${Date.now()}.${fileExtension}`
+          };
           
           console.log('[meter_reading] 写真アップロードリクエスト送信:', {
             url: currentGasUrl,
@@ -386,8 +384,12 @@
             fileName: fileName
           });
           
-          const response = await fetch(requestUrl, {
-            method: 'GET'
+          const response = await fetch(currentGasUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
           });
           
           if (!response.ok) {
@@ -401,7 +403,7 @@
             throw new Error(result.error || '写真のアップロードに失敗しました');
           }
           
-          return result.photoUrl;
+          return result.data?.photoUrl || result.photoUrl;
         } catch (error) {
           console.error('[meter_reading] 写真アップロードエラー:', error);
           throw error;
@@ -463,7 +465,7 @@
         try {
           // GASに写真削除リクエストを送信（空のphotoDataを送信）
           displayToast('写真を削除中...');
-          await uploadPhotoViaGet('', date, 'deleted'); // 空のBase64データで削除
+          await uploadPhotoViaPost('', date, 'deleted'); // 空のBase64データで削除
           
           // 写真状態を更新
           setPhotoStates(prev => ({...prev, [date]: false}));
