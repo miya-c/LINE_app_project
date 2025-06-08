@@ -24,79 +24,28 @@
     // バックエンドから受信した生データをUIに適したフォーマットに変換
     // ===================================
     
-    // 日付フォーマット関数: 生データを「X月Y日」形式に変換（JST安全版）
+    // 日付フォーマット関数: 生データを「X月Y日」形式に変換（シンプル版）
     const formatDate = (rawDate) => {
       if (!rawDate || rawDate === '' || rawDate === null || rawDate === undefined) {
-        return null; // 未検針状態を示す
+        return null;
       }
       
       try {
-        console.log(`[room_select formatDate] 入力データ: "${rawDate}" (型: ${typeof rawDate})`);
-        let dateObj;
-        
-        if (rawDate instanceof Date) {
-          dateObj = new Date(rawDate.getTime()); // コピーを作成
-          console.log(`[room_select formatDate] Date型として処理: ${dateObj}`);
-        } else if (typeof rawDate === 'string') {
-          const dateStr = rawDate.trim();
-          console.log(`[room_select formatDate] 文字列として処理: "${dateStr}"`);
-          
-          // YYYY-MM-DD形式: JST安全処理
-          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            // 正午に設定してタイムゾーン境界問題を回避
-            dateObj = new Date(year, month - 1, day, 12, 0, 0);
-            console.log(`[room_select formatDate] YYYY-MM-DD形式をJST安全処理: ${year}/${month}/${day} → ${dateObj}`);
-          } 
-          // YYYY/MM/DD形式: JST安全処理
-          else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(dateStr)) {
-            const [year, month, day] = dateStr.split('/').map(Number);
-            dateObj = new Date(year, month - 1, day, 12, 0, 0);
-            console.log(`[room_select formatDate] YYYY/MM/DD形式をJST安全処理: ${year}/${month}/${day} → ${dateObj}`);
-          } 
-          // ISO文字列: UTC日付部分を抽出してローカル時間で再構築
-          else if (dateStr.includes('T') || dateStr.includes('Z')) {
-            const tempDate = new Date(dateStr);
-            if (!isNaN(tempDate.getTime())) {
-              // UTC日付部分を取得し、ローカル時間で再構築
-              const utcYear = tempDate.getUTCFullYear();
-              const utcMonth = tempDate.getUTCMonth();
-              const utcDay = tempDate.getUTCDate();
-              dateObj = new Date(utcYear, utcMonth, utcDay, 12, 0, 0);
-              console.log(`[room_select formatDate] ISO文字列をJST安全処理: UTC ${utcYear}/${utcMonth+1}/${utcDay} → ${dateObj}`);
-            }
-          }
-          // その他の形式
-          else {
-            dateObj = new Date(dateStr);
-            if (!isNaN(dateObj.getTime())) {
-              // 日付のみ抽出してローカル時間で再構築
-              dateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
-              console.log(`[room_select formatDate] その他形式をJST安全処理: ${dateStr} → ${dateObj}`);
-            }
-          }
-        } else {
-          // 数値または他の型の場合
-          dateObj = new Date(rawDate);
-          if (!isNaN(dateObj.getTime())) {
-            dateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
-            console.log(`[room_select formatDate] 数値型をJST安全処理: ${rawDate} → ${dateObj}`);
-          }
+        // YYYY-MM-DD形式の場合（最も一般的）
+        if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
+          const [year, month, day] = rawDate.trim().split('-');
+          return `${parseInt(month)}月${parseInt(day)}日`;
         }
         
-        if (dateObj && !isNaN(dateObj.getTime())) {
-          const month = dateObj.getMonth() + 1;
-          const day = dateObj.getDate();
-          const result = `${month}月${day}日`;
-          console.log(`[room_select formatDate] ✅ 変換成功: "${rawDate}" → "${result}"`);
-          return result;
+        // Date型または数値の場合のみDate変換を使用
+        const date = new Date(rawDate);
+        if (!isNaN(date.getTime())) {
+          return `${date.getMonth() + 1}月${date.getDate()}日`;
         }
         
-        console.warn(`[room_select formatDate] ⚠️ 変換失敗: "${rawDate}" (型: ${typeof rawDate})`);
-        return null; // 変換に失敗した場合は未検針扱い
-        
+        return null;
       } catch (error) {
-        console.error('[room_select formatDate] ❌ 日付フォーマットエラー:', error, '元データ:', rawDate);
+        console.error('日付変換エラー:', error);
         return null;
       }
     };
@@ -104,19 +53,9 @@
     // 検針状況フォーマット関数: 生データから検針状況を判定
     const formatInspectionStatus = (rawDate, hasActualReading) => {
       const formattedDate = formatDate(rawDate);
-      
-      // 日付があれば検針済みとして判定（指示数の有無は問わない）
-      if (formattedDate) {
-        return {
-          status: '検針済み',
-          displayDate: formattedDate
-        };
-      } else {
-        return {
-          status: '未検針',
-          displayDate: null
-        };
-      }
+      return formattedDate ? 
+        { status: '検針済み', displayDate: formattedDate } : 
+        { status: '未検針', displayDate: null };
     };
     
     // ===================================
