@@ -25,47 +25,42 @@
     // ===================================
     
     const formatDateForDisplay = (rawDate) => {
-      console.log('[room_select] formatDateForDisplay 呼び出し - rawDate:', rawDate, '型:', typeof rawDate);
-      
-      if (!rawDate) {
-        console.log('[room_select] formatDateForDisplay - rawDateが空のためnullを返す');
-        return null;
-      }
+      if (!rawDate) return null;
       
       try {
-        let dateStr = String(rawDate).trim();
-        console.log('[room_select] formatDateForDisplay - 文字列変換後:', dateStr, '長さ:', dateStr.length);
-        
-        // Date型から生成された場合の処理
+        // Case 1: Date型オブジェクトの場合（Google Apps Scriptから直接）
         if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
-          // JST時間として安全に変換
+          console.log('[room_select] formatDateForDisplay - Date型を処理:', rawDate);
+          // JST時間として直接年月日を抽出（UTC変換による1日ずれを回避）
           const year = rawDate.getFullYear();
           const month = rawDate.getMonth() + 1;
           const day = rawDate.getDate();
-          const result = `${month}月${day}日`;
-          console.log('[room_select] formatDateForDisplay - Date型処理結果:', result);
-          return result;
+          console.log(`[room_select] formatDateForDisplay - Date型から抽出: ${year}年${month}月${day}日`);
+          return `${month}月${day}日`;
         }
         
-        // ISO形式を最初にチェック (2025-06-07T15:00:00.000Z)
-        const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T/);
-        if (isoMatch) {
-          const [, year, month, day] = isoMatch;
-          const result = `${parseInt(month)}月${parseInt(day)}日`;
-          console.log('[room_select] formatDateForDisplay - ISO形式マッチ処理結果:', result);
-          return result;
-        }
+        // Case 2: 文字列形式の日付処理
+        let dateStr = String(rawDate).trim();
+        console.log('[room_select] formatDateForDisplay - 文字列を処理:', dateStr);
         
-        // 標準的な日付形式の処理
+        // YYYY/MM/DD または YYYY-MM-DD 形式
         const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
         if (match) {
           const [, year, month, day] = match;
           const result = `${parseInt(month)}月${parseInt(day)}日`;
-          console.log('[room_select] formatDateForDisplay - 標準形式マッチ処理結果:', result);
+          console.log(`[room_select] formatDateForDisplay - 文字列から抽出: ${result}`);
           return result;
         }
         
-        console.log('[room_select] formatDateForDisplay - パターンにマッチせず、nullを返す');
+        // その他の日付文字列パターンを試行
+        const dateObj = new Date(dateStr);
+        if (!isNaN(dateObj.getTime())) {
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          console.log(`[room_select] formatDateForDisplay - Date変換成功: ${month}月${day}日`);
+          return `${month}月${day}日`;
+        }
+        
         return null;
       } catch (error) {
         console.warn('[room_select] 日付フォーマットエラー:', rawDate, error);
