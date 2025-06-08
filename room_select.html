@@ -527,6 +527,18 @@
                         [検針日：{inspectionStatus.displayDate}]
                       </span>
                     );
+                  } else if (inspectionStatus.status === '検針済み' && !inspectionStatus.displayDate) {
+                    // 検針済みだが日付がない場合も[検針済み]と表示
+                    statusDisplay = (
+                      <span style={{
+                        color: 'var(--mantine-color-blue-6)',
+                        fontWeight: '500',
+                        fontSize: '0.9em',
+                        marginLeft: '8px'
+                      }}>
+                        [検針済み]
+                      </span>
+                    );
                   } else if (inspectionStatus.status === '未検針') {
                     statusDisplay = (
                       <span style={{
