@@ -416,7 +416,60 @@
 
       const hidePhotoModal = () => {
         // 空の関数（写真機能は削除済み）
-      };      const handleUpdateReadings = async () => {
+      };
+
+      // ===================================
+      // リアルタイムキャッシュ更新機能
+      // 検針完了後にsessionStorageの部屋データを更新
+      // ===================================
+      const updateSessionStorageCache = async (propertyId, roomId) => {
+        try {
+          console.log('[meter_reading] sessionStorageキャッシュ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
+          
+          const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+          if (!currentGasUrl) {
+            console.warn('[meter_reading] gasWebAppURLが見つからないため、キャッシュ更新をスキップします');
+            return;
+          }
+
+          // 部屋一覧データを再取得
+          const params = new URLSearchParams({
+            action: 'getRooms',
+            propertyId: propertyId
+          });
+          
+          const requestUrl = `${currentGasUrl}?${params}`;
+          console.log('[meter_reading] 部屋一覧再取得:', requestUrl);
+          
+          const response = await fetch(requestUrl, { method: 'GET' });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.rooms && Array.isArray(result.rooms)) {
+              // sessionStorageのキャッシュを更新
+              const cacheKey = `rooms_${propertyId}`;
+              sessionStorage.setItem(cacheKey, JSON.stringify(result.rooms));
+              
+              // 強制リフレッシュフラグを設定（room_select.htmlで検知される）
+              sessionStorage.setItem('forceRefreshRooms', 'true');
+              sessionStorage.setItem('updatedRoomId', roomId);
+              sessionStorage.setItem('lastUpdateTime', new Date().getTime().toString());
+              
+              console.log('[meter_reading] ✅ キャッシュ更新完了 - 部屋数:', result.rooms.length);
+              console.log('[meter_reading] 更新された部屋ID:', roomId);
+            } else {
+              console.warn('[meter_reading] 部屋データの形式が不正です:', result);
+            }
+          } else {
+            console.warn('[meter_reading] 部屋一覧の再取得に失敗しました:', response.status);
+          }
+        } catch (error) {
+          console.error('[meter_reading] キャッシュ更新エラー:', error);
+          // エラーが発生してもメインの処理は継続
+        }
+      };
+
+      const handleUpdateReadings = async () => {
         if (!propertyId || !roomId) {
           displayToast('物件IDまたは部屋IDが取得できませんでした。');
           return;
@@ -499,6 +552,13 @@
           if (result.success) {
             displayToast('検針データが正常に更新されました');
             setInputErrors({}); // Clear errors on success
+            
+            // ===================================
+            // ⭐ リアルタイムキャッシュ更新機能
+            // 検針完了後にsessionStorageのキャッシュを更新
+            // ===================================
+            await updateSessionStorageCache(propertyId, roomId);
+            
             await loadMeterReadings(propertyId, roomId);
           } else {
             throw new Error(result.error || '指示数の更新に失敗しました。');

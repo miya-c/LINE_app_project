@@ -128,12 +128,35 @@
 
         const loadRoomData = () => {
           try {
+            // ===================================
+            // ⭐ リアルタイムキャッシュ更新チェック
+            // meter_reading.htmlからの強制リフレッシュフラグを確認
+            // ===================================
+            const forceRefresh = sessionStorage.getItem('forceRefreshRooms');
+            const updatedRoomId = sessionStorage.getItem('updatedRoomId');
+            const lastUpdateTime = sessionStorage.getItem('lastUpdateTime');
+            
+            console.log('[room_select] キャッシュ更新チェック - forceRefresh:', forceRefresh, 'updatedRoomId:', updatedRoomId, 'lastUpdateTime:', lastUpdateTime);
+
             // sessionStorageから物件情報と部屋情報を取得
             const storedPropertyId = sessionStorage.getItem('selectedPropertyId');
             const storedPropertyName = sessionStorage.getItem('selectedPropertyName');
-            const roomsString = sessionStorage.getItem('selectedRooms');
             
-            console.log('[room_select] Loaded from sessionStorage - propertyId:', storedPropertyId, 'propertyName:', storedPropertyName, 'roomsString:', roomsString);
+            // 強制リフレッシュ時は最新キャッシュを使用
+            let roomsString;
+            if (forceRefresh === 'true' && storedPropertyId) {
+              console.log('[room_select] 🔄 強制リフレッシュ実行中 - 最新キャッシュから部屋データを取得');
+              roomsString = sessionStorage.getItem(`rooms_${storedPropertyId}`);
+              
+              // フラグをクリア
+              sessionStorage.removeItem('forceRefreshRooms');
+              sessionStorage.removeItem('updatedRoomId');
+              sessionStorage.removeItem('lastUpdateTime');
+            } else {
+              roomsString = sessionStorage.getItem('selectedRooms');
+            }
+            
+            console.log('[room_select] Loaded from sessionStorage - propertyId:', storedPropertyId, 'propertyName:', storedPropertyName, 'roomsString length:', roomsString?.length);
 
             if (storedPropertyName) {
               setPropertyName(storedPropertyName);
@@ -144,8 +167,15 @@
             if (storedPropertyId && roomsString) {
               try {
                 const parsedRooms = JSON.parse(roomsString);
-                console.log('[room_select] Parsed rooms from sessionStorage:', parsedRooms);
-                console.log('[room_select] Before setting rooms - Type of parsedRooms:', typeof parsedRooms, 'Is Array:', Array.isArray(parsedRooms), 'Content:', JSON.stringify(parsedRooms));
+                console.log('[room_select] Parsed rooms from sessionStorage:', parsedRooms.length, '件');
+                
+                // 強制リフレッシュで更新された部屋をハイライト表示するためのログ
+                if (forceRefresh === 'true' && updatedRoomId) {
+                  const updatedRoom = parsedRooms.find(room => room.roomId === updatedRoomId);
+                  if (updatedRoom) {
+                    console.log('[room_select] ✅ 検針完了により更新された部屋:', updatedRoom.roomName, '検針状況:', updatedRoom.inspectionStatus);
+                  }
+                }
                 
                 setPropertyId(storedPropertyId);
                 setRooms(Array.isArray(parsedRooms) ? parsedRooms : []);
