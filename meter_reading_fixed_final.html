@@ -220,6 +220,15 @@
         return '0'; // Default if cannot calculate
       };
 
+      // Helper function to get local date string (JST timezone)
+      const getLocalDateString = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
       // Helper for previous readings text - 配列を返すように修正
       const getPreviousReadingsText = (r) => {
         let parts = [];
@@ -692,11 +701,11 @@
                             min="0"
                             step="any"
                             style={{fontSize: '1rem', padding: '10px'}}
-                            data-date={new Date().toISOString().split('T')[0]} 
+                            data-date={getLocalDateString()} 
                             data-original-value=""
                             data-previous-reading=""
                             onChange={(e) => {
-                              const dateForDataAttribute = new Date().toISOString().split('T')[0];
+                              const dateForDataAttribute = getLocalDateString();
                               const numericValue = parseFloat(e.target.value);
                               if (e.target.value === '') {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: '初回検針では指示数の入力が必須です。'}));
@@ -710,9 +719,9 @@
                               }
                             }}
                           />
-                          {inputErrors[new Date().toISOString().split('T')[0]] && (
+                          {inputErrors[getLocalDateString()] && (
                             <div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', marginTop: '4px' }}>
-                              {inputErrors[new Date().toISOString().split('T')[0]]}
+                              {inputErrors[getLocalDateString()]}
                             </div>
                           )}
                         </div>
@@ -725,14 +734,14 @@
                                 width: '100%', 
                                 fontSize: '1rem', 
                                 padding: '10px 0',
-                                backgroundColor: photoStates[new Date().toISOString().split('T')[0]] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
+                                backgroundColor: photoStates[getLocalDateString()] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
                               }}
-                              data-date-button={new Date().toISOString().split('T')[0]}
-                              onClick={() => handleCameraClick(new Date().toISOString().split('T')[0])}
+                              data-date-button={getLocalDateString()}
+                              onClick={() => handleCameraClick(getLocalDateString())}
                             >
-                              {photoStates[new Date().toISOString().split('T')[0]] ? '変更 📸' : '写真を追加 📸'}
+                              {photoStates[getLocalDateString()] ? '変更 📸' : '写真を追加 📸'}
                             </button>
-                            {photoStates[new Date().toISOString().split('T')[0]] && (
+                            {photoStates[getLocalDateString()] && (
                               <button
                                 className="mantine-button variant-outline"
                                 style={{ 
@@ -742,7 +751,7 @@
                                   borderColor: 'var(--mantine-color-red-6)',
                                   color: 'var(--mantine-color-red-6)'
                                 }}
-                                onClick={() => handlePhotoDelete(new Date().toISOString().split('T')[0])}
+                                onClick={() => handlePhotoDelete(getLocalDateString())}
                               >
                                 削除 🗑️
                               </button>

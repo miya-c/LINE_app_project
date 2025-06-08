@@ -4,6 +4,14 @@
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
+// 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
+function getJSTDateString() {
+  const now = new Date();
+  const jstOffset = 9 * 60; // JST = UTC + 9時間
+  const jstTime = new Date(now.getTime() + (jstOffset * 60 * 1000));
+  return jstTime.toISOString().split('T')[0];
+}
+
 // スプレッドシートIDを設定ファイルから取得
 // getConfigSpreadsheetId() 関数は spreadsheet_config.gs で定義されています
 function getSpreadsheetId() {
@@ -655,13 +663,13 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // ✅ 日付フィールドの処理を大幅改善
+        // ✅ 日付フィールドの処理 - 空の値を保持し強制的な現在日付設定を削除
         let dateValue = row[dateIndex];
         let formattedDate = '';
         
         console.log(`[GAS] 原始日付データ: type="${typeof dateValue}", value="${dateValue}"`);
         
-        // 日付の処理を強化
+        // 有効な日付値のみを処理し、空の値はそのまま保持
         if (dateValue !== null && dateValue !== undefined && dateValue !== '') {
           try {
             if (dateValue instanceof Date) {
@@ -669,8 +677,8 @@ function getActualMeterReadings(propertyId, roomId) {
                 formattedDate = dateValue.toISOString().split('T')[0];
                 console.log(`[GAS] Date object変換成功: ${formattedDate}`);
               } else {
-                console.log("[GAS] 無効なDateオブジェクト、現在日付を使用");
-                formattedDate = new Date().toISOString().split('T')[0];
+                console.log("[GAS] 無効なDateオブジェクト、空の値を保持");
+                formattedDate = '';
               }
             } else if (typeof dateValue === 'string' && dateValue.trim() !== '') {
               // 文字列の場合、様々な形式に対応
@@ -697,13 +705,13 @@ function getActualMeterReadings(propertyId, roomId) {
                   formattedDate = parsedDate.toISOString().split('T')[0];
                   console.log(`[GAS] Date.parse成功: ${trimmedDate} → ${formattedDate}`);
                 } else {
-                  console.log(`[GAS] 解析不可能な日付文字列: "${trimmedDate}", 現在日付を使用`);
-                  formattedDate = new Date().toISOString().split('T')[0];
+                  console.log(`[GAS] 解析不可能な日付文字列: "${trimmedDate}", 空の値を保持`);
+                  formattedDate = '';
                 }
               }
             } else {
-              console.log(`[GAS] 日付値が文字列でもDateでもありません: type="${typeof dateValue}", 現在日付を使用`);
-              formattedDate = new Date().toISOString().split('T')[0];
+              console.log(`[GAS] 日付値が文字列でもDateでもありません: type="${typeof dateValue}", 空の値を保持`);
+              formattedDate = '';
             }
           } catch (dateError) {
             console.error(`[GAS] 日付変換エラー:`, dateError, `元の値: "${dateValue}"`);
@@ -714,9 +722,9 @@ function getActualMeterReadings(propertyId, roomId) {
           formattedDate = ''; // 空文字列のまま保持
         }
         
-        console.log(`[GAS] 最終的な日付: "${formattedDate}" (空の場合は未検針として処理)`);
+        console.log(`[GAS] 最終的な日付: "${formattedDate}" (空の場合はフロントエンドで「未検針」として表示)`);
         
-        // 空の日付値は空文字列のまま保持（フロントエンドで「未検針」として表示）
+        // 重要: 空の日付値は空文字列のまま保持し、フロントエンドで適切に処理
         
         const reading = {
           date: formattedDate, // 空の場合は空文字列のまま
@@ -814,12 +822,12 @@ function handleUpdateMeterReadings(params) {
       const reading = readings[i];
       console.log(`[GAS] 処理中の検針データ ${i + 1}/${readings.length}:`, reading);
       
-      // ✅ 日付の検証と修正を改善
+      // ✅ 日付の検証と修正を改善 - 日本時間を使用
       let effectiveDate = reading.date;
       if (!effectiveDate || effectiveDate.trim() === '') {
-        // 空の日付の場合は現在日付（YYYY-MM-DD形式）を設定
-        effectiveDate = new Date().toISOString().split('T')[0];
-        console.log(`[GAS] 空の日付を現在日付に修正: ${effectiveDate}`);
+        // 空の日付の場合は現在日付（日本時間、YYYY-MM-DD形式）を設定
+        effectiveDate = getJSTDateString();
+        console.log(`[GAS] 空の日付を現在日付（日本時間）に修正: ${effectiveDate}`);
         // 元のreadingオブジェクトも更新
         reading.date = effectiveDate;
       }
@@ -881,8 +889,8 @@ function handleUpdateMeterReadings(params) {
           if (propertyIdMatch && roomIdMatch) {
             console.log(`[GAS] ✅ 更新対象行発見: 行${j + 1}`);
             targetRowFound = true;
-            // ✅ 日付形式を統一（日本語形式ではなくYYYY-MM-DD形式を使用）
-            const currentDate = new Date().toISOString().split('T')[0];
+            // ✅ 日付形式を統一（日本時間でYYYY-MM-DD形式を使用）
+            const currentDate = getJSTDateString();
             console.log(`[GAS] 更新開始 - 行${j + 1}, 日付: ${currentDate}, 指示数: ${reading.currentReading}`);
             // 実際のセル更新（1ベースのインデックスに変換）
             sheet.getRange(j + 1, columnIndexes.date + 1).setValue(currentDate);
@@ -915,7 +923,7 @@ function handleUpdateMeterReadings(params) {
           
           // 新しい行を追加
           const newRowIndex = data.length; // 新しい行のインデックス（1ベース）
-          const currentDate = new Date().toISOString().split('T')[0];
+          const currentDate = getJSTDateString();
           const currentReadingValue = parseFloat(reading.currentReading) || 0;
           
           // 新規レコードの場合、前回指示数は0、使用量は今回の指示数
