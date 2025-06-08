@@ -43,15 +43,6 @@
         let dateStr = String(rawDate).trim();
         console.log('[room_select] formatDateForDisplay - 文字列を処理:', dateStr);
         
-        // ISO形式（UTC）の場合は文字列から直接日付部分を抽出（時差による1日ずれを回避）
-        const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T/);
-        if (isoMatch) {
-          const [, year, month, day] = isoMatch;
-          const result = `${parseInt(month)}月${parseInt(day)}日`;
-          console.log(`[room_select] formatDateForDisplay - ISO形式（直接抽出）: ${result}`);
-          return result;
-        }
-        
         // YYYY/MM/DD または YYYY-MM-DD 形式
         const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
         if (match) {
@@ -61,15 +52,13 @@
           return result;
         }
         
-        // その他の日付文字列パターンを試行（ただしISO形式以外）
-        if (!dateStr.includes('T') && !dateStr.includes('Z')) {
-          const dateObj = new Date(dateStr);
-          if (!isNaN(dateObj.getTime())) {
-            const month = dateObj.getMonth() + 1;
-            const day = dateObj.getDate();
-            console.log(`[room_select] formatDateForDisplay - Date変換成功: ${month}月${day}日`);
-            return `${month}月${day}日`;
-          }
+        // その他の日付文字列パターンを試行
+        const dateObj = new Date(dateStr);
+        if (!isNaN(dateObj.getTime())) {
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          console.log(`[room_select] formatDateForDisplay - Date変換成功: ${month}月${day}日`);
+          return `${month}月${day}日`;
         }
         
         return null;
@@ -77,23 +66,6 @@
         console.warn('[room_select] 日付フォーマットエラー:', rawDate, error);
         return null;
       }
-    };
-    
-    // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
-    const getJSTDateString = () => {
-      // 日本時間のオフセット（UTC+9）を考慮したString型での処理
-      const now = new Date();
-      const jstOffset = 9 * 60; // 9時間 = 540分
-      const utc = now.getTime() + (now.getTimezoneOffset() * 60000); // UTC時間
-      const jstTime = new Date(utc + (jstOffset * 60000)); // JST時間
-      
-      const year = jstTime.getFullYear();
-      const month = String(jstTime.getMonth() + 1).padStart(2, '0');
-      const day = String(jstTime.getDate()).padStart(2, '0');
-      
-      const jstDateString = `${year}-${month}-${day}`;
-      console.log(`[room_select] getJSTDateString - String型JST日付生成: ${jstDateString}`);
-      return jstDateString;
     };
     
     const formatInspectionStatus = (rawDate) => {
