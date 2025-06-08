@@ -54,10 +54,19 @@
     };
     
     const formatInspectionStatus = (rawDate) => {
-      const formattedDate = formatDateForDisplay(rawDate);
-      return formattedDate ? 
-        { status: '検針済み', displayDate: formattedDate } : 
-        { status: '未検針', displayDate: null };
+      // hasActualReadingも参照できるように引数を拡張する
+      // 既存呼び出し箇所で room.hasActualReading を渡すように修正
+      // 互換性のためrawDateのみの場合も考慮
+      return (rawDate && rawDate.hasActualReading !== undefined)
+        ? (rawDate.hasActualReading
+            ? { status: '検針済み', displayDate: formatDateForDisplay(rawDate.rawInspectionDate) }
+            : { status: '未検針', displayDate: null })
+        : (() => {
+            const formattedDate = formatDateForDisplay(rawDate);
+            return formattedDate ? 
+              { status: '検針済み', displayDate: formattedDate } : 
+              { status: '未検針', displayDate: null };
+          })();
     };
     
     // ===================================
@@ -499,7 +508,11 @@
                 {rooms.map(room => {
                   // 分離アーキテクチャ: フォーマット関数を使用
                   const displayName = room.name || room.roomName || '部屋名未設定';
-                  const inspectionStatus = formatInspectionStatus(room.rawInspectionDate);
+                  // hasActualReadingを優先的に使う
+                  const inspectionStatus = formatInspectionStatus({
+                    rawInspectionDate: room.rawInspectionDate,
+                    hasActualReading: room.hasActualReading
+                  });
                   
                   return (
                     <div key={room.id} className="mantine-paper">
