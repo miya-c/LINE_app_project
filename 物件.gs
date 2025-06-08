@@ -377,10 +377,14 @@ function handleGetRooms(params) {
         const roomId = String(row[1]).trim();
         const roomName = String(row[2]).trim();
         
-        // 🆕 この部屋の検針状況を確認
+        // 🆕 この部屋の検針状況を確認（空日付も適切に処理）
         let lastInspectionDate = null;
+        let hasActualReading = false;
         
         if (inspectionData.length > 1 && propertyIdIndex !== -1 && roomIdIndex !== -1 && dateIndex !== -1) {
+          // 指示数列のインデックスも取得して検針状況をより正確に判定
+          const currentReadingIndex = inspectionHeaders.indexOf('今回の指示数');
+          
           for (let j = 1; j < inspectionData.length; j++) {
             const inspectionRow = inspectionData[j];
             const inspectionPropertyId = String(inspectionRow[propertyIdIndex]).trim();
@@ -388,19 +392,30 @@ function handleGetRooms(params) {
             const inspectionDate = inspectionRow[dateIndex];
             
             if (inspectionPropertyId === propertyId && inspectionRoomId === roomId) {
-              // 検針日時があるかチェック
+              // 指示数が入力されているかチェック
+              if (currentReadingIndex !== -1) {
+                const currentReading = inspectionRow[currentReadingIndex];
+                if (currentReading !== null && currentReading !== undefined && currentReading !== '') {
+                  hasActualReading = true;
+                }
+              }
+              
+              // 検針日時があるかチェック（空でない場合のみ採用）
               if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
                 lastInspectionDate = inspectionDate;
-                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${inspectionDate}`);
-                break; // 最初に見つかったデータを使用（通常1部屋1レコード）
+                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${inspectionDate}, 指示数あり: ${hasActualReading}`);
               }
+              break; // 最初に見つかったデータを使用（通常1部屋1レコード）
             }
           }
         }
         
-        // 🆕 検針日時のフォーマット（X月Y日形式）
+        // 🆕 検針日時のフォーマット（X月Y日形式）と検針状況の判定
         let inspectionDateDisplay = null;
-        if (lastInspectionDate) {
+        let inspectionStatus = '未検針'; // デフォルトは未検針
+        
+        if (lastInspectionDate && hasActualReading) {
+          // 実際に指示数が入力されている場合のみ検針済みとして扱う
           try {
             let dateObj;
             if (lastInspectionDate instanceof Date) {
@@ -423,11 +438,16 @@ function handleGetRooms(params) {
               const day = dateObj.getDate();
               // 🔄 フォーマットを「X月Y日」形式に変更
               inspectionDateDisplay = `${month}月${day}日`;
-              console.log(`[GAS DEBUG] 検針日フォーマット成功 - 部屋: ${roomId}, 表示: ${inspectionDateDisplay}`);
+              inspectionStatus = '検針済み';
+              console.log(`[GAS DEBUG] 検針日フォーマット成功 - 部屋: ${roomId}, 表示: ${inspectionDateDisplay}, 状況: ${inspectionStatus}`);
             }
           } catch (dateError) {
             console.error(`[GAS DEBUG] 検針日フォーマットエラー - 部屋: ${roomId}, 元データ:`, lastInspectionDate, dateError);
           }
+        } else if (lastInspectionDate && !hasActualReading) {
+          // 日付はあるが指示数がない場合（日付のみ設定された状態）
+          inspectionStatus = '未検針';
+          console.log(`[GAS DEBUG] 日付あり指示数なし - 部屋: ${roomId}, 未検針として処理`);
         }
         
         rooms.push({
@@ -435,9 +455,10 @@ function handleGetRooms(params) {
           roomNumber: roomId,
           id: roomId,
           name: roomName,
-          // 🆕 検針状況を追加
-          hasInspectionData: !!lastInspectionDate,
-          inspectionDate: inspectionDateDisplay, // 「12月25日」形式
+          // 🆕 改善された検針状況を追加
+          hasInspectionData: hasActualReading, // 実際に指示数が入力されている場合のみtrue
+          inspectionDate: inspectionDateDisplay, // 「12月25日」形式（検針済みの場合のみ）
+          inspectionStatus: inspectionStatus, // '検針済み' or '未検針'
           rawInspectionDate: lastInspectionDate // デバッグ用
         });
       }

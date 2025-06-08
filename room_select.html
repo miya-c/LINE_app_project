@@ -349,8 +349,8 @@
                           <div className="room-header">
                             <span className="room-number">
                               {displayName}
-                              {/* 🆕 検針日情報を「X月Y日」形式で表示 */}
-                              {room.hasInspectionData && room.inspectionDate && (
+                              {/* 🆕 検針状況を表示 - 検針済みと未検針を明確に区別 */}
+                              {room.inspectionStatus === '検針済み' && room.inspectionDate && (
                                 <span style={{
                                   color: 'var(--mantine-color-blue-6)',
                                   fontWeight: '500',
@@ -358,6 +358,16 @@
                                   marginLeft: '8px'
                                 }}>
                                   [検針日：{room.inspectionDate}]
+                                </span>
+                              )}
+                              {room.inspectionStatus === '未検針' && (
+                                <span style={{
+                                  color: 'var(--mantine-color-red-6)',
+                                  fontWeight: '600',
+                                  fontSize: '0.9em',
+                                  marginLeft: '8px'
+                                }}>
+                                  [未検針]
                                 </span>
                               )}
                             </span>
