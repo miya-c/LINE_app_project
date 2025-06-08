@@ -1,3 +1,41 @@
+// 指定した物件ID・部屋IDの検針日時セルの値・型・JST変換を詳細ログ出力するデバッグ関数
+function debugLogInspectionDate(propertyId, roomId) {
+  const spreadsheet = getSpreadsheetInstance();
+  const sheet = spreadsheet.getSheetByName('inspection_data');
+  if (!sheet) {
+    console.log('inspection_dataシートが見つかりません');
+    return;
+  }
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const propertyIdIndex = headers.indexOf('物件ID');
+  const roomIdIndex = headers.indexOf('部屋ID');
+  const dateIndex = headers.indexOf('検針日時');
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (
+      String(row[propertyIdIndex]).trim() === String(propertyId).trim() &&
+      String(row[roomIdIndex]).trim() === String(roomId).trim()
+    ) {
+      const dateValue = row[dateIndex];
+      console.log('--- 検針日時デバッグ ---');
+      console.log('raw value:', dateValue, 'typeof:', typeof dateValue);
+      if (dateValue instanceof Date) {
+        console.log('as ISO:', dateValue.toISOString());
+        console.log('as JST:', Utilities.formatDate(dateValue, 'Asia/Tokyo', 'yyyy-MM-dd'));
+      } else if (typeof dateValue === 'string') {
+        console.log('as string:', dateValue);
+        const dateObj = new Date(dateValue);
+        if (!isNaN(dateObj.getTime())) {
+          console.log('string→Date as ISO:', dateObj.toISOString());
+          console.log('string→Date as JST:', Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd'));
+        }
+      }
+      break;
+    }
+  }
+}
 // ===================================================
 // 水道検針WOFF GAS Web App - v9-SIMPLE-RAW-DATA
 // 生データ返却版：バックエンドで複雑な日付処理を行わず、フロントエンドで統一処理
@@ -15,21 +53,12 @@ function toJSTDateString(value) {
   // 文字列型
   if (typeof value === 'string') {
     const dateStr = value.trim();
-    // YYYY-MM-DD or YYYY/MM/DD
-    let match = dateStr.match(/^\d{4}-\d{2}-\d{2}$/);
-    if (match) {
-      // JST 0時としてDate型を生成
-      const dateObj = new Date(dateStr + 'T00:00:00+09:00');
-      if (!isNaN(dateObj.getTime())) {
-        return Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
-      }
+    // YYYY-MM-DD or YYYY/MM/DD 形式ならそのまま返す（/は-に変換）
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
     }
-    match = dateStr.match(/^\d{4}\/\d{2}\/\d{2}$/);
-    if (match) {
-      const dateObj = new Date(dateStr.replace(/\//g, '-') + 'T00:00:00+09:00');
-      if (!isNaN(dateObj.getTime())) {
-        return Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
-      }
+    if (/^\d{4}\/\d{2}\/\d{2}$/.test(dateStr)) {
+      return dateStr.replace(/\//g, '-');
     }
     // その他: Date変換できる場合
     const dateObj = new Date(dateStr);
@@ -641,6 +670,12 @@ function getActualMeterReadings(propertyId, roomId) {
       const rowRoomId = String(row[roomIdIndex]).trim();
       if (rowPropertyId === String(propertyId).trim() && rowRoomId === String(roomId).trim()) {
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
+        // --- 詳細デバッグ: 生値と型を出力 ---
+        console.log('[DEBUG] row[dateIndex]:', row[dateIndex], 'typeof:', typeof row[dateIndex]);
+        if (row[dateIndex] instanceof Date) {
+          console.log('[DEBUG] as ISO:', row[dateIndex].toISOString());
+          console.log('[DEBUG] as JST:', Utilities.formatDate(row[dateIndex], 'Asia/Tokyo', 'yyyy-MM-dd'));
+        }
         // --- JST日付変換: どんな値でもtoJSTDateStringで正規化 ---
         const processedDate = toJSTDateString(row[dateIndex]);
         const reading = {
