@@ -511,10 +511,17 @@
               return;
             }
             
-            // 分離アーキテクチャ: 検針完了時のみJST日付を設定
-            const inspectionDate = currentValue && currentValue.trim() !== '' ? getJSTDateString() : '';
+            // ✅ 検針日時の適切な処理: 既存データは検針日時を保持、新規データのみ現在日時を設定
+            let inspectionDate;
+            if (date && date !== '') {
+              // 既存データの場合：元の検針日時を保持
+              inspectionDate = date;
+            } else {
+              // 新規データの場合：指示数が入力された場合のみ現在日時を設定
+              inspectionDate = currentValue && currentValue.trim() !== '' ? getJSTDateString() : '';
+            }
             updatedReadings.push({
-              date: inspectionDate, // 指示数が入力された場合のみ検針日を設定、空の場合は未検針状態を保持
+              date: inspectionDate, // 既存データは元の日時、新規データは現在日時または空
               currentReading: currentValue
             });
           }
