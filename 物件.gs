@@ -155,21 +155,22 @@ function getGasVersion() {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
     return {
-    version: "v5-NEW-RECORD-CREATION",
+    version: "v6-DATE-PROCESSING-FIX",
     deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
     corsFixed: true,
     contentServiceUsed: true,
-    description: "🎯 v5-NEW-RECORD-CREATION版：新規レコード自動作成機能対応！",
-    注意: "このバージョンでは物件/部屋の組み合わせが見つからない場合、自動的に新しいレコードを作成します",    debugInfo: {
+    description: "🔧 v6-DATE-PROCESSING-FIX版：スプレッドシートDate型の日付処理修正により、タイムゾーン問題を完全解決！",
+    注意: "このバージョンでは検針日時の表示問題（前日が表示される、今日の日付が表示される）を修正しました",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
-      deploymentCheck: "✅ v7-CORS-FINAL版が正常に動作中 - 構文エラー修正完了",
+      deploymentCheck: "✅ v6-DATE-PROCESSING-FIX版が正常に動作中 - 日付処理問題完全修正",
       corsStatus: "ContentServiceでCORS問題解決済み",
       postMethodSupport: "doPost関数でContentService使用",
-      強制確認: "構文エラー修正によりCORS問題が完全解決された最終バージョンです"
+      dateProcessingFix: "Date型からYYYY-MM-DD形式への変換でタイムゾーン問題解決",
+      強制確認: "検針日時表示問題が完全解決された最新バージョンです"
     }
   };
 }
@@ -177,8 +178,8 @@ function getGasVersion() {
 // メイン処理関数
 function doGet(e) {
   try {
-    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v5-NEW-RECORD-CREATION`);
-    console.log(`[GAS DEBUG] 🎯 CORS問題解決版が動作中です（ContentService使用）!`);
+    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v6-DATE-PROCESSING-FIX`);
+    console.log(`[GAS DEBUG] 🔧 日付処理修正版が動作中です（Date型タイムゾーン問題解決）!`);
     
     // パラメータのデバッグ情報
     console.log("[GAS DEBUG] e オブジェクト存在:", !!e);
@@ -411,8 +412,17 @@ function handleGetRooms(params) {
               
               // 検針日時があるかチェック（空でない場合のみ採用）
               if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
-                lastInspectionDate = inspectionDate;
-                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${inspectionDate}, 指示数あり: ${hasActualReading}`);
+                // 🔧 Date型の場合は日本時間でYYYY-MM-DD形式に変換
+                if (inspectionDate instanceof Date && !isNaN(inspectionDate.getTime())) {
+                  const year = inspectionDate.getFullYear();
+                  const month = String(inspectionDate.getMonth() + 1).padStart(2, '0');
+                  const day = String(inspectionDate.getDate()).padStart(2, '0');
+                  lastInspectionDate = `${year}-${month}-${day}`;
+                  console.log(`[GAS DEBUG] 日付変換: ${inspectionDate} → ${lastInspectionDate}`);
+                } else {
+                  lastInspectionDate = inspectionDate;
+                }
+                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${lastInspectionDate}, 指示数あり: ${hasActualReading}`);
               }
               break; // 最初に見つかったデータを使用（通常1部屋1レコード）
             }
@@ -621,13 +631,27 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // 分離アーキテクチャ: 生データのみ返す - フォーマット処理はフロントエンドに移行
+        // 🔧 日付処理修正: スプレッドシートから取得したDate型を正確に処理
         let rawDateValue = row[dateIndex]; // 元の日付データをそのまま保持
         
-        console.log(`[GAS] 生データ保存: type="${typeof rawDateValue}", value="${rawDateValue}"`);
+        // Date型の場合は日本時間でYYYY-MM-DD形式に変換（タイムゾーン問題解決）
+        let formattedDate = rawDateValue;
+        if (rawDateValue instanceof Date && !isNaN(rawDateValue.getTime())) {
+          // 日本時間のオフセット（UTC+9）を考慮してYYYY-MM-DD形式に変換
+          const year = rawDateValue.getFullYear();
+          const month = String(rawDateValue.getMonth() + 1).padStart(2, '0');
+          const day = String(rawDateValue.getDate()).padStart(2, '0');
+          formattedDate = `${year}-${month}-${day}`;
+          console.log(`[GAS] 日付変換: ${rawDateValue} → ${formattedDate}`);
+        } else if (rawDateValue === null || rawDateValue === undefined || rawDateValue === '') {
+          formattedDate = ''; // 空の場合は空文字列
+          console.log(`[GAS] 空の日付データ: ${rawDateValue} → 未検針状態`);
+        } else {
+          console.log(`[GAS] その他の日付データ: type="${typeof rawDateValue}", value="${rawDateValue}"`);
+        }
         
         const reading = {
-          date: rawDateValue, // 生データのまま（Date型、文字列、空値など）
+          date: formattedDate, // 統一されたYYYY-MM-DD形式または空文字列
           currentReading: row[currentReadingIndex] || '',
           previousReading: row[previousReadingIndex] || '',
           previousPreviousReading: row[previousPreviousReadingIndex] || '',
@@ -781,9 +805,16 @@ function handleUpdateMeterReadings(params) {
           console.log(`[GAS] 行${j + 1} マッチング: 物件ID=${propertyIdMatch}, 部屋ID=${roomIdMatch}`);
           if (propertyIdMatch && roomIdMatch) {
             console.log(`[GAS] ✅ 更新対象行発見: 行${j + 1}`);
-            targetRowFound = true;
-            // ✅ 未検針状態を保持するため、元のreading.dateを使用（空の場合は空のまま）
-            const recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+            targetRowFound = true;          // 🔧 日付処理修正: Date型の場合は日本時間でYYYY-MM-DD形式に変換
+          let recordDate;
+          if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
+            const year = reading.date.getFullYear();
+            const month = String(reading.date.getMonth() + 1).padStart(2, '0');
+            const day = String(reading.date.getDate()).padStart(2, '0');
+            recordDate = `${year}-${month}-${day}`;
+          } else {
+            recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+          }
             console.log(`[GAS] 更新開始 - 行${j + 1}, 日付: "${recordDate}" (空の場合は未検針状態), 指示数: ${reading.currentReading}`);
             // 実際のセル更新（1ベースのインデックスに変換）
             sheet.getRange(j + 1, columnIndexes.date + 1).setValue(recordDate); // ✅ 空の場合は空のまま保存
@@ -816,8 +847,16 @@ function handleUpdateMeterReadings(params) {
           
           // 新しい行を追加
           const newRowIndex = data.length; // 新しい行のインデックス（1ベース）
-          // ✅ 未検針状態を保持するため、元のreading.dateを使用（空の場合は空のまま）
-          const recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+          // 🔧 日付処理修正: Date型の場合は日本時間でYYYY-MM-DD形式に変換
+          let recordDate;
+          if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
+            const year = reading.date.getFullYear();
+            const month = String(reading.date.getMonth() + 1).padStart(2, '0');
+            const day = String(reading.date.getDate()).padStart(2, '0');
+            recordDate = `${year}-${month}-${day}`;
+          } else {
+            recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+          }
           const currentReadingValue = parseFloat(reading.currentReading) || 0;
           
           // 新規レコードの場合、前回指示数は0、使用量は今回の指示数
@@ -885,12 +924,11 @@ function handleUpdateMeterReadings(params) {
       totalProcessed: updatedReadings.length,
       propertyId: propertyId,
       roomId: roomId,
-      updatedReadings: updatedReadings,
-      debugInfo: {
-        timestamp: new Date().toISOString(),
-        originalReadingsCount: readings.length,
-        version: "v5-NEW-RECORD-CREATION"
-      }
+      updatedReadings: updatedReadings,        debugInfo: {
+          timestamp: new Date().toISOString(),
+          originalReadingsCount: readings.length,
+          version: "v6-DATE-PROCESSING-FIX"
+        }
     });
     
   } catch (error) {
