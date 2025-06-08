@@ -4,21 +4,43 @@
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
-// 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得（完全String型処理）
-function getJSTDateString() {
-  // 日本時間のオフセット（UTC+9）を考慮したString型での処理
-  const now = new Date();
-  const jstOffset = 9 * 60; // 9時間 = 540分
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000); // UTC時間
-  const jstTime = new Date(utc + (jstOffset * 60000)); // JST時間
-  
-  const year = jstTime.getFullYear();
-  const month = String(jstTime.getMonth() + 1).padStart(2, '0');
-  const day = String(jstTime.getDate()).padStart(2, '0');
-  const jstString = `${year}-${month}-${day}`;
-  
-  console.log(`[GAS] JST日付String生成: ${jstString}`);
-  return jstString;
+
+// 任意の値をJSTのYYYY-MM-DD文字列に正規化する（Date型・文字列・null/空対応）
+function toJSTDateString(value) {
+  if (value === null || value === undefined || value === '') return '';
+  // Date型
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, 'Asia/Tokyo', 'yyyy-MM-dd');
+  }
+  // 文字列型
+  if (typeof value === 'string') {
+    const dateStr = value.trim();
+    // YYYY-MM-DD or YYYY/MM/DD
+    let match = dateStr.match(/^\d{4}-\d{2}-\d{2}$/);
+    if (match) {
+      // JST 0時としてDate型を生成
+      const dateObj = new Date(dateStr + 'T00:00:00+09:00');
+      if (!isNaN(dateObj.getTime())) {
+        return Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
+      }
+    }
+    match = dateStr.match(/^\d{4}\/\d{2}\/\d{2}$/);
+    if (match) {
+      const dateObj = new Date(dateStr.replace(/\//g, '-') + 'T00:00:00+09:00');
+      if (!isNaN(dateObj.getTime())) {
+        return Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
+      }
+    }
+    // その他: Date変換できる場合
+    const dateObj = new Date(dateStr);
+    if (!isNaN(dateObj.getTime())) {
+      return Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
+    }
+    // 解析不能な場合は空文字
+    return '';
+  }
+  // それ以外は空文字
+  return '';
 }
 
 // スプレッドシートIDを設定ファイルから取得
@@ -617,32 +639,12 @@ function getActualMeterReadings(propertyId, roomId) {
       const row = data[i];
       const rowPropertyId = String(row[propertyIdIndex]).trim();
       const rowRoomId = String(row[roomIdIndex]).trim();
-      
-      if (rowPropertyId === String(propertyId).trim() && 
-          rowRoomId === String(roomId).trim()) {
-        
+      if (rowPropertyId === String(propertyId).trim() && rowRoomId === String(roomId).trim()) {
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
-        
-        // 🔥 Date型JSON化時の1日ずれ修正: Date型の場合のみJST文字列に変換
-        let processedDate = row[dateIndex];
-        
-        if (row[dateIndex] instanceof Date && !isNaN(row[dateIndex].getTime())) {
-          // Date型の場合：UTC変換を避けてJST文字列に変換
-          const dateObj = row[dateIndex];
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          processedDate = `${year}-${month}-${day}`;
-          
-          console.log("[GAS] Date型をJST文字列に変換:", {
-            originalDate: row[dateIndex],
-            convertedString: processedDate,
-            year, month, day
-          });
-        }
-        
+        // --- JST日付変換: どんな値でもtoJSTDateStringで正規化 ---
+        const processedDate = toJSTDateString(row[dateIndex]);
         const reading = {
-          date: processedDate,  // JST文字列またはそのまま
+          date: processedDate,
           currentReading: row[currentReadingIndex],
           previousReading: row[previousReadingIndex],
           previousPreviousReading: row[previousPreviousReadingIndex],
@@ -650,7 +652,6 @@ function getActualMeterReadings(propertyId, roomId) {
           usage: row[usageIndex],
           status: row[warningFlagIndex]
         };
-        
         console.log("[GAS] 処理済みデータを返却:", {
           date: reading.date,
           dateType: typeof reading.date,
@@ -658,9 +659,8 @@ function getActualMeterReadings(propertyId, roomId) {
           currentReading: reading.currentReading,
           rawDataComplete: true
         });
-        
         readings.push(reading);
-        break; // 通常1部屋につき1レコード
+        break;
       }
     }
     
