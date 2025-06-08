@@ -459,16 +459,18 @@ function handleGetRooms(params) {
             const inspectionPropertyId = String(inspectionRow[propertyIdIndex]).trim();
             const inspectionRoomId = String(inspectionRow[roomIdIndex]).trim();
             const inspectionDate = inspectionRow[dateIndex];
-            
+            let currentReading = null;
+            if (currentReadingIndex !== -1) {
+              currentReading = inspectionRow[currentReadingIndex];
+            }
             if (inspectionPropertyId === propertyId && inspectionRoomId === roomId) {
-              // 指示数が入力されているかチェック
-              if (currentReadingIndex !== -1) {
-                const currentReading = inspectionRow[currentReadingIndex];
-                if (currentReading !== null && currentReading !== undefined && currentReading !== '') {
-                  hasActualReading = true;
-                }
+              // 検針日時または指示数が入っていれば検針済み扱いにする
+              if (
+                (currentReading !== null && currentReading !== undefined && currentReading !== '') ||
+                (inspectionDate && inspectionDate !== '' && inspectionDate !== null)
+              ) {
+                hasActualReading = true;
               }
-              
               // 🔧 v9-SIMPLE-RAW-DATA: 生データをそのまま返す
               if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
                 lastInspectionDate = inspectionDate; // 生データをそのまま使用
@@ -499,10 +501,10 @@ function handleGetRooms(params) {
     // データが見つからない場合は空の配列を返す
     if (rooms.length === 0) {
       console.log("[GAS DEBUG] 指定された物件IDに対応する部屋データが見つかりません");
-      return createCorsResponse([]);
+      return createCorsResponse({ result: [] });
     }
     
-    return createCorsResponse(rooms);
+    return createCorsResponse({ result: rooms });
     
   } catch (error) {
     console.error("[GAS] getRooms エラー:", error.message);
