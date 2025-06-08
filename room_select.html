@@ -20,38 +20,29 @@
 <body>
   <div id="root"></div>  <script type="text/babel">
     // ===================================
-    // 分離アーキテクチャ: データフォーマット関数群（部屋選択用）
-    // バックエンドから受信した生データをUIに適したフォーマットに変換
+    // シンプルな日付フォーマット関数群（部屋選択用）
+    // バックエンドから受信した検針日データをUIに適したフォーマットに変換
+    // YYYY-MM-DD形式のみ対応、その他は未検針として扱う
     // ===================================
     
-    // 日付フォーマット関数: 生データを「X月Y日」形式に変換（シンプル版）
+    // シンプルな日付フォーマット関数: YYYY-MM-DD → X月Y日
     const formatDate = (rawDate) => {
+      // 空値チェック
       if (!rawDate || rawDate === '' || rawDate === null || rawDate === undefined) {
         return null;
       }
       
-      try {
-        // YYYY-MM-DD形式の場合（最も一般的）
-        if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
-          const [year, month, day] = rawDate.trim().split('-');
-          return `${parseInt(month)}月${parseInt(day)}日`;
-        }
-        
-        // Date型または数値の場合のみDate変換を使用
-        const date = new Date(rawDate);
-        if (!isNaN(date.getTime())) {
-          return `${date.getMonth() + 1}月${date.getDate()}日`;
-        }
-        
-        return null;
-      } catch (error) {
-        console.error('日付変換エラー:', error);
-        return null;
+      // YYYY-MM-DD形式の文字列を直接変換
+      if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
+        const [year, month, day] = rawDate.trim().split('-');
+        return `${parseInt(month)}月${parseInt(day)}日`;
       }
+      
+      return null; // その他の形式は未対応として未検針扱い
     };
     
-    // 検針状況フォーマット関数: 生データから検針状況を判定
-    const formatInspectionStatus = (rawDate, hasActualReading) => {
+    // シンプルな検針状況判定
+    const formatInspectionStatus = (rawDate) => {
       const formattedDate = formatDate(rawDate);
       return formattedDate ? 
         { status: '検針済み', displayDate: formattedDate } : 
