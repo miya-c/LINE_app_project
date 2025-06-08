@@ -447,7 +447,10 @@ function getSpreadsheetId() {
   try {
     // 設定ファイルからIDを取得を試行
     if (typeof getConfigSpreadsheetId === 'function') {
-      return getConfigSpreadsheetId();
+      const configId = getConfigSpreadsheetId();
+      if (configId) {
+        return configId;
+      }
     }
     
     // フォールバック: アクティブなスプレッドシートから取得
@@ -455,13 +458,11 @@ function getSpreadsheetId() {
     if (activeSpreadsheet) {
       return activeSpreadsheet.getId();
     } else {
-      Logger.log('警告: アクティブなスプレッドシートが見つかりません');
-      return null;
+      throw new Error('アクティブなスプレッドシートが見つかりません');
     }
   } catch (e) {
     Logger.log(`スプレッドシートID取得エラー: ${e.message}`);
-    // 最終フォールバック
-    return '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+    throw new Error(`スプレッドシートIDが取得できません。spreadsheet_config.gs を確認してください: ${e.message}`);
   }
 }
 

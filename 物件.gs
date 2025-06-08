@@ -8,16 +8,38 @@
 // getConfigSpreadsheetId() 関数は spreadsheet_config.gs で定義されています
 function getSpreadsheetId() {
   try {
-    return getConfigSpreadsheetId();
+    const configId = getConfigSpreadsheetId();
+    if (!configId) {
+      throw new Error('設定ファイルでスプレッドシートIDが設定されていません');
+    }
+    Logger.log(`✅ 設定ファイルからスプレッドシートID取得成功: ${configId}`);
+    return configId;
   } catch (e) {
-    Logger.log(`設定ファイルからスプレッドシートID取得エラー: ${e.message}`);
-    // フォールバック用のID（必要に応じて削除可能）
-    return '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+    Logger.log(`❌ 設定ファイルからスプレッドシートID取得エラー: ${e.message}`);
+    Logger.log(`🔧 対処法: spreadsheet_config.gs でスプレッドシートIDを正しく設定してください`);
+    
+    // フォールバックとしてアクティブスプレッドシートを試行
+    try {
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (activeSpreadsheet) {
+        const activeId = activeSpreadsheet.getId();
+        Logger.log(`⚠️ アクティブスプレッドシートを使用: ${activeId}`);
+        return activeId;
+      }
+    } catch (activeError) {
+      Logger.log(`❌ アクティブスプレッドシート取得も失敗: ${activeError.message}`);
+    }
+    
+    // 完全にエラーとして扱う
+    throw new Error(`スプレッドシートIDが取得できません。spreadsheet_config.gs を確認してください。`);
   }
 }
 
-// 実際に使用されるスプレッドシートID
-const SPREADSHEET_ID = getSpreadsheetId();
+// 動的にスプレッドシートインスタンスを取得する関数
+function getSpreadsheetInstance() {
+  const spreadsheetId = getSpreadsheetId();
+  return SpreadsheetApp.openById(spreadsheetId);
+}
 
 // CORSヘッダーを設定するヘルパー関数（シンプル版）
 function createCorsResponse(data) {
@@ -487,7 +509,8 @@ function getActualMeterReadings(propertyId, roomId) {
   try {
     console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
     
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    // ✅ 動的にスプレッドシートを取得（設定ファイルベース）
+    const spreadsheet = getSpreadsheetInstance();
     
     // ✅ 正しいシート名を使用
     const sheet = spreadsheet.getSheetByName('inspection_data');
@@ -711,11 +734,10 @@ function handleUpdateMeterReadings(params) {
         continue;
       }
       
-      let skip = false;
-      try {
-        // **実際のスプレッドシート更新処理を実装**
-        const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-        const sheet = spreadsheet.getSheetByName('inspection_data');
+      let skip = false;        try {
+          // **実際のスプレッドシート更新処理を実装**
+          const spreadsheet = getSpreadsheetInstance();
+          const sheet = spreadsheet.getSheetByName('inspection_data');
         if (!sheet) {
           console.error("[GAS] inspection_data シートが見つかりません");
           skip = true;
