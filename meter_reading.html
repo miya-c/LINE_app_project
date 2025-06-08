@@ -20,27 +20,41 @@
   <div id="root"></div>
   <script type="text/babel">
     // ===================================
-    // シンプルな日付処理
-    // データがあれば表示、なければ未検針
+    // v9-SIMPLE-RAW-DATA 統一日付処理
+    // バックエンドから生データを受け取り、フロントエンドで統一的にフォーマット
     // ===================================
     
-    const formatDate = (rawDate) => {
+    const formatDateForDisplay = (rawDate) => {
       if (!rawDate) return null;
       
-      const dateStr = String(rawDate).trim();
-      
-      // YYYY-MM-DD または YYYY/MM/DD 形式のみ対応
-      const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-      if (match) {
-        const [, year, month, day] = match;
-        return `${parseInt(month)}月${parseInt(day)}日`;
+      try {
+        let dateStr = String(rawDate).trim();
+        
+        // Date型から生成された場合の処理
+        if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+          // JST時間として安全に変換
+          const year = rawDate.getFullYear();
+          const month = rawDate.getMonth() + 1;
+          const day = rawDate.getDate();
+          return `${month}月${day}日`;
+        }
+        
+        // 文字列形式の日付処理
+        const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+        if (match) {
+          const [, year, month, day] = match;
+          return `${parseInt(month)}月${parseInt(day)}日`;
+        }
+        
+        return null;
+      } catch (error) {
+        console.warn('[meter_reading] 日付フォーマットエラー:', rawDate, error);
+        return null;
       }
-      
-      return null;
     };
     
     const formatInspectionStatus = (rawDate) => {
-      const formattedDate = formatDate(rawDate);
+      const formattedDate = formatDateForDisplay(rawDate);
       return formattedDate ? 
         { status: '検針済み', displayDate: formattedDate } : 
         { status: '未検針', displayDate: null };

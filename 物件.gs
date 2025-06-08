@@ -1,6 +1,6 @@
 // ===================================================
-// 水道検針WOFF GAS Web App - v8-STRING-DATE-ONLY
-// 完全String型日付処理：Date型を一切使用せず1日ずれ問題を完全解決
+// 水道検針WOFF GAS Web App - v9-SIMPLE-RAW-DATA
+// 生データ返却版：バックエンドで複雑な日付処理を行わず、フロントエンドで統一処理
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
@@ -163,22 +163,22 @@ function getGasVersion() {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
     return {
-    version: "v8-STRING-DATE-ONLY",
+    version: "v9-SIMPLE-RAW-DATA",
     deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
     corsFixed: true,
     contentServiceUsed: true,
-    description: "🔧 v8-STRING-DATE-ONLY版：完全String型日付処理でDate型を一切使用せず1日ずれ問題を完全解決！",
-    注意: "このバージョンではDate型を一切使用せず、完全にString型で日付処理を行い、1日ずれ問題を完全解決しました",    debugInfo: {
+    description: "🔧 v9-SIMPLE-RAW-DATA版：バックエンドで複雑な日付処理を削除し、生データを返してフロントエンドで統一処理！",
+    注意: "このバージョンではバックエンドの日付処理を簡素化し、フロントエンドで統一された日付フォーマット処理を実装",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
-      deploymentCheck: "✅ v8-STRING-DATE-ONLY版が正常に動作中 - 完全String型日付処理",
+      deploymentCheck: "✅ v9-SIMPLE-RAW-DATA版が正常に動作中 - 生データ返却＋フロントエンド統一処理",
       corsStatus: "ContentServiceでCORS問題解決済み",
       postMethodSupport: "doPost関数でContentService使用",
-      dateProcessingFix: "Date型を一切使用せず完全String型処理でタイムゾーン問題解決",
-      強制確認: "検針日時表示問題が完全解決された最新バージョンです"
+      dateProcessingFix: "バックエンドの複雑な日付処理を削除し、フロントエンドで統一的に処理",
+      強制確認: "生データ返却によりタイムゾーン問題が完全解決された最新バージョンです"
     }
   };
 }
@@ -418,15 +418,9 @@ function handleGetRooms(params) {
                 }
               }
               
-              // 検針日時があるかチェック（空でない場合のみ採用）
+              // 🔧 v9-SIMPLE-RAW-DATA: 生データをそのまま返す
               if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
-                // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
-                if (inspectionDate instanceof Date && !isNaN(inspectionDate.getTime())) {
-                  lastInspectionDate = Utilities.formatDate(inspectionDate, 'Asia/Tokyo', 'yyyy-MM-dd');
-                  console.log(`[GAS DEBUG] 日付変換（修正版）: ${inspectionDate} → ${lastInspectionDate}`);
-                } else {
-                  lastInspectionDate = inspectionDate;
-                }
+                lastInspectionDate = inspectionDate; // 生データをそのまま使用
                 console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${lastInspectionDate}, 指示数あり: ${hasActualReading}`);
               }
               break; // 最初に見つかったデータを使用（通常1部屋1レコード）
@@ -636,31 +630,9 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // 🔧 日付処理修正: 完全にString型で処理（Date型は一切使用しない）
-        let rawDateValue = row[dateIndex]; // 元の日付データをそのまま保持
-        
-        // 全ての日付をString型として処理し、Date型は使用しない
-        let formattedDate = '';
-        if (rawDateValue !== null && rawDateValue !== undefined && rawDateValue !== '') {
-          if (rawDateValue instanceof Date && !isNaN(rawDateValue.getTime())) {
-            // Date型の場合のみ、日付文字列に変換（1日ずれ問題解決）
-            const year = rawDateValue.getFullYear();
-            const month = String(rawDateValue.getMonth() + 1).padStart(2, '0');
-            const day = String(rawDateValue.getDate()).padStart(2, '0');
-            formattedDate = `${year}-${month}-${day}`;
-            console.log(`[GAS] Date型→String変換: ${rawDateValue} → ${formattedDate}`);
-          } else {
-            // 既にString型の場合はそのまま使用
-            formattedDate = String(rawDateValue).trim();
-            console.log(`[GAS] String型として処理: "${formattedDate}"`);
-          }
-        } else {
-          formattedDate = ''; // 空の場合は空文字列
-          console.log(`[GAS] 空の日付データ: ${rawDateValue} → 未検針状態`);
-        }
-        
+        // 🔧 v9-SIMPLE-RAW-DATA: 生データをそのまま返す（フロントエンドで処理）
         const reading = {
-          date: formattedDate, // 統一されたYYYY-MM-DD形式または空文字列
+          date: row[dateIndex], // 生データをそのまま返す
           currentReading: row[currentReadingIndex] || '',
           previousReading: row[previousReadingIndex] || '',
           previousPreviousReading: row[previousPreviousReadingIndex] || '',
