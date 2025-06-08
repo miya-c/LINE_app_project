@@ -686,23 +686,19 @@ function getActualMeterReadings(propertyId, roomId) {
             }
           } catch (dateError) {
             console.error(`[GAS] 日付変換エラー:`, dateError, `元の値: "${dateValue}"`);
-            formattedDate = new Date().toISOString().split('T')[0];
+            formattedDate = ''; // 空文字列のまま保持
           }
         } else {
-          console.log(`[GAS] 日付フィールドが空またはnull/undefined: "${dateValue}", 現在日付を使用`);
-          formattedDate = new Date().toISOString().split('T')[0];
+          console.log(`[GAS] 日付フィールドが空またはnull/undefined: "${dateValue}", 空文字列を保持`);
+          formattedDate = ''; // 空文字列のまま保持
         }
         
-        console.log(`[GAS] 最終的な日付: "${formattedDate}"`);
+        console.log(`[GAS] 最終的な日付: "${formattedDate}" (空の場合は未検針として処理)`);
         
-        // 最後の安全チェック：まだ空文字の場合は強制的に現在日付を設定
-        if (!formattedDate || formattedDate.trim() === '') {
-          formattedDate = new Date().toISOString().split('T')[0];
-          console.log(`[GAS] 緊急フォールバック: 空文字を現在日付に変更: ${formattedDate}`);
-        }
+        // 空の日付値は空文字列のまま保持（フロントエンドで「未検針」として表示）
         
         const reading = {
-          date: formattedDate,
+          date: formattedDate, // 空の場合は空文字列のまま
           currentReading: row[currentReadingIndex] || '',
           previousReading: row[previousReadingIndex] || '',
           previousPreviousReading: row[previousPreviousReadingIndex] || '',
