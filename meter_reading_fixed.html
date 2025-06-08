@@ -699,7 +699,7 @@
                           <input 
                             type="text" 
                             id="initialReadingDate" 
-                            value={formatDate(new Date())} 
+                            value="未検針" 
                             readOnly 
                             className="mantine-input" 
                             style={{fontSize: '1rem', padding: '10px'}} 
@@ -715,11 +715,11 @@
                             min="0"
                             step="any"
                             style={{fontSize: '1rem', padding: '10px'}}
-                            data-date={getLocalDateString()} 
+                            data-date="" 
                             data-original-value=""
                             data-previous-reading=""
                             onChange={(e) => {
-                              const dateForDataAttribute = getLocalDateString();
+                              const dateForDataAttribute = "";
                               const numericValue = parseFloat(e.target.value);
                               if (e.target.value === '') {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: '初回検針では指示数の入力が必須です。'}));
@@ -733,9 +733,9 @@
                               }
                             }}
                           />
-                          {inputErrors[getLocalDateString()] && (
+                          {inputErrors[""] && (
                             <div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', marginTop: '4px' }}>
-                              {inputErrors[getLocalDateString()]}
+                              {inputErrors[""]}
                             </div>
                           )}
                         </div>
@@ -748,14 +748,14 @@
                                 width: '100%', 
                                 fontSize: '1rem', 
                                 padding: '10px 0',
-                                backgroundColor: photoStates[getLocalDateString()] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
+                                backgroundColor: photoStates[""] ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-blue-6)'
                               }}
-                              data-date-button={getLocalDateString()}
-                              onClick={() => handleCameraClick(getLocalDateString())}
+                              data-date-button=""
+                              onClick={() => handleCameraClick("")}
                             >
-                              {photoStates[getLocalDateString()] ? '変更 📸' : '写真を追加 📸'}
+                              {photoStates[""] ? '変更 📸' : '写真を追加 📸'}
                             </button>
-                            {photoStates[getLocalDateString()] && (
+                            {photoStates[""] && (
                               <button
                                 className="mantine-button variant-outline"
                                 style={{ 
@@ -765,7 +765,7 @@
                                   borderColor: 'var(--mantine-color-red-6)',
                                   color: 'var(--mantine-color-red-6)'
                                 }}
-                                onClick={() => handlePhotoDelete(getLocalDateString())}
+                                onClick={() => handlePhotoDelete("")}
                               >
                                 削除 🗑️
                               </button>

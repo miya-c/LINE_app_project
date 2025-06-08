@@ -823,15 +823,9 @@ function handleUpdateMeterReadings(params) {
       const reading = readings[i];
       console.log(`[GAS] 処理中の検針データ ${i + 1}/${readings.length}:`, reading);
       
-      // ✅ 日付の検証と修正を改善 - 空の日付は保持して未検針状態を維持
-      let effectiveDate = reading.date;
-      if (!effectiveDate || effectiveDate.trim() === '') {
-        // 空の日付の場合は現在日付（日本時間、YYYY-MM-DD形式）を設定（新規レコード作成時のみ）
-        effectiveDate = getJSTDateString();
-        console.log(`[GAS] 新規レコード作成のため空の日付を現在日付（日本時間）に設定: ${effectiveDate}`);
-        // 注意: 元のreadingオブジェクトは更新しない（未検針状態を保持）
-        // reading.date = effectiveDate; // この行をコメントアウト
-      }
+      // ✅ 空の日付は保持して未検針状態を維持（現在日付は一切設定しない）
+      console.log(`[GAS] 処理中の日付: "${reading.date}" (空の場合は未検針状態を保持)`);
+      // effectiveDateは削除 - 常に元のreading.dateを使用
       
       // ✅ データの妥当性チェック（指示数が空でない場合のみ処理）
       if (reading.currentReading === undefined || reading.currentReading === '' || reading.currentReading === null) {
@@ -890,11 +884,11 @@ function handleUpdateMeterReadings(params) {
           if (propertyIdMatch && roomIdMatch) {
             console.log(`[GAS] ✅ 更新対象行発見: 行${j + 1}`);
             targetRowFound = true;
-            // ✅ 日付形式を統一（日本時間でYYYY-MM-DD形式を使用）
-            const currentDate = getJSTDateString();
-            console.log(`[GAS] 更新開始 - 行${j + 1}, 日付: ${currentDate}, 指示数: ${reading.currentReading}`);
+            // ✅ 未検針状態を保持するため、元のreading.dateを使用（空の場合は空のまま）
+            const recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+            console.log(`[GAS] 更新開始 - 行${j + 1}, 日付: "${recordDate}" (空の場合は未検針状態), 指示数: ${reading.currentReading}`);
             // 実際のセル更新（1ベースのインデックスに変換）
-            sheet.getRange(j + 1, columnIndexes.date + 1).setValue(currentDate);
+            sheet.getRange(j + 1, columnIndexes.date + 1).setValue(recordDate); // ✅ 空の場合は空のまま保存
             sheet.getRange(j + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
             // ✅ 使用量計算の修正（新規検針データ対応）
             const currentReadingValue = parseFloat(reading.currentReading) || 0;
@@ -924,19 +918,20 @@ function handleUpdateMeterReadings(params) {
           
           // 新しい行を追加
           const newRowIndex = data.length; // 新しい行のインデックス（1ベース）
-          const currentDate = getJSTDateString();
+          // ✅ 未検針状態を保持するため、元のreading.dateを使用（空の場合は空のまま）
+          const recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
           const currentReadingValue = parseFloat(reading.currentReading) || 0;
           
           // 新規レコードの場合、前回指示数は0、使用量は今回の指示数
           const previousReading = 0;
           usage = currentReadingValue; // 新規レコードの使用量を設定
           
-          console.log(`[GAS] 新規レコード作成 - 行${newRowIndex + 1}, 日付: ${currentDate}, 指示数: ${reading.currentReading}, 使用量: ${usage}`);
+          console.log(`[GAS] 新規レコード作成 - 行${newRowIndex + 1}, 日付: "${recordDate}" (空の場合は未検針状態), 指示数: ${reading.currentReading}, 使用量: ${usage}`);
           
           // 新しい行にデータを設定
           sheet.getRange(newRowIndex + 1, columnIndexes.propertyId + 1).setValue(propertyId);
           sheet.getRange(newRowIndex + 1, columnIndexes.roomId + 1).setValue(roomId);
-          sheet.getRange(newRowIndex + 1, columnIndexes.date + 1).setValue(currentDate);
+          sheet.getRange(newRowIndex + 1, columnIndexes.date + 1).setValue(recordDate); // ✅ 空の場合は空のまま保存
           sheet.getRange(newRowIndex + 1, columnIndexes.currentReading + 1).setValue(reading.currentReading);
           sheet.getRange(newRowIndex + 1, columnIndexes.previousReading + 1).setValue(previousReading);
           sheet.getRange(newRowIndex + 1, columnIndexes.usage + 1).setValue(usage);
@@ -950,7 +945,7 @@ function handleUpdateMeterReadings(params) {
           usage: usage || '', // 計算された使用量を返却
           updated: true
         });
-        console.log(`[GAS] 検針データ更新: ${effectiveDate} - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
+        console.log(`[GAS] 検針データ更新: ${reading.date || '空の日付'} - 指示数: ${reading.currentReading}, 使用量: ${usage}`);
       } catch (updateError) {
         console.error(`[GAS] 検針データ更新エラー (行${i}):`, updateError.message);
         updatedReadings.push({
