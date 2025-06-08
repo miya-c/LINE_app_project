@@ -24,7 +24,7 @@
     // バックエンドから受信した生データをUIに適したフォーマットに変換
     // ===================================
     
-    // 日付フォーマット関数: 生データを「X月Y日」形式に変換
+    // 日付フォーマット関数: 生データを「X月Y日」形式に変換（タイムゾーン修正版）
     const formatDate = (rawDate) => {
       if (!rawDate || rawDate === '' || rawDate === null || rawDate === undefined) {
         return null; // 未検針状態を示す
@@ -34,26 +34,40 @@
         let dateObj;
         
         if (rawDate instanceof Date) {
-          dateObj = rawDate;
+          dateObj = new Date(rawDate.getTime()); // コピーを作成
         } else if (typeof rawDate === 'string') {
-          // YYYY-MM-DD形式またはYYYY/MM/DD形式に対応
-          if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
-            dateObj = new Date(rawDate.trim());
-          } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(rawDate.trim())) {
-            dateObj = new Date(rawDate.trim());
+          const dateStr = rawDate.trim();
+          // YYYY-MM-DD形式の場合、UTC午前12時として解釈されることを防ぐため、時刻を明示的に指定
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            dateObj = new Date(year, month - 1, day); // ローカルタイムゾーンで作成
+          } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('/').map(Number);
+            dateObj = new Date(year, month - 1, day); // ローカルタイムゾーンで作成
           } else {
-            dateObj = new Date(rawDate);
+            // その他の形式の場合、直接解析を試行
+            dateObj = new Date(dateStr);
+            // タイムゾーンオフセットの問題を回避するため、日付のみ抽出
+            if (!isNaN(dateObj.getTime())) {
+              dateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+            }
           }
         } else {
+          // 数値または他の型の場合
           dateObj = new Date(rawDate);
+          if (!isNaN(dateObj.getTime())) {
+            dateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+          }
         }
         
         if (dateObj && !isNaN(dateObj.getTime())) {
           const month = dateObj.getMonth() + 1;
           const day = dateObj.getDate();
+          console.log(`[formatDate] 変換成功: ${rawDate} → ${month}月${day}日`);
           return `${month}月${day}日`;
         }
         
+        console.warn(`[formatDate] 変換失敗: ${rawDate} (type: ${typeof rawDate})`);
         return null; // 変換に失敗した場合は未検針扱い
         
       } catch (error) {
@@ -107,13 +121,21 @@
       return String(value);
     };
     
-    // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
+    // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得（改良版）
     const getJSTDateString = () => {
+      // 日本時間のオフセット（UTC+9）を考慮
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const jstOffset = 9 * 60; // 9時間 = 540分
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000); // UTC時間
+      const jstTime = new Date(utc + (jstOffset * 60000)); // JST時間
+      
+      const year = jstTime.getFullYear();
+      const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+      const day = String(jstTime.getDate()).padStart(2, '0');
+      
+      const jstDateString = `${year}-${month}-${day}`;
+      console.log(`[getJSTDateString] 生成されたJST日付: ${jstDateString}`);
+      return jstDateString;
     };
     
     // ===================================
@@ -503,9 +525,10 @@
               return;
             }
             
-            // 分離アーキテクチャ: JST日付取得関数を使用
+            // 分離アーキテクチャ: 検針完了時のみJST日付を設定
+            const inspectionDate = currentValue && currentValue.trim() !== '' ? getJSTDateString() : '';
             updatedReadings.push({
-              date: getJSTDateString(), // JST時間での現在日付
+              date: inspectionDate, // 指示数が入力された場合のみ検針日を設定、空の場合は未検針状態を保持
               currentReading: currentValue
             });
           }

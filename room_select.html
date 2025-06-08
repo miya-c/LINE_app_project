@@ -24,7 +24,7 @@
     // バックエンドから受信した生データをUIに適したフォーマットに変換
     // ===================================
     
-    // 日付フォーマット関数: 生データを「X月Y日」形式に変換
+    // 日付フォーマット関数: 生データを「X月Y日」形式に変換（タイムゾーン修正版）
     const formatDate = (rawDate) => {
       if (!rawDate || rawDate === '' || rawDate === null || rawDate === undefined) {
         return null; // 未検針状態を示す
@@ -34,26 +34,40 @@
         let dateObj;
         
         if (rawDate instanceof Date) {
-          dateObj = rawDate;
+          dateObj = new Date(rawDate.getTime()); // コピーを作成
         } else if (typeof rawDate === 'string') {
-          // YYYY-MM-DD形式またはYYYY/MM/DD形式に対応
-          if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
-            dateObj = new Date(rawDate.trim());
-          } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(rawDate.trim())) {
-            dateObj = new Date(rawDate.trim());
+          const dateStr = rawDate.trim();
+          // YYYY-MM-DD形式の場合、UTC午前12時として解釈されることを防ぐため、時刻を明示的に指定
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            dateObj = new Date(year, month - 1, day); // ローカルタイムゾーンで作成
+          } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('/').map(Number);
+            dateObj = new Date(year, month - 1, day); // ローカルタイムゾーンで作成
           } else {
-            dateObj = new Date(rawDate);
+            // その他の形式の場合、直接解析を試行
+            dateObj = new Date(dateStr);
+            // タイムゾーンオフセットの問題を回避するため、日付のみ抽出
+            if (!isNaN(dateObj.getTime())) {
+              dateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+            }
           }
         } else {
+          // 数値または他の型の場合
           dateObj = new Date(rawDate);
+          if (!isNaN(dateObj.getTime())) {
+            dateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+          }
         }
         
         if (dateObj && !isNaN(dateObj.getTime())) {
           const month = dateObj.getMonth() + 1;
           const day = dateObj.getDate();
+          console.log(`[room_select formatDate] 変換成功: ${rawDate} → ${month}月${day}日`);
           return `${month}月${day}日`;
         }
         
+        console.warn(`[room_select formatDate] 変換失敗: ${rawDate} (type: ${typeof rawDate})`);
         return null; // 変換に失敗した場合は未検針扱い
         
       } catch (error) {
