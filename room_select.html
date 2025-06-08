@@ -88,6 +88,22 @@
       console.log('[room_select] formatInspectionStatus 結果:', result);
       return result;
     };
+
+    const getJSTDateString = () => {
+      // 日本時間のオフセット（UTC+9）を考慮したString型での処理
+      const now = new Date();
+      const jstOffset = 9 * 60; // 9時間 = 540分
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000); // UTC時間
+      const jstTime = new Date(utc + (jstOffset * 60000)); // JST時間
+      
+      const year = jstTime.getFullYear();
+      const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+      const day = String(jstTime.getDate()).padStart(2, '0');
+      
+      const jstDateString = `${year}-${month}-${day}`;
+      console.log(`[getJSTDateString] String型JST日付生成: ${jstDateString}`);
+      return jstDateString;
+    };
     
     // ===================================
     // Reactアプリケーション開始
