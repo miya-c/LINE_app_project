@@ -707,9 +707,9 @@ body {
   justify-content: space-evenly !important;
   align-items: stretch !important;
   height: 100% !important;
-  min-height: 120px !important;
-  line-height: 1.4;
-  font-size: clamp(1.0rem, 3.5vw, 1.5rem);
+  min-height: 160px !important;
+  line-height: 1.5;
+  font-size: clamp(1.2rem, 4.5vw, 2.0rem);
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
@@ -728,15 +728,15 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  font-size: clamp(1.0rem, 5.0vw, 1.9rem) !important;
-  line-height: 1.3 !important;
+  font-size: clamp(1.2rem, 4.5vw, 2.0rem) !important;
+  line-height: 1.4 !important;
   color: var(--mantine-color-gray-8);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 6px !important;
-  padding: 3px 0 !important;
+  margin-bottom: 8px !important;
+  padding: 6px 0 !important;
   border-bottom: 1px solid #f0f0f0 !important;
 }
 
@@ -749,13 +749,13 @@ body {
 @media (max-width: 768px) {
   .mantine-table td[data-label="前回履歴"] {
     padding-left: 16px;
-    font-size: clamp(1.1rem, 4.5vw, 1.8rem);
-    line-height: 1.3;
+    font-size: clamp(1.4rem, 6vw, 2.4rem);
+    line-height: 1.4;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-evenly !important;
     align-items: stretch !important;
-    min-height: 120px !important;
+    min-height: 180px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] > div {
@@ -767,10 +767,10 @@ body {
   }
   
   .mantine-table td[data-label="前回履歴"] div {
-    margin-bottom: 6px !important;
-    padding: 3px 0 !important;
+    margin-bottom: 8px !important;
+    padding: 6px 0 !important;
     border-bottom: 1px solid #f0f0f0 !important;
-    font-size: clamp(1.1rem, 4.5vw, 1.8rem) !important;
+    font-size: clamp(1.4rem, 6vw, 2.4rem) !important;
     flex: 1 1 0 !important;
     display: flex !important;
     align-items: center !important;
@@ -778,11 +778,11 @@ body {
   }
   /* モバイル専用の前回履歴テキスト調整 */
   .previous-reading-text {
-    font-size: clamp(1.1rem, 4.5vw, 1.8rem) !important;
-    line-height: 1.3 !important;
+    font-size: clamp(1.4rem, 6vw, 2.4rem) !important;
+    line-height: 1.4 !important;
     border-bottom: 1px solid #f0f0f0 !important;
-    margin-bottom: 6px !important;
-    padding: 3px 0 !important;
+    margin-bottom: 8px !important;
+    padding: 6px 0 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -837,66 +837,81 @@ body {
 /* 小さな画面サイズ（480px以下）用の前回履歴テキスト調整 */
 @media (max-width: 480px) {
   .previous-reading-text {
-    font-size: clamp(1.0rem, 5vw, 1.6rem) !important;
-    line-height: 1.25 !important;
+    font-size: clamp(1.3rem, 7vw, 2.2rem) !important;
+    line-height: 1.35 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100% !important;
     max-width: 100% !important;
+    padding: 8px 0 !important;
+    margin-bottom: 10px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] {
-    font-size: clamp(1.0rem, 5vw, 1.6rem);
+    font-size: clamp(1.3rem, 7vw, 2.2rem);
     padding-left: 12px;
+    min-height: 200px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] div {
-    font-size: clamp(1.0rem, 5vw, 1.6rem) !important;
+    font-size: clamp(1.3rem, 7vw, 2.2rem) !important;
+    padding: 8px 0 !important;
+    margin-bottom: 10px !important;
   }
 }
 
 /* 小さな画面サイズ（375px以下）用の前回履歴テキスト調整 */
 @media (max-width: 375px) {
   .previous-reading-text {
-    font-size: clamp(0.95rem, 5.5vw, 1.5rem) !important;
-    line-height: 1.2 !important;
+    font-size: clamp(1.2rem, 7.5vw, 2.1rem) !important;
+    line-height: 1.3 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100% !important;
     max-width: 100% !important;
+    padding: 8px 0 !important;
+    margin-bottom: 10px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] {
-    font-size: clamp(0.95rem, 5.5vw, 1.5rem);
+    font-size: clamp(1.2rem, 7.5vw, 2.1rem);
     padding-left: 10px;
+    min-height: 220px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] div {
-    font-size: clamp(0.95rem, 5.5vw, 1.5rem) !important;
+    font-size: clamp(1.2rem, 7.5vw, 2.1rem) !important;
+    padding: 8px 0 !important;
+    margin-bottom: 10px !important;
   }
 }
 
 /* 超小画面（320px以下）用の前回履歴テキスト調整 */
 @media (max-width: 320px) {
   .previous-reading-text {
-    font-size: clamp(0.9rem, 6vw, 1.4rem) !important;
-    line-height: 1.15 !important;
+    font-size: clamp(1.1rem, 8vw, 2.0rem) !important;
+    line-height: 1.25 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100% !important;
     max-width: 100% !important;
+    padding: 8px 0 !important;
+    margin-bottom: 10px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] {
-    font-size: clamp(0.9rem, 6vw, 1.4rem);
+    font-size: clamp(1.1rem, 8vw, 2.0rem);
     padding-left: 8px;
+    min-height: 240px !important;
   }
   
   .mantine-table td[data-label="前回履歴"] div {
-    font-size: clamp(0.9rem, 6vw, 1.4rem) !important;
+    font-size: clamp(1.1rem, 8vw, 2.0rem) !important;
+    padding: 8px 0 !important;
+    margin-bottom: 10px !important;
   }
 }
 
