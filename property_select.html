@@ -167,10 +167,26 @@
             const errorText = await roomResponse.text();
             console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
             throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
-          }          const rooms = await roomResponse.json();
-          console.log('[ReactApp] Fetched rooms:', rooms);
-          console.log('[ReactApp] Rooms type:', typeof rooms);
+          }          const roomData = await roomResponse.json();
+          console.log('[ReactApp] Fetched room data:', roomData);
+          console.log('[ReactApp] Room data type:', typeof roomData);
+          
+          // レスポンス形式の統一処理（GASから { result: rooms } 形式で返される）
+          let rooms;
+          if (Array.isArray(roomData)) {
+            rooms = roomData;
+          } else if (roomData.result && Array.isArray(roomData.result)) {
+            rooms = roomData.result;
+          } else if (roomData.rooms && Array.isArray(roomData.rooms)) {
+            rooms = roomData.rooms;
+          } else {
+            console.error('[ReactApp] Unexpected room data format:', roomData);
+            throw new Error('部屋データの形式が予期されたものと異なります。');
+          }
+          
+          console.log('[ReactApp] Processed rooms:', rooms);
           console.log('[ReactApp] Rooms array check:', Array.isArray(rooms));
+          console.log('[ReactApp] Rooms length:', rooms.length);
 
           console.log('[ReactApp] Storing to sessionStorage...');
           console.log('[ReactApp] - propertyId:', property.id, '(type:', typeof property.id, ')');
