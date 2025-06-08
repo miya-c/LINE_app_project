@@ -353,12 +353,30 @@
         }
       };
 
-      const handleBackButton = () => {
-        setIsNavigating(true);
-        setNavigationMessage('画面を切り替えています...');
-        // スクロール位置をリセットしてから遷移
-        window.scrollTo(0, 0);
-        window.location.href = 'room_select.html';
+      const handleBackButton = async () => {
+        try {
+          setIsNavigating(true);
+          setNavigationMessage('画面を切り替えています...');
+          
+          // 🆕 戻る前にキャッシュを更新
+          await updateSessionStorageCache(propertyId, roomId);
+          
+          // スクロール位置をリセット
+          window.scrollTo(0, 0);
+          
+          // 強制リフレッシュフラグを設定
+          sessionStorage.setItem('forceRefreshRooms', 'true');
+          sessionStorage.setItem('updatedRoomId', roomId);
+          sessionStorage.setItem('lastUpdateTime', Date.now().toString());
+          
+          // room_select.htmlに遷移
+          window.location.href = 'room_select.html';
+          
+        } catch (error) {
+          console.error('[meter_reading] 戻るボタン処理エラー:', error);
+          // エラーが発生してもページ遷移は実行
+          window.location.href = 'room_select.html';
+        }
       };
 
       // LoadingOverlayコンポーネント
@@ -481,32 +499,47 @@
           }
 
           // 部屋一覧データを再取得
-          const params = new URLSearchParams({
-            action: 'getRooms',
-            propertyId: propertyId
-          });
+          const fetchUrl = `${currentGasUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`;
+          console.log('[meter_reading] 部屋一覧再取得URL:', fetchUrl);
           
-          const requestUrl = `${currentGasUrl}?${params}`;
-          console.log('[meter_reading] 部屋一覧再取得:', requestUrl);
-          
-          const response = await fetch(requestUrl, { method: 'GET' });
+          const response = await fetch(fetchUrl, { method: 'GET' });
           
           if (response.ok) {
             const result = await response.json();
-            if (result.rooms && Array.isArray(result.rooms)) {
-              // sessionStorageのキャッシュを更新
-              const cacheKey = `rooms_${propertyId}`;
-              sessionStorage.setItem(cacheKey, JSON.stringify(result.rooms));
-              
-              // 強制リフレッシュフラグを設定（room_select.htmlで検知される）
-              sessionStorage.setItem('forceRefreshRooms', 'true');
-              sessionStorage.setItem('updatedRoomId', roomId);
-              sessionStorage.setItem('lastUpdateTime', new Date().getTime().toString());
-              
-              console.log('[meter_reading] ✅ キャッシュ更新完了 - 部屋数:', result.rooms.length);
-              console.log('[meter_reading] 更新された部屋ID:', roomId);
+            console.log('[meter_reading] 部屋一覧レスポンス:', result);
+            
+            // 🆕 レスポンスが直接配列の場合とオブジェクトの場合を両方処理
+            let roomsArray;
+            if (Array.isArray(result)) {
+              roomsArray = result;
+            } else if (result && Array.isArray(result.rooms)) {
+              roomsArray = result.rooms;
             } else {
-              console.warn('[meter_reading] 部屋データの形式が不正です:', result);
+              console.warn('[meter_reading] 予期しないレスポンス形式:', result);
+              return;
+            }
+            
+            if (roomsArray && roomsArray.length > 0) {
+              // 🆕 統一キーでsessionStorageを更新
+              sessionStorage.setItem('selectedRooms', JSON.stringify(roomsArray));
+              
+              console.log('[meter_reading] ✅ キャッシュ更新完了');
+              console.log('[meter_reading] - 部屋数:', roomsArray.length);
+              console.log('[meter_reading] - 更新された部屋ID:', roomId);
+              
+              // 🆕 更新された部屋の検針状況をログ出力
+              const updatedRoom = roomsArray.find(room => 
+                room.id === roomId || room.roomId === roomId || room.roomNumber === roomId
+              );
+              if (updatedRoom) {
+                console.log('[meter_reading] - 更新された部屋情報:', {
+                  name: updatedRoom.name || updatedRoom.roomName,
+                  rawInspectionDate: updatedRoom.rawInspectionDate,
+                  hasActualReading: updatedRoom.hasActualReading
+                });
+              }
+            } else {
+              console.warn('[meter_reading] 部屋データが空です');
             }
           } else {
             console.warn('[meter_reading] 部屋一覧の再取得に失敗しました:', response.status);
