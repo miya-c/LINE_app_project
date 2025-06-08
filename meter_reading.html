@@ -705,7 +705,7 @@
                     <tbody>
                       {meterReadings.map((reading, index) => {
                         // 分離アーキテクチャ: フォーマット関数を使用
-                        const formattedDate = formatDate(reading.date);
+                        const formattedDate = formatDateForDisplay(reading.date);
                         const inspectionStatus = formatInspectionStatus(reading.date);
                         const dateForDataAttribute = reading.date;
                         const currentReadingDisplay = formatReading(reading.currentReading);
