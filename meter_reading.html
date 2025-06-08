@@ -20,47 +20,25 @@
   <div id="root"></div>
   <script type="text/babel">
     // ===================================
-    // シンプルな日付フォーマット関数群
-    // バックエンドから受信した検針日データをUIに適したフォーマットに変換
-    // YYYY-MM-DD形式のみ対応、その他は未検針として扱う
+    // シンプルな日付処理
+    // データがあれば表示、なければ未検針
     // ===================================
     
-    // シンプルな日付フォーマット関数: YYYY-MM-DD → X月Y日
     const formatDate = (rawDate) => {
-      // 空値チェック
-      if (!rawDate || rawDate === '' || rawDate === null || rawDate === undefined) {
-        return null;
-      }
+      if (!rawDate) return null;
       
-      // Date型オブジェクトの場合の処理を追加
-      if (rawDate instanceof Date) {
-        console.log('[formatDate] Date型オブジェクトを検出:', rawDate);
-        // 無効なDateオブジェクトの場合
-        if (isNaN(rawDate.getTime())) {
-          console.log('[formatDate] 無効なDateオブジェクト');
-          return null;
-        }
-        // 有効なDateオブジェクトをYYYY-MM-DD形式に変換
-        const year = rawDate.getFullYear();
-        const month = String(rawDate.getMonth() + 1).padStart(2, '0');
-        const day = String(rawDate.getDate()).padStart(2, '0');
-        const dateString = `${year}-${month}-${day}`;
-        console.log('[formatDate] Date型から変換:', dateString);
+      const dateStr = String(rawDate).trim();
+      
+      // YYYY-MM-DD または YYYY/MM/DD 形式のみ対応
+      const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+      if (match) {
+        const [, year, month, day] = match;
         return `${parseInt(month)}月${parseInt(day)}日`;
       }
       
-      // YYYY-MM-DD形式の文字列を直接変換
-      if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
-        const [year, month, day] = rawDate.trim().split('-');
-        return `${parseInt(month)}月${parseInt(day)}日`;
-      }
-      
-      // その他の文字列形式もログ出力して詳細を確認
-      console.log('[formatDate] 未対応の形式:', typeof rawDate, rawDate);
-      return null; // その他の形式は未対応として未検針扱い
+      return null;
     };
     
-    // シンプルな検針状況判定
     const formatInspectionStatus = (rawDate) => {
       const formattedDate = formatDate(rawDate);
       return formattedDate ? 
