@@ -727,6 +727,10 @@
                               }}>
                                 最終検針日: {inspectionStatus.status === '未検針' ? '未検針' : inspectionStatus.displayDate}
                               </span>
+                              <br />
+                              <small style={{color: '#666', fontSize: '0.8em'}}>
+                                生データ: {reading.date}
+                              </small>
                             </td>
                             <td data-label="今回指示数(㎥)">
                               <input 
