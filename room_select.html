@@ -513,6 +513,32 @@
                     rawInspectionDate: room.rawInspectionDate,
                     hasActualReading: room.hasActualReading
                   });
+
+                  // 検針済みの場合は日付のみを表示、未検針の場合は[未検針]
+                  let statusDisplay = null;
+                  if (inspectionStatus.status === '検針済み' && inspectionStatus.displayDate) {
+                    statusDisplay = (
+                      <span style={{
+                        color: 'var(--mantine-color-blue-6)',
+                        fontWeight: '500',
+                        fontSize: '0.9em',
+                        marginLeft: '8px'
+                      }}>
+                        [{inspectionStatus.displayDate}]
+                      </span>
+                    );
+                  } else if (inspectionStatus.status === '未検針') {
+                    statusDisplay = (
+                      <span style={{
+                        color: 'var(--mantine-color-red-6)',
+                        fontWeight: '600',
+                        fontSize: '0.9em',
+                        marginLeft: '8px'
+                      }}>
+                        [未検針]
+                      </span>
+                    );
+                  }
                   
                   return (
                     <div key={room.id} className="mantine-paper">
@@ -526,26 +552,7 @@
                             <span className="room-number">
                               {displayName}
                               {/* 分離アーキテクチャ: フォーマット済み検針状況を表示 */}
-                              {inspectionStatus.status === '検針済み' && inspectionStatus.displayDate && (
-                                <span style={{
-                                  color: 'var(--mantine-color-blue-6)',
-                                  fontWeight: '500',
-                                  fontSize: '0.9em',
-                                  marginLeft: '8px'
-                                }}>
-                                  [検針日：{inspectionStatus.displayDate}]
-                                </span>
-                              )}
-                              {inspectionStatus.status === '未検針' && (
-                                <span style={{
-                                  color: 'var(--mantine-color-red-6)',
-                                  fontWeight: '600',
-                                  fontSize: '0.9em',
-                                  marginLeft: '8px'
-                                }}>
-                                  [未検針]
-                                </span>
-                              )}
+                              {statusDisplay}
                             </span>
                           </div>
                         </div>
