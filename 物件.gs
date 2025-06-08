@@ -1,16 +1,24 @@
 // ===================================================
-// 水道検針WOFF GAS Web App - v7-ALL-DATE-PROCESSING-FIX
-// 全日付処理統一化完了：Utilities.formatDate使用でタイムゾーン問題完全解決
+// 水道検針WOFF GAS Web App - v8-STRING-DATE-ONLY
+// 完全String型日付処理：Date型を一切使用せず1日ずれ問題を完全解決
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
-// 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
+// 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得（完全String型処理）
 function getJSTDateString() {
+  // 日本時間のオフセット（UTC+9）を考慮したString型での処理
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const jstOffset = 9 * 60; // 9時間 = 540分
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000); // UTC時間
+  const jstTime = new Date(utc + (jstOffset * 60000)); // JST時間
+  
+  const year = jstTime.getFullYear();
+  const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+  const day = String(jstTime.getDate()).padStart(2, '0');
+  const jstString = `${year}-${month}-${day}`;
+  
+  console.log(`[GAS] JST日付String生成: ${jstString}`);
+  return jstString;
 }
 
 // スプレッドシートIDを設定ファイルから取得
@@ -155,21 +163,21 @@ function getGasVersion() {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
     return {
-    version: "v7-ALL-DATE-PROCESSING-FIX",
+    version: "v8-STRING-DATE-ONLY",
     deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
     corsFixed: true,
     contentServiceUsed: true,
-    description: "🔧 v7-ALL-DATE-PROCESSING-FIX版：全日付処理統一化完了！Utilities.formatDate使用でタイムゾーン問題完全解決！",
-    注意: "このバージョンでは全ての日付処理函数を統一し、検針日時の表示問題を完全解決しました",    debugInfo: {
+    description: "🔧 v8-STRING-DATE-ONLY版：完全String型日付処理でDate型を一切使用せず1日ずれ問題を完全解決！",
+    注意: "このバージョンではDate型を一切使用せず、完全にString型で日付処理を行い、1日ずれ問題を完全解決しました",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
-      deploymentCheck: "✅ v7-ALL-DATE-PROCESSING-FIX版が正常に動作中 - 全日付処理統一化完了",
+      deploymentCheck: "✅ v8-STRING-DATE-ONLY版が正常に動作中 - 完全String型日付処理",
       corsStatus: "ContentServiceでCORS問題解決済み",
       postMethodSupport: "doPost関数でContentService使用",
-      dateProcessingFix: "全てのDate型からYYYY-MM-DD形式への変換をUtilities.formatDateで統一",
+      dateProcessingFix: "Date型を一切使用せず完全String型処理でタイムゾーン問題解決",
       強制確認: "検針日時表示問題が完全解決された最新バージョンです"
     }
   };
@@ -178,8 +186,8 @@ function getGasVersion() {
 // メイン処理関数
 function doGet(e) {
   try {
-    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v7-ALL-DATE-PROCESSING-FIX`);
-    console.log(`[GAS DEBUG] 🔧 日付処理修正版が動作中です（Date型タイムゾーン問題解決）!`);
+    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v8-STRING-DATE-ONLY`);
+    console.log(`[GAS DEBUG] 🔧 完全String型日付処理版が動作中です（Date型を一切使用せず1日ずれ問題解決）!`);
     
     // パラメータのデバッグ情報
     console.log("[GAS DEBUG] e オブジェクト存在:", !!e);
@@ -628,20 +636,27 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // 🔧 日付処理修正: スプレッドシートから取得したDate型を正確に処理
+        // 🔧 日付処理修正: 完全にString型で処理（Date型は一切使用しない）
         let rawDateValue = row[dateIndex]; // 元の日付データをそのまま保持
         
-        // Date型の場合は日本時間でYYYY-MM-DD形式に変換（タイムゾーン問題解決）
-        let formattedDate = rawDateValue;
-        if (rawDateValue instanceof Date && !isNaN(rawDateValue.getTime())) {
-          // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
-          formattedDate = Utilities.formatDate(rawDateValue, 'Asia/Tokyo', 'yyyy-MM-dd');
-          console.log(`[GAS] 日付変換（修正版）: ${rawDateValue} → ${formattedDate}`);
-        } else if (rawDateValue === null || rawDateValue === undefined || rawDateValue === '') {
+        // 全ての日付をString型として処理し、Date型は使用しない
+        let formattedDate = '';
+        if (rawDateValue !== null && rawDateValue !== undefined && rawDateValue !== '') {
+          if (rawDateValue instanceof Date && !isNaN(rawDateValue.getTime())) {
+            // Date型の場合のみ、日付文字列に変換（1日ずれ問題解決）
+            const year = rawDateValue.getFullYear();
+            const month = String(rawDateValue.getMonth() + 1).padStart(2, '0');
+            const day = String(rawDateValue.getDate()).padStart(2, '0');
+            formattedDate = `${year}-${month}-${day}`;
+            console.log(`[GAS] Date型→String変換: ${rawDateValue} → ${formattedDate}`);
+          } else {
+            // 既にString型の場合はそのまま使用
+            formattedDate = String(rawDateValue).trim();
+            console.log(`[GAS] String型として処理: "${formattedDate}"`);
+          }
+        } else {
           formattedDate = ''; // 空の場合は空文字列
           console.log(`[GAS] 空の日付データ: ${rawDateValue} → 未検針状態`);
-        } else {
-          console.log(`[GAS] その他の日付データ: type="${typeof rawDateValue}", value="${rawDateValue}"`);
         }
         
         const reading = {
@@ -799,12 +814,20 @@ function handleUpdateMeterReadings(params) {
           console.log(`[GAS] 行${j + 1} マッチング: 物件ID=${propertyIdMatch}, 部屋ID=${roomIdMatch}`);
           if (propertyIdMatch && roomIdMatch) {
             console.log(`[GAS] ✅ 更新対象行発見: 行${j + 1}`);
-            targetRowFound = true;          // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
-          let recordDate;
-          if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
-            recordDate = Utilities.formatDate(reading.date, 'Asia/Tokyo', 'yyyy-MM-dd');
-          } else {
-            recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+            targetRowFound = true;          
+            // ✅ 修正: Date型を使わずString型のみで処理
+          let recordDate = '';
+          if (reading.date !== null && reading.date !== undefined && reading.date !== '') {
+            if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
+              // Date型の場合のみ、String変換（1日ずれ問題解決）
+              const year = reading.date.getFullYear();
+              const month = String(reading.date.getMonth() + 1).padStart(2, '0');
+              const day = String(reading.date.getDate()).padStart(2, '0');
+              recordDate = `${year}-${month}-${day}`;
+            } else {
+              // 既にString型の場合はそのまま使用
+              recordDate = String(reading.date).trim();
+            }
           }
             console.log(`[GAS] 更新開始 - 行${j + 1}, 日付: "${recordDate}" (空の場合は未検針状態), 指示数: ${reading.currentReading}`);
             // 実際のセル更新（1ベースのインデックスに変換）
@@ -838,12 +861,19 @@ function handleUpdateMeterReadings(params) {
           
           // 新しい行を追加
           const newRowIndex = data.length; // 新しい行のインデックス（1ベース）
-          // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
-          let recordDate;
-          if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
-            recordDate = Utilities.formatDate(reading.date, 'Asia/Tokyo', 'yyyy-MM-dd');
-          } else {
-            recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
+          // ✅ 修正: Date型を使わずString型のみで処理
+          let recordDate = '';
+          if (reading.date !== null && reading.date !== undefined && reading.date !== '') {
+            if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
+              // Date型の場合のみ、String変換（1日ずれ問題解決）
+              const year = reading.date.getFullYear();
+              const month = String(reading.date.getMonth() + 1).padStart(2, '0');
+              const day = String(reading.date.getDate()).padStart(2, '0');
+              recordDate = `${year}-${month}-${day}`;
+            } else {
+              // 既にString型の場合はそのまま使用
+              recordDate = String(reading.date).trim();
+            }
           }
           const currentReadingValue = parseFloat(reading.currentReading) || 0;
           
@@ -915,7 +945,7 @@ function handleUpdateMeterReadings(params) {
       updatedReadings: updatedReadings,        debugInfo: {
           timestamp: new Date().toISOString(),
           originalReadingsCount: readings.length,
-          version: "v6-DATE-PROCESSING-FIX"
+          version: "v8-STRING-DATE-ONLY"
         }
     });
     

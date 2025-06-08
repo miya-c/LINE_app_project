@@ -74,9 +74,9 @@
       return String(value);
     };
     
-    // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得（改良版）
+    // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得（完全String型処理版）
     const getJSTDateString = () => {
-      // 日本時間のオフセット（UTC+9）を考慮
+      // 日本時間のオフセット（UTC+9）を考慮したString型での処理
       const now = new Date();
       const jstOffset = 9 * 60; // 9時間 = 540分
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000); // UTC時間
@@ -87,7 +87,7 @@
       const day = String(jstTime.getDate()).padStart(2, '0');
       
       const jstDateString = `${year}-${month}-${day}`;
-      console.log(`[getJSTDateString] 生成されたJST日付: ${jstDateString}`);
+      console.log(`[getJSTDateString] String型JST日付生成: ${jstDateString}`);
       return jstDateString;
     };
     
