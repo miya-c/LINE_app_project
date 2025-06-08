@@ -155,21 +155,21 @@ function getGasVersion() {
   const timestamp = new Date().toISOString();
   console.log(`[GAS DEBUG ${timestamp}] getGasVersion関数が呼び出されました`);
     return {
-    version: "v6-DATE-PROCESSING-FIX",
+    version: "v7-ALL-DATE-PROCESSING-FIX",
     deployedAt: timestamp,
     availableActions: ["getProperties", "getRooms", "updateInspectionComplete", "getMeterReadings", "updateMeterReadings", "getVersion"],
     hasUpdateInspectionComplete: true,
     hasMeterReadings: true,
     corsFixed: true,
     contentServiceUsed: true,
-    description: "🔧 v6-DATE-PROCESSING-FIX版：スプレッドシートDate型の日付処理修正により、タイムゾーン問題を完全解決！",
-    注意: "このバージョンでは検針日時の表示問題（前日が表示される、今日の日付が表示される）を修正しました",    debugInfo: {
+    description: "🔧 v7-ALL-DATE-PROCESSING-FIX版：全日付処理統一化完了！Utilities.formatDate使用でタイムゾーン問題完全解決！",
+    注意: "このバージョンでは全ての日付処理函数を統一し、検針日時の表示問題を完全解決しました",    debugInfo: {
       functionCalled: "getGasVersion",
       timestamp: timestamp,
-      deploymentCheck: "✅ v6-DATE-PROCESSING-FIX版が正常に動作中 - 日付処理問題完全修正",
+      deploymentCheck: "✅ v7-ALL-DATE-PROCESSING-FIX版が正常に動作中 - 全日付処理統一化完了",
       corsStatus: "ContentServiceでCORS問題解決済み",
       postMethodSupport: "doPost関数でContentService使用",
-      dateProcessingFix: "Date型からYYYY-MM-DD形式への変換でタイムゾーン問題解決",
+      dateProcessingFix: "全てのDate型からYYYY-MM-DD形式への変換をUtilities.formatDateで統一",
       強制確認: "検針日時表示問題が完全解決された最新バージョンです"
     }
   };
@@ -178,7 +178,7 @@ function getGasVersion() {
 // メイン処理関数
 function doGet(e) {
   try {
-    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v6-DATE-PROCESSING-FIX`);
+    const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v7-ALL-DATE-PROCESSING-FIX`);
     console.log(`[GAS DEBUG] 🔧 日付処理修正版が動作中です（Date型タイムゾーン問題解決）!`);
     
     // パラメータのデバッグ情報
