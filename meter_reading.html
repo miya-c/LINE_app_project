@@ -105,7 +105,8 @@
     const formatInspectionStatus = (rawDate, hasActualReading) => {
       const formattedDate = formatDate(rawDate);
       
-      if (formattedDate && hasActualReading) {
+      // 日付があれば検針済みとして判定（指示数の有無は問わない）
+      if (formattedDate) {
         return {
           status: '検針済み',
           displayDate: formattedDate
