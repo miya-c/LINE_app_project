@@ -419,56 +419,16 @@ function handleGetRooms(params) {
           }
         }
         
-        // 🆕 検針日時のフォーマット（X月Y日形式）と検針状況の判定
-        let inspectionDateDisplay = null;
-        let inspectionStatus = '未検針'; // デフォルトは未検針
-        
-        if (lastInspectionDate && hasActualReading) {
-          // 実際に指示数が入力されている場合のみ検針済みとして扱う
-          try {
-            let dateObj;
-            if (lastInspectionDate instanceof Date) {
-              dateObj = lastInspectionDate;
-            } else if (typeof lastInspectionDate === 'string') {
-              // YYYY-MM-DD形式またはYYYY/MM/DD形式に対応
-              if (/^\d{4}-\d{2}-\d{2}$/.test(lastInspectionDate.trim())) {
-                dateObj = new Date(lastInspectionDate.trim());
-              } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(lastInspectionDate.trim())) {
-                dateObj = new Date(lastInspectionDate.trim());
-              } else {
-                dateObj = new Date(lastInspectionDate);
-              }
-            } else {
-              dateObj = new Date(lastInspectionDate);
-            }
-            
-            if (dateObj && !isNaN(dateObj.getTime())) {
-              const month = dateObj.getMonth() + 1;
-              const day = dateObj.getDate();
-              // 🔄 フォーマットを「X月Y日」形式に変更
-              inspectionDateDisplay = `${month}月${day}日`;
-              inspectionStatus = '検針済み';
-              console.log(`[GAS DEBUG] 検針日フォーマット成功 - 部屋: ${roomId}, 表示: ${inspectionDateDisplay}, 状況: ${inspectionStatus}`);
-            }
-          } catch (dateError) {
-            console.error(`[GAS DEBUG] 検針日フォーマットエラー - 部屋: ${roomId}, 元データ:`, lastInspectionDate, dateError);
-          }
-        } else if (lastInspectionDate && !hasActualReading) {
-          // 日付はあるが指示数がない場合（日付のみ設定された状態）
-          inspectionStatus = '未検針';
-          console.log(`[GAS DEBUG] 日付あり指示数なし - 部屋: ${roomId}, 未検針として処理`);
-        }
-        
+        // 🔄 分離アーキテクチャ: 生データのみ返す - フォーマット処理はフロントエンドに移行
         rooms.push({
           propertyId: String(row[0]).trim(),
           roomNumber: roomId,
           id: roomId,
           name: roomName,
-          // 🆕 改善された検針状況を追加
-          hasInspectionData: hasActualReading, // 実際に指示数が入力されている場合のみtrue
-          inspectionDate: inspectionDateDisplay, // 「12月25日」形式（検針済みの場合のみ）
-          inspectionStatus: inspectionStatus, // '検針済み' or '未検針'
-          rawInspectionDate: lastInspectionDate // デバッグ用
+          // 生データのみ返す
+          rawInspectionDate: lastInspectionDate, // 元の検針日時（Date型またはnull）
+          hasActualReading: hasActualReading, // 実際に指示数が入力されているかの真偽値
+          currentReadingValue: null // ここでは取得しない（getMeterReadingsで詳細取得）
         });
       }
     }
@@ -534,11 +494,8 @@ function handleUpdateInspectionComplete(params) {
       return createCorsResponse({ error: `物件ID '${propertyId}' が見つかりません。` });
     }
     
-    // 現在の日時を日本時間で取得
-    const now = new Date();
-    const jstOffset = 9 * 60; // JST = UTC + 9時間
-    const jstTime = new Date(now.getTime() + (jstOffset * 60 * 1000));
-    const formattedDate = jstTime.toISOString().split('T')[0]; // YYYY-MM-DD形式
+    // 分離アーキテクチャ: 日本時間（JST）で現在日付を取得
+    const formattedDate = getJSTDateString(); // YYYY-MM-DD形式
     
     // 検針完了日を更新
     sheet.getRange(targetRowIndex, completionDateColIndex + 1).setValue(formattedDate);
@@ -664,81 +621,22 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // ✅ 日付フィールドの処理 - 空の値を保持し強制的な現在日付設定を削除
-        let dateValue = row[dateIndex];
-        let formattedDate = '';
+        // 分離アーキテクチャ: 生データのみ返す - フォーマット処理はフロントエンドに移行
+        let rawDateValue = row[dateIndex]; // 元の日付データをそのまま保持
         
-        console.log(`[GAS] 原始日付データ: type="${typeof dateValue}", value="${dateValue}"`);
-        
-        // 有効な日付値のみを処理し、空の値はそのまま保持
-        if (dateValue !== null && dateValue !== undefined && dateValue !== '') {
-          try {
-            if (dateValue instanceof Date) {
-              if (!isNaN(dateValue.getTime())) {
-                formattedDate = dateValue.toISOString().split('T')[0];
-                console.log(`[GAS] Date object変換成功: ${formattedDate}`);
-              } else {
-                console.log("[GAS] 無効なDateオブジェクト、空の値を保持");
-                formattedDate = '';
-              }
-            } else if (typeof dateValue === 'string' && dateValue.trim() !== '') {
-              // 文字列の場合、様々な形式に対応
-              const trimmedDate = dateValue.trim();
-              
-              // YYYY-MM-DD形式の場合
-              if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-                formattedDate = trimmedDate;
-                console.log(`[GAS] YYYY-MM-DD形式確認: ${formattedDate}`);
-              }
-              // YYYY/MM/DD形式の場合
-              else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(trimmedDate)) {
-                const dateParts = trimmedDate.split('/');
-                const year = dateParts[0];
-                const month = dateParts[1].padStart(2, '0');
-                const day = dateParts[2].padStart(2, '0');
-                formattedDate = `${year}-${month}-${day}`;
-                console.log(`[GAS] YYYY/MM/DD形式変換: ${trimmedDate} → ${formattedDate}`);
-              }
-              // その他の文字列形式の場合、Dateオブジェクトで解析を試行
-              else {
-                const parsedDate = new Date(trimmedDate);
-                if (!isNaN(parsedDate.getTime())) {
-                  formattedDate = parsedDate.toISOString().split('T')[0];
-                  console.log(`[GAS] Date.parse成功: ${trimmedDate} → ${formattedDate}`);
-                } else {
-                  console.log(`[GAS] 解析不可能な日付文字列: "${trimmedDate}", 空の値を保持`);
-                  formattedDate = '';
-                }
-              }
-            } else {
-              console.log(`[GAS] 日付値が文字列でもDateでもありません: type="${typeof dateValue}", 空の値を保持`);
-              formattedDate = '';
-            }
-          } catch (dateError) {
-            console.error(`[GAS] 日付変換エラー:`, dateError, `元の値: "${dateValue}"`);
-            formattedDate = ''; // 空文字列のまま保持
-          }
-        } else {
-          console.log(`[GAS] 日付フィールドが空またはnull/undefined: "${dateValue}", 空文字列を保持`);
-          formattedDate = ''; // 空文字列のまま保持
-        }
-        
-        console.log(`[GAS] 最終的な日付: "${formattedDate}" (空の場合はフロントエンドで「未検針」として表示)`);
-        
-        // 重要: 空の日付値は空文字列のまま保持し、フロントエンドで適切に処理
+        console.log(`[GAS] 生データ保存: type="${typeof rawDateValue}", value="${rawDateValue}"`);
         
         const reading = {
-          date: formattedDate, // 空の場合は空文字列のまま
+          date: rawDateValue, // 生データのまま（Date型、文字列、空値など）
           currentReading: row[currentReadingIndex] || '',
           previousReading: row[previousReadingIndex] || '',
           previousPreviousReading: row[previousPreviousReadingIndex] || '',
           threeTimesPrevious: row[threeTimesPreviousIndex] || '',
           usage: row[usageIndex] || '',
           status: row[warningFlagIndex] || '未入力'
-          // photoUrl削除済み
         };
         
-        console.log("[GAS] 作成された検針データ:", reading);
+        console.log("[GAS] 作成された生検針データ:", reading);
         readings.push(reading);
         break; // 通常1部屋につき1レコード
       }

@@ -19,6 +19,70 @@
 </head>
 <body>
   <div id="root"></div>  <script type="text/babel">
+    // ===================================
+    // 分離アーキテクチャ: データフォーマット関数群（部屋選択用）
+    // バックエンドから受信した生データをUIに適したフォーマットに変換
+    // ===================================
+    
+    // 日付フォーマット関数: 生データを「X月Y日」形式に変換
+    const formatDate = (rawDate) => {
+      if (!rawDate || rawDate === '' || rawDate === null || rawDate === undefined) {
+        return null; // 未検針状態を示す
+      }
+      
+      try {
+        let dateObj;
+        
+        if (rawDate instanceof Date) {
+          dateObj = rawDate;
+        } else if (typeof rawDate === 'string') {
+          // YYYY-MM-DD形式またはYYYY/MM/DD形式に対応
+          if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
+            dateObj = new Date(rawDate.trim());
+          } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(rawDate.trim())) {
+            dateObj = new Date(rawDate.trim());
+          } else {
+            dateObj = new Date(rawDate);
+          }
+        } else {
+          dateObj = new Date(rawDate);
+        }
+        
+        if (dateObj && !isNaN(dateObj.getTime())) {
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          return `${month}月${day}日`;
+        }
+        
+        return null; // 変換に失敗した場合は未検針扱い
+        
+      } catch (error) {
+        console.error('[room_select] 日付フォーマットエラー:', error, '元データ:', rawDate);
+        return null;
+      }
+    };
+    
+    // 検針状況フォーマット関数: 生データから検針状況を判定
+    const formatInspectionStatus = (rawDate, hasActualReading) => {
+      const formattedDate = formatDate(rawDate);
+      
+      if (formattedDate && hasActualReading) {
+        return {
+          status: '検針済み',
+          displayDate: formattedDate
+        };
+      } else {
+        return {
+          status: '未検針',
+          displayDate: null
+        };
+      }
+    };
+    
+    // ===================================
+    // Reactアプリケーション開始
+    // ===================================
+    
     const RoomSelectApp = () => {
       const [propertyId, setPropertyId] = React.useState(null);
       const [propertyName, setPropertyName] = React.useState('');
@@ -335,8 +399,9 @@
             {Array.isArray(rooms) && rooms.length > 0 && (
               <div className="mantine-stack">
                 {rooms.map(room => {
-                  // 🆕 部屋名の表示テキストを動的に生成
+                  // 分離アーキテクチャ: フォーマット関数を使用
                   const displayName = room.name || room.roomName || '部屋名未設定';
+                  const inspectionStatus = formatInspectionStatus(room.rawInspectionDate, room.hasActualReading);
                   
                   return (
                     <div key={room.id} className="mantine-paper">
@@ -349,18 +414,18 @@
                           <div className="room-header">
                             <span className="room-number">
                               {displayName}
-                              {/* 🆕 検針状況を表示 - 検針済みと未検針を明確に区別 */}
-                              {room.inspectionStatus === '検針済み' && room.inspectionDate && (
+                              {/* 分離アーキテクチャ: フォーマット済み検針状況を表示 */}
+                              {inspectionStatus.status === '検針済み' && inspectionStatus.displayDate && (
                                 <span style={{
                                   color: 'var(--mantine-color-blue-6)',
                                   fontWeight: '500',
                                   fontSize: '0.9em',
                                   marginLeft: '8px'
                                 }}>
-                                  [検針日：{room.inspectionDate}]
+                                  [検針日：{inspectionStatus.displayDate}]
                                 </span>
                               )}
-                              {room.inspectionStatus === '未検針' && (
+                              {inspectionStatus.status === '未検針' && (
                                 <span style={{
                                   color: 'var(--mantine-color-red-6)',
                                   fontWeight: '600',
