@@ -20,35 +20,51 @@
   <div id="root"></div>
   <script type="text/babel">
     // ===================================
-    // v9-SIMPLE-RAW-DATA 統一日付処理
-    // バックエンドから生データを受け取り、フロントエンドで統一的にフォーマット
+    // v10-PURE-SEPARATION 完全分離アーキテクチャ
+    // バックエンドは生データのみ、フロントエンドで全処理を統一
     // ===================================
     
     const formatDateForDisplay = (rawDate) => {
       if (!rawDate) return null;
       
       try {
-        let dateStr = String(rawDate).trim();
-        
-        // Date型から生成された場合の処理
+        // Case 1: Date型オブジェクトの場合（Google Apps Scriptから直接）
         if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
-          // JST時間として安全に変換
+          console.log('[formatDateForDisplay] Date型を処理:', rawDate);
+          // JST時間として直接年月日を抽出（UTC変換による1日ずれを回避）
           const year = rawDate.getFullYear();
           const month = rawDate.getMonth() + 1;
           const day = rawDate.getDate();
+          console.log(`[formatDateForDisplay] Date型から抽出: ${year}年${month}月${day}日`);
           return `${month}月${day}日`;
         }
         
-        // 文字列形式の日付処理
+        // Case 2: 文字列形式の日付処理
+        let dateStr = String(rawDate).trim();
+        console.log('[formatDateForDisplay] 文字列を処理:', dateStr);
+        
+        // YYYY/MM/DD または YYYY-MM-DD 形式
         const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
         if (match) {
           const [, year, month, day] = match;
-          return `${parseInt(month)}月${parseInt(day)}日`;
+          const result = `${parseInt(month)}月${parseInt(day)}日`;
+          console.log(`[formatDateForDisplay] 文字列から抽出: ${result}`);
+          return result;
         }
         
+        // その他の日付文字列パターンを試行
+        const dateObj = new Date(dateStr);
+        if (!isNaN(dateObj.getTime())) {
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          console.log(`[formatDateForDisplay] Date変換成功: ${month}月${day}日`);
+          return `${month}月${day}日`;
+        }
+        
+        console.warn('[formatDateForDisplay] 解析できない日付形式:', rawDate);
         return null;
       } catch (error) {
-        console.warn('[meter_reading] 日付フォーマットエラー:', rawDate, error);
+        console.warn('[formatDateForDisplay] 日付フォーマットエラー:', rawDate, error);
         return null;
       }
     };
@@ -60,15 +76,47 @@
         { status: '未検針', displayDate: null };
     };
     
-    // 検針数値フォーマット関数: 空値の統一処理
+    // 完全フロントエンド処理: 使用量計算
+    const calculateUsage = (currentReading, previousReading) => {
+      const current = parseFloat(currentReading);
+      const previous = parseFloat(previousReading);
+      
+      // 数値検証
+      if (isNaN(current)) return '';
+      
+      // 前回データがない場合、または前回が0の場合は現在の値をそのまま使用量とする
+      if (!previousReading || previousReading === '' || previous === 0 || isNaN(previous)) {
+        return current.toString(); // 新規検針：現在値をそのまま使用量
+      }
+      
+      // 前回データがある場合は差分を計算
+      const usage = current - previous;
+      return (usage >= 0 ? usage : 0).toString();
+    };
+    
+    // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
+    const getCurrentJSTDateString = () => {
+      const now = new Date();
+      const jstOffset = 9 * 60; // JST = UTC+9
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const jstTime = new Date(utc + (jstOffset * 60000));
+      
+      const year = jstTime.getFullYear();
+      const month = String(jstTime.getMonth() + 1).padStart(2, '0');
+      const day = String(jstTime.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}`;
+    };
+    
+    // 検針数値フォーマット関数: 生データの統一処理
     const formatReading = (value) => {
       if (value === null || value === undefined || value === '') {
         return '';
       }
-      return String(value);
+      return String(value).trim();
     };
     
-    // 使用量フォーマット関数: 数値の表示処理
+    // 使用量フォーマット関数: 生データから数値を抽出
     const formatUsage = (value) => {
       if (value === null || value === undefined || value === '') {
         return '';
@@ -80,12 +128,12 @@
       return numValue.toString();
     };
     
-    // ステータスフォーマット関数: 警告フラグの表示処理
+    // ステータスフォーマット関数: 生データから状態を判定
     const formatStatus = (value) => {
-      if (!value || value === '' || value === '未入力') {
+      if (!value || value === '' || value === '未入力' || value === null || value === undefined) {
         return '正常';
       }
-      return String(value);
+      return String(value).trim();
     };
     
     // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得（完全String型処理版）
@@ -362,22 +410,8 @@
         </div>
       );
 
-      // Helper function for usage calculation (matches backend logic)
-      const calculateUsageDisplay = (currentStr, previousStr) => {
-        const current = parseFloat(currentStr);
-        const previous = parseFloat(previousStr);
-        
-        // 前回データがない場合、または前回が0の場合は現在の値をそのまま使用量とする
-        if (!isNaN(current)) {
-          if (!previousStr || previousStr === 'N/A' || previousStr === '' || previous === 0 || isNaN(previous)) {
-            return current.toString(); // 新規検針の場合：現在の値をそのまま使用量とする
-          }
-          // 前回データがある場合は差分を計算
-          const usage = current - previous;
-          return (usage >= 0 ? usage : 0).toString();
-        }
-        return '0'; // 現在の値が無効な場合のデフォルト
-      };
+      // Helper function for usage calculation - 統一化された関数を使用
+      const calculateUsageDisplay = calculateUsage;
 
       // Helper for previous readings text - 配列を返すように修正
       const getPreviousReadingsText = (r) => {
@@ -525,14 +559,14 @@
               return;
             }
             
-            // ✅ 検針日時の適切な処理: 既存データは検針日時を保持、新規データのみ現在日時を設定
+            // ✅ 検針日時の適切な処理: 生データ分離アーキテクチャ対応
             let inspectionDate;
             if (date && date !== '') {
-              // 既存データの場合：元の検針日時を保持
+              // 既存データの場合：元の検針日時を保持（日付変更せず）
               inspectionDate = date;
             } else {
               // 新規データの場合：指示数が入力された場合のみ現在日時を設定
-              inspectionDate = currentValue && currentValue.trim() !== '' ? getJSTDateString() : '';
+              inspectionDate = currentValue && currentValue.trim() !== '' ? getCurrentJSTDateString() : '';
             }
             updatedReadings.push({
               date: inspectionDate, // 既存データは元の日時、新規データは現在日時または空

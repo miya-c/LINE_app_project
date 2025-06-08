@@ -579,15 +579,13 @@ function handleGetMeterReadings(params) {
   }
 }
 
-// 実際の検針データを取得する関数
+// 実際の検針データを取得する関数（完全生データ版）
 function getActualMeterReadings(propertyId, roomId) {
   try {
-    console.log("[GAS] getActualMeterReadings開始 - propertyId:", propertyId, "roomId:", roomId);
+    console.log("[GAS] getActualMeterReadings開始 (Raw Data Mode) - propertyId:", propertyId, "roomId:", roomId);
     
-    // ✅ 動的にスプレッドシートを取得（設定ファイルベース）
+    // 動的にスプレッドシートを取得
     const spreadsheet = getSpreadsheetInstance();
-    
-    // ✅ 正しいシート名を使用
     const sheet = spreadsheet.getSheetByName('inspection_data');
     
     if (!sheet) {
@@ -599,7 +597,7 @@ function getActualMeterReadings(propertyId, roomId) {
     const headers = data[0];
     console.log("[GAS] inspection_data ヘッダー:", headers);
     
-    // ヘッダーから列インデックスを取得（写真URL削除）
+    // ヘッダーから列インデックスを取得
     const propertyIdIndex = headers.indexOf('物件ID');
     const roomIdIndex = headers.indexOf('部屋ID');
     const dateIndex = headers.indexOf('検針日時');
@@ -611,10 +609,7 @@ function getActualMeterReadings(propertyId, roomId) {
     const warningFlagIndex = headers.indexOf('警告フラグ');
     
     console.log("[GAS] 列インデックス確認:");
-    console.log("[GAS] - 物件ID:", propertyIdIndex);
-    console.log("[GAS] - 部屋ID:", roomIdIndex);
-    console.log("[GAS] - 検針日時:", dateIndex);
-    console.log("[GAS] - 今回の指示数:", currentReadingIndex);
+    console.log("[GAS] - 物件ID:", propertyIdIndex, "部屋ID:", roomIdIndex, "検針日時:", dateIndex);
     
     // 対象部屋のデータを検索
     const readings = [];
@@ -623,33 +618,37 @@ function getActualMeterReadings(propertyId, roomId) {
       const rowPropertyId = String(row[propertyIdIndex]).trim();
       const rowRoomId = String(row[roomIdIndex]).trim();
       
-      console.log(`[GAS] 行${i}: propertyId="${rowPropertyId}" roomId="${rowRoomId}"`);
-      
       if (rowPropertyId === String(propertyId).trim() && 
           rowRoomId === String(roomId).trim()) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // 🔧 v9-SIMPLE-RAW-DATA: 生データをそのまま返す（フロントエンドで処理）
+        // 🔥 完全生データ: スプレッドシートから取得した値をそのまま返却
+        // 日付、計算、フォーマット処理は一切行わず、フロントエンドに委任
         const reading = {
-          date: row[dateIndex], // 生データをそのまま返す
-          currentReading: row[currentReadingIndex] || '',
-          previousReading: row[previousReadingIndex] || '',
-          previousPreviousReading: row[previousPreviousReadingIndex] || '',
-          threeTimesPrevious: row[threeTimesPreviousIndex] || '',
-          usage: row[usageIndex] || '',
-          status: row[warningFlagIndex] || '未入力'
+          date: row[dateIndex],  // スプレッドシートの生データ（Date型またはString）
+          currentReading: row[currentReadingIndex],
+          previousReading: row[previousReadingIndex],
+          previousPreviousReading: row[previousPreviousReadingIndex],
+          threeTimesPrevious: row[threeTimesPreviousIndex],
+          usage: row[usageIndex],
+          status: row[warningFlagIndex]
         };
         
-        console.log("[GAS] 作成された生検針データ:", reading);
+        console.log("[GAS] 生データを返却:", {
+          date: reading.date,
+          dateType: typeof reading.date,
+          isDate: reading.date instanceof Date,
+          currentReading: reading.currentReading,
+          rawDataComplete: true
+        });
+        
         readings.push(reading);
         break; // 通常1部屋につき1レコード
       }
     }
     
-    console.log("[GAS] 最終的な検針データ取得完了:", readings);
-    console.log("[GAS] 返却する配列の長さ:", readings.length);
-    
+    console.log("[GAS] 生データ取得完了:", readings.length, "件");
     return readings;
     
   } catch (error) {
