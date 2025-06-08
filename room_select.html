@@ -284,7 +284,13 @@
               if (roomsString) {
                 try {
                   const parsedRooms = JSON.parse(roomsString);
-                  console.log('[room_select] Parsed rooms from unified cache:', parsedRooms.length, '件');
+                  console.log('[room_select] 🔍 キャッシュデータ詳細:', {
+                    type: typeof parsedRooms,
+                    isArray: Array.isArray(parsedRooms),
+                    length: parsedRooms ? parsedRooms.length : 'no length property',
+                    content: parsedRooms
+                  });
+                  console.log('[room_select] Parsed rooms from unified cache:', Array.isArray(parsedRooms) ? parsedRooms.length : 'not array', '件');
                   setRooms(Array.isArray(parsedRooms) ? parsedRooms : []);
                 } catch (e) {
                   console.error('[room_select] sessionStorageから部屋情報の解析に失敗しました:', e);
