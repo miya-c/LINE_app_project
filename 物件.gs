@@ -319,7 +319,7 @@ function handleGetProperties() {
   }
 }
 
-// 部屋一覧取得処理
+// 部屋一覧取得処理（検針状況付き）
 function handleGetRooms(params) {
   try {
     const propertyId = params.propertyId;
@@ -329,16 +329,16 @@ function handleGetRooms(params) {
     
     console.log("[GAS DEBUG] getRooms開始 - 物件ID:", propertyId);
     
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const spreadsheet = getSpreadsheetInstance();
     
     // 利用可能なシート名を確認
     const allSheets = spreadsheet.getSheets();
     const sheetNames = allSheets.map(s => s.getName());
     console.log("[GAS DEBUG] 利用可能なシート名:", JSON.stringify(sheetNames));
     
-    const sheet = spreadsheet.getSheetByName('部屋マスタ');
+    const roomSheet = spreadsheet.getSheetByName('部屋マスタ');
     
-    if (!sheet) {
+    if (!roomSheet) {
       console.log("[GAS DEBUG] ERROR: 部屋マスタシートが見つかりません");
       return createCorsResponse({ 
         error: "シート '部屋マスタ' が見つかりません。",
@@ -347,25 +347,104 @@ function handleGetRooms(params) {
       });
     }
     
-    const data = sheet.getDataRange().getValues();
-    console.log("[GAS DEBUG] 部屋マスタデータ行数:", data.length);
+    const roomData = roomSheet.getDataRange().getValues();
+    console.log("[GAS DEBUG] 部屋マスタデータ行数:", roomData.length);
+    
+    // 🆕 検針データシートから検針状況を取得
+    const inspectionSheet = spreadsheet.getSheetByName('inspection_data');
+    let inspectionData = [];
+    let inspectionHeaders = [];
+    
+    if (inspectionSheet) {
+      inspectionData = inspectionSheet.getDataRange().getValues();
+      inspectionHeaders = inspectionData[0] || [];
+      console.log("[GAS DEBUG] inspection_dataシート取得成功 - データ行数:", inspectionData.length);
+    } else {
+      console.log("[GAS DEBUG] inspection_dataシートが見つかりません - 検針状況なしで継続");
+    }
+    
+    // 検針データのインデックスを取得
+    const propertyIdIndex = inspectionHeaders.indexOf('物件ID');
+    const roomIdIndex = inspectionHeaders.indexOf('部屋ID');
+    const dateIndex = inspectionHeaders.indexOf('検針日時');
     
     const rooms = [];
     
     // ヘッダー行をスキップして検索
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
+    for (let i = 1; i < roomData.length; i++) {
+      const row = roomData[i];
       if (String(row[0]).trim() === String(propertyId).trim() && row[1]) { // 物件IDが一致し、部屋番号が存在
+        const roomId = String(row[1]).trim();
+        const roomName = String(row[2]).trim();
+        
+        // 🆕 この部屋の検針状況を確認
+        let lastInspectionDate = null;
+        
+        if (inspectionData.length > 1 && propertyIdIndex !== -1 && roomIdIndex !== -1 && dateIndex !== -1) {
+          for (let j = 1; j < inspectionData.length; j++) {
+            const inspectionRow = inspectionData[j];
+            const inspectionPropertyId = String(inspectionRow[propertyIdIndex]).trim();
+            const inspectionRoomId = String(inspectionRow[roomIdIndex]).trim();
+            const inspectionDate = inspectionRow[dateIndex];
+            
+            if (inspectionPropertyId === propertyId && inspectionRoomId === roomId) {
+              // 検針日時があるかチェック
+              if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
+                lastInspectionDate = inspectionDate;
+                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${inspectionDate}`);
+                break; // 最初に見つかったデータを使用（通常1部屋1レコード）
+              }
+            }
+          }
+        }
+        
+        // 🆕 検針日時のフォーマット（X月Y日形式）
+        let inspectionDateDisplay = null;
+        if (lastInspectionDate) {
+          try {
+            let dateObj;
+            if (lastInspectionDate instanceof Date) {
+              dateObj = lastInspectionDate;
+            } else if (typeof lastInspectionDate === 'string') {
+              // YYYY-MM-DD形式またはYYYY/MM/DD形式に対応
+              if (/^\d{4}-\d{2}-\d{2}$/.test(lastInspectionDate.trim())) {
+                dateObj = new Date(lastInspectionDate.trim());
+              } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(lastInspectionDate.trim())) {
+                dateObj = new Date(lastInspectionDate.trim());
+              } else {
+                dateObj = new Date(lastInspectionDate);
+              }
+            } else {
+              dateObj = new Date(lastInspectionDate);
+            }
+            
+            if (dateObj && !isNaN(dateObj.getTime())) {
+              const month = dateObj.getMonth() + 1;
+              const day = dateObj.getDate();
+              // 🔄 フォーマットを「X月Y日」形式に変更
+              inspectionDateDisplay = `${month}月${day}日`;
+              console.log(`[GAS DEBUG] 検針日フォーマット成功 - 部屋: ${roomId}, 表示: ${inspectionDateDisplay}`);
+            }
+          } catch (dateError) {
+            console.error(`[GAS DEBUG] 検針日フォーマットエラー - 部屋: ${roomId}, 元データ:`, lastInspectionDate, dateError);
+          }
+        }
+        
         rooms.push({
           propertyId: String(row[0]).trim(),
-          roomNumber: String(row[1]).trim(),
-          id: String(row[1]).trim(),           // room_select.htmlで使用されるid
-          name: String(row[2]).trim()          // CSVの部屋名（column 2）を直接使用
+          roomNumber: roomId,
+          id: roomId,
+          name: roomName,
+          // 🆕 検針状況を追加
+          hasInspectionData: !!lastInspectionDate,
+          inspectionDate: inspectionDateDisplay, // 「12月25日」形式
+          rawInspectionDate: lastInspectionDate // デバッグ用
         });
       }
     }
     
     console.log("[GAS DEBUG] 取得部屋数:", rooms.length);
+    console.log("[GAS DEBUG] 検針状況付き部屋データ:", rooms.slice(0, 3)); // 最初の3件をログ出力
     
     // データが見つからない場合は空の配列を返す
     if (rooms.length === 0) {
