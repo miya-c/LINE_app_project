@@ -1,6 +1,6 @@
 // ===================================================
-// 水道検針WOFF GAS Web App - 2025-06-07-v8-GET-ONLY
-// GETリクエストのみ使用：APIキー不要・CORS完全解決版
+// 水道検針WOFF GAS Web App - v7-ALL-DATE-PROCESSING-FIX
+// 全日付処理統一化完了：Utilities.formatDate使用でタイムゾーン問題完全解決
 // 注意：このファイルをGoogle Apps Scriptエディタに貼り付けて再デプロイしてください
 // ===================================================
 
@@ -412,13 +412,10 @@ function handleGetRooms(params) {
               
               // 検針日時があるかチェック（空でない場合のみ採用）
               if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
-                // 🔧 Date型の場合は日本時間でYYYY-MM-DD形式に変換
+                // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
                 if (inspectionDate instanceof Date && !isNaN(inspectionDate.getTime())) {
-                  const year = inspectionDate.getFullYear();
-                  const month = String(inspectionDate.getMonth() + 1).padStart(2, '0');
-                  const day = String(inspectionDate.getDate()).padStart(2, '0');
-                  lastInspectionDate = `${year}-${month}-${day}`;
-                  console.log(`[GAS DEBUG] 日付変換: ${inspectionDate} → ${lastInspectionDate}`);
+                  lastInspectionDate = Utilities.formatDate(inspectionDate, 'Asia/Tokyo', 'yyyy-MM-dd');
+                  console.log(`[GAS DEBUG] 日付変換（修正版）: ${inspectionDate} → ${lastInspectionDate}`);
                 } else {
                   lastInspectionDate = inspectionDate;
                 }
@@ -637,12 +634,9 @@ function getActualMeterReadings(propertyId, roomId) {
         // Date型の場合は日本時間でYYYY-MM-DD形式に変換（タイムゾーン問題解決）
         let formattedDate = rawDateValue;
         if (rawDateValue instanceof Date && !isNaN(rawDateValue.getTime())) {
-          // 日本時間のオフセット（UTC+9）を考慮してYYYY-MM-DD形式に変換
-          const year = rawDateValue.getFullYear();
-          const month = String(rawDateValue.getMonth() + 1).padStart(2, '0');
-          const day = String(rawDateValue.getDate()).padStart(2, '0');
-          formattedDate = `${year}-${month}-${day}`;
-          console.log(`[GAS] 日付変換: ${rawDateValue} → ${formattedDate}`);
+          // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
+          formattedDate = Utilities.formatDate(rawDateValue, 'Asia/Tokyo', 'yyyy-MM-dd');
+          console.log(`[GAS] 日付変換（修正版）: ${rawDateValue} → ${formattedDate}`);
         } else if (rawDateValue === null || rawDateValue === undefined || rawDateValue === '') {
           formattedDate = ''; // 空の場合は空文字列
           console.log(`[GAS] 空の日付データ: ${rawDateValue} → 未検針状態`);
@@ -805,13 +799,10 @@ function handleUpdateMeterReadings(params) {
           console.log(`[GAS] 行${j + 1} マッチング: 物件ID=${propertyIdMatch}, 部屋ID=${roomIdMatch}`);
           if (propertyIdMatch && roomIdMatch) {
             console.log(`[GAS] ✅ 更新対象行発見: 行${j + 1}`);
-            targetRowFound = true;          // 🔧 日付処理修正: Date型の場合は日本時間でYYYY-MM-DD形式に変換
+            targetRowFound = true;          // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
           let recordDate;
           if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
-            const year = reading.date.getFullYear();
-            const month = String(reading.date.getMonth() + 1).padStart(2, '0');
-            const day = String(reading.date.getDate()).padStart(2, '0');
-            recordDate = `${year}-${month}-${day}`;
+            recordDate = Utilities.formatDate(reading.date, 'Asia/Tokyo', 'yyyy-MM-dd');
           } else {
             recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
           }
@@ -847,13 +838,10 @@ function handleUpdateMeterReadings(params) {
           
           // 新しい行を追加
           const newRowIndex = data.length; // 新しい行のインデックス（1ベース）
-          // 🔧 日付処理修正: Date型の場合は日本時間でYYYY-MM-DD形式に変換
+          // ✅ 修正: Utilities.formatDateを使用してタイムゾーン問題を解決
           let recordDate;
           if (reading.date instanceof Date && !isNaN(reading.date.getTime())) {
-            const year = reading.date.getFullYear();
-            const month = String(reading.date.getMonth() + 1).padStart(2, '0');
-            const day = String(reading.date.getDate()).padStart(2, '0');
-            recordDate = `${year}-${month}-${day}`;
+            recordDate = Utilities.formatDate(reading.date, 'Asia/Tokyo', 'yyyy-MM-dd');
           } else {
             recordDate = reading.date || ''; // 空の場合は空文字列のまま保持
           }
