@@ -25,10 +25,16 @@
     // ===================================
     
     const formatDateForDisplay = (rawDate) => {
-      if (!rawDate) return null;
+      console.log('[room_select] formatDateForDisplay 呼び出し - rawDate:', rawDate, '型:', typeof rawDate);
+      
+      if (!rawDate) {
+        console.log('[room_select] formatDateForDisplay - rawDateが空のためnullを返す');
+        return null;
+      }
       
       try {
         let dateStr = String(rawDate).trim();
+        console.log('[room_select] formatDateForDisplay - 文字列変換後:', dateStr, '長さ:', dateStr.length);
         
         // Date型から生成された場合の処理
         if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
@@ -36,16 +42,21 @@
           const year = rawDate.getFullYear();
           const month = rawDate.getMonth() + 1;
           const day = rawDate.getDate();
-          return `${month}月${day}日`;
+          const result = `${month}月${day}日`;
+          console.log('[room_select] formatDateForDisplay - Date型処理結果:', result);
+          return result;
         }
         
         // 文字列形式の日付処理
         const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
         if (match) {
           const [, year, month, day] = match;
-          return `${parseInt(month)}月${parseInt(day)}日`;
+          const result = `${parseInt(month)}月${parseInt(day)}日`;
+          console.log('[room_select] formatDateForDisplay - 文字列マッチ処理結果:', result);
+          return result;
         }
         
+        console.log('[room_select] formatDateForDisplay - パターンにマッチせず、nullを返す');
         return null;
       } catch (error) {
         console.warn('[room_select] 日付フォーマットエラー:', rawDate, error);
@@ -54,10 +65,12 @@
     };
     
     const formatInspectionStatus = (rawDate) => {
+      console.log('[room_select] formatInspectionStatus 呼び出し - 引数:', rawDate);
+      
       // hasActualReadingも参照できるように引数を拡張する
       // 既存呼び出し箇所で room.hasActualReading を渡すように修正
       // 互換性のためrawDateのみの場合も考慮
-      return (rawDate && rawDate.hasActualReading !== undefined)
+      const result = (rawDate && rawDate.hasActualReading !== undefined)
         ? (rawDate.hasActualReading
             ? { status: '検針済み', displayDate: formatDateForDisplay(rawDate.rawInspectionDate) }
             : { status: '未検針', displayDate: null })
@@ -67,6 +80,9 @@
               { status: '検針済み', displayDate: formattedDate } : 
               { status: '未検針', displayDate: null };
           })();
+      
+      console.log('[room_select] formatInspectionStatus 結果:', result);
+      return result;
     };
     
     // ===================================
@@ -506,6 +522,15 @@
             {Array.isArray(rooms) && rooms.length > 0 && (
               <div className="mantine-stack">
                 {rooms.map(room => {
+                  // デバッグ: 各部屋の生データを出力
+                  console.log('[room_select] 部屋データ処理:', {
+                    roomId: room.id,
+                    name: room.name,
+                    rawInspectionDate: room.rawInspectionDate,
+                    hasActualReading: room.hasActualReading,
+                    rawInspectionDateType: typeof room.rawInspectionDate
+                  });
+                  
                   // 分離アーキテクチャ: フォーマット関数を使用
                   const displayName = room.name || room.roomName || '部屋名未設定';
                   // hasActualReadingを優先的に使う

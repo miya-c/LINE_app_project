@@ -464,17 +464,19 @@ function handleGetRooms(params) {
               currentReading = inspectionRow[currentReadingIndex];
             }
             if (inspectionPropertyId === propertyId && inspectionRoomId === roomId) {
-              // 検針日時または指示数が入っていれば検針済み扱いにする
+              // 検針日時または指示数が入っていれば検針済み扱いにする（スペースも考慮）
               if (
                 (currentReading !== null && currentReading !== undefined && currentReading !== '') ||
-                (inspectionDate && inspectionDate !== '' && inspectionDate !== null)
+                (inspectionDate && String(inspectionDate).trim() !== '' && inspectionDate !== null)
               ) {
                 hasActualReading = true;
               }
-              // 🔧 v9-SIMPLE-RAW-DATA: 生データをそのまま返す
-              if (inspectionDate && inspectionDate !== '' && inspectionDate !== null) {
+              // 🔧 v9-SIMPLE-RAW-DATA: 生データをそのまま返す（スペースも空として扱う）
+              if (inspectionDate && String(inspectionDate).trim() !== '' && inspectionDate !== null) {
                 lastInspectionDate = inspectionDate; // 生データをそのまま使用
-                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${lastInspectionDate}, 指示数あり: ${hasActualReading}`);
+                console.log(`[GAS DEBUG] 検針データ発見 - 部屋: ${roomId}, 日付: ${lastInspectionDate}, 型: ${typeof lastInspectionDate}, 指示数あり: ${hasActualReading}`);
+              } else {
+                console.log(`[GAS DEBUG] 検針日時が空または無効 - 部屋: ${roomId}, 値: "${inspectionDate}", 型: ${typeof inspectionDate}, トリム後: "${String(inspectionDate).trim()}"`);
               }
               break; // 最初に見つかったデータを使用（通常1部屋1レコード）
             }
@@ -482,7 +484,7 @@ function handleGetRooms(params) {
         }
         
         // 🔄 分離アーキテクチャ: 生データのみ返す - フォーマット処理はフロントエンドに移行
-        rooms.push({
+        const roomData = {
           propertyId: String(row[0]).trim(),
           roomNumber: roomId,
           id: roomId,
@@ -491,7 +493,10 @@ function handleGetRooms(params) {
           rawInspectionDate: lastInspectionDate, // 元の検針日時（Date型またはnull）
           hasActualReading: hasActualReading, // 実際に指示数が入力されているかの真偽値
           currentReadingValue: null // ここでは取得しない（getMeterReadingsで詳細取得）
-        });
+        };
+        
+        console.log(`[GAS DEBUG] 部屋データ生成完了 - ${roomId}:`, roomData);
+        rooms.push(roomData);
       }
     }
     
