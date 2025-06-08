@@ -302,6 +302,34 @@ body {
     padding-right: var(--mantine-spacing-sm);
   }
 
+  /* デスクトップでの前回履歴セルも縦方向均等配置 */
+  .mantine-table td[data-label="前回履歴"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    align-items: stretch !important;
+    vertical-align: middle !important;
+    min-height: 80px !important;
+  }
+
+  .mantine-table td[data-label="前回履歴"] > div {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    height: 100% !important;
+    flex: 1 !important;
+  }
+
+  .mantine-table td[data-label="前回履歴"] .previous-reading-text {
+    flex: 1 1 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 0 !important;
+    padding: 2px 4px !important;
+    border-bottom: none !important;
+  }
+
   .mantine-table td input[type="number"],
   .mantine-table td .mantine-button {
     width: auto;
@@ -669,23 +697,32 @@ body {
 
 /* 前回履歴セルを縦方向に均等配置・全高使用 */
 .mantine-table td[data-label="前回履歴"] {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  align-items: stretch;
-  height: 100%;
-  min-height: 120px;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-evenly !important;
+  align-items: stretch !important;
+  height: 100% !important;
+  min-height: 120px !important;
   line-height: 1.6;
   font-size: clamp(1.1rem, 3.5vw, 1.6rem);
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* 前回履歴の外側のdivコンテナもflexで均等配置 */
+.mantine-table td[data-label="前回履歴"] > div {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-evenly !important;
+  height: 100% !important;
+  flex: 1 !important;
 }
 
 .mantine-table td[data-label="前回履歴"] .previous-reading-text {
-  flex: 1 1 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 1 1 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
   line-height: 1.5 !important;
   color: var(--mantine-color-gray-8);
@@ -693,8 +730,9 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 0;
-  padding: 3px 0;
+  margin-bottom: 0 !important;
+  padding: 4px 2px !important;
+  border-bottom: none !important;
 }
 
 /* モバイルでの前回履歴表示調整 */
@@ -703,23 +741,44 @@ body {
     padding-left: 16px;
     font-size: clamp(1.1rem, 3.5vw, 1.6rem);
     line-height: 1.5;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    align-items: stretch !important;
+    min-height: 120px !important;
+  }
+  
+  .mantine-table td[data-label="前回履歴"] > div {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    height: 100% !important;
+    flex: 1 !important;
   }
   
   .mantine-table td[data-label="前回履歴"] div {
-    margin-bottom: 6px;
-    padding: 3px 0;
-    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 0 !important;
+    padding: 4px 2px !important;
+    border-bottom: none !important;
     font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
+    flex: 1 1 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
   /* モバイル専用の前回履歴テキスト調整 */
   .previous-reading-text {
     font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important;
-    border-bottom: 1px solid #f0f0f0;
-    margin-bottom: 6px;
-    padding: 3px 0;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding: 4px 2px !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1 1 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .previous-reading-text:last-child {
