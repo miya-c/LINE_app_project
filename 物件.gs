@@ -7,9 +7,10 @@
 // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
 function getJSTDateString() {
   const now = new Date();
-  const jstOffset = 9 * 60; // JST = UTC + 9時間
-  const jstTime = new Date(now.getTime() + (jstOffset * 60 * 1000));
-  return jstTime.toISOString().split('T')[0];
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // スプレッドシートIDを設定ファイルから取得
@@ -822,14 +823,14 @@ function handleUpdateMeterReadings(params) {
       const reading = readings[i];
       console.log(`[GAS] 処理中の検針データ ${i + 1}/${readings.length}:`, reading);
       
-      // ✅ 日付の検証と修正を改善 - 日本時間を使用
+      // ✅ 日付の検証と修正を改善 - 空の日付は保持して未検針状態を維持
       let effectiveDate = reading.date;
       if (!effectiveDate || effectiveDate.trim() === '') {
-        // 空の日付の場合は現在日付（日本時間、YYYY-MM-DD形式）を設定
+        // 空の日付の場合は現在日付（日本時間、YYYY-MM-DD形式）を設定（新規レコード作成時のみ）
         effectiveDate = getJSTDateString();
-        console.log(`[GAS] 空の日付を現在日付（日本時間）に修正: ${effectiveDate}`);
-        // 元のreadingオブジェクトも更新
-        reading.date = effectiveDate;
+        console.log(`[GAS] 新規レコード作成のため空の日付を現在日付（日本時間）に設定: ${effectiveDate}`);
+        // 注意: 元のreadingオブジェクトは更新しない（未検針状態を保持）
+        // reading.date = effectiveDate; // この行をコメントアウト
       }
       
       // ✅ データの妥当性チェック（指示数が空でない場合のみ処理）
@@ -944,7 +945,7 @@ function handleUpdateMeterReadings(params) {
           console.log(`[GAS] ✅ 新規レコード作成完了 - 行${newRowIndex + 1}, 物件ID: ${propertyId}, 部屋ID: ${roomId}, 指示数: ${reading.currentReading}, 使用量: ${usage}`);
         }
         updatedReadings.push({
-          date: effectiveDate, // 修正された日付を使用
+          date: reading.date, // 元の日付を使用（空の場合は空のまま）
           currentReading: reading.currentReading,
           usage: usage || '', // 計算された使用量を返却
           updated: true
@@ -953,7 +954,7 @@ function handleUpdateMeterReadings(params) {
       } catch (updateError) {
         console.error(`[GAS] 検針データ更新エラー (行${i}):`, updateError.message);
         updatedReadings.push({
-          date: effectiveDate, // 修正された日付を使用
+          date: reading.date, // 元の日付を使用（空の場合は空のまま）
           currentReading: reading.currentReading,
           error: updateError.message,
           updated: false
