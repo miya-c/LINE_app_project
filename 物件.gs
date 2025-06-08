@@ -623,10 +623,26 @@ function getActualMeterReadings(propertyId, roomId) {
         
         console.log(`[GAS] ✅ マッチング成功: 行${i}`);
         
-        // 🔥 完全生データ: スプレッドシートから取得した値をそのまま返却
-        // 日付、計算、フォーマット処理は一切行わず、フロントエンドに委任
+        // 🔥 Date型JSON化時の1日ずれ修正: Date型の場合のみJST文字列に変換
+        let processedDate = row[dateIndex];
+        
+        if (row[dateIndex] instanceof Date && !isNaN(row[dateIndex].getTime())) {
+          // Date型の場合：UTC変換を避けてJST文字列に変換
+          const dateObj = row[dateIndex];
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          processedDate = `${year}-${month}-${day}`;
+          
+          console.log("[GAS] Date型をJST文字列に変換:", {
+            originalDate: row[dateIndex],
+            convertedString: processedDate,
+            year, month, day
+          });
+        }
+        
         const reading = {
-          date: row[dateIndex],  // スプレッドシートの生データ（Date型またはString）
+          date: processedDate,  // JST文字列またはそのまま
           currentReading: row[currentReadingIndex],
           previousReading: row[previousReadingIndex],
           previousPreviousReading: row[previousPreviousReadingIndex],
@@ -635,7 +651,7 @@ function getActualMeterReadings(propertyId, roomId) {
           status: row[warningFlagIndex]
         };
         
-        console.log("[GAS] 生データを返却:", {
+        console.log("[GAS] 処理済みデータを返却:", {
           date: reading.date,
           dateType: typeof reading.date,
           isDate: reading.date instanceof Date,
@@ -1029,4 +1045,39 @@ function doPost(e) {
     };
     return createCorsResponse(errorResponse);
   }
+}
+
+// ===================================================
+// テスト用関数 - ログ確認用
+// ===================================================
+
+// 手動実行でログ確認用のテスト関数
+function testMeterReadingsWithLogs() {
+  console.log("=== テスト関数開始 ===");
+  console.log("現在時刻:", new Date().toISOString());
+  
+  try {
+    // 検針データ取得テスト
+    const testPropertyId = 'P000001';
+    const testRoomId = 'R000001';
+    
+    console.log(`テスト対象: 物件ID=${testPropertyId}, 部屋ID=${testRoomId}`);
+    
+    const readings = getActualMeterReadings(testPropertyId, testRoomId);
+    console.log("取得結果:", readings);
+    
+    if (readings && readings.length > 0) {
+      console.log("✅ データ取得成功");
+      console.log("最初のレコードの日付:", readings[0].date);
+      console.log("最初のレコードの日付型:", typeof readings[0].date);
+    } else {
+      console.log("❌ データが見つかりません");
+    }
+    
+  } catch (error) {
+    console.error("テストエラー:", error.message);
+    console.error("スタックトレース:", error.stack);
+  }
+  
+  console.log("=== テスト関数終了 ===");
 }

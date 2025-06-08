@@ -93,6 +93,9 @@
       const usage = current - previous;
       return (usage >= 0 ? usage : 0).toString();
     };
+
+    // calculateUsageDisplay のエイリアス - レガシー互換性のため
+    const calculateUsageDisplay = calculateUsage;
     
     // 日本時間（JST）でYYYY-MM-DD形式の日付文字列を取得
     const getCurrentJSTDateString = () => {
@@ -411,7 +414,7 @@
       );
 
       // Helper function for usage calculation - 統一化された関数を使用
-      const calculateUsageDisplay = calculateUsage;
+      // calculateUsageDisplay は上部で既に定義済み
 
       // Helper for previous readings text - 配列を返すように修正
       const getPreviousReadingsText = (r) => {
