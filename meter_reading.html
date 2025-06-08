@@ -32,12 +32,31 @@
         return null;
       }
       
+      // Date型オブジェクトの場合の処理を追加
+      if (rawDate instanceof Date) {
+        console.log('[formatDate] Date型オブジェクトを検出:', rawDate);
+        // 無効なDateオブジェクトの場合
+        if (isNaN(rawDate.getTime())) {
+          console.log('[formatDate] 無効なDateオブジェクト');
+          return null;
+        }
+        // 有効なDateオブジェクトをYYYY-MM-DD形式に変換
+        const year = rawDate.getFullYear();
+        const month = String(rawDate.getMonth() + 1).padStart(2, '0');
+        const day = String(rawDate.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        console.log('[formatDate] Date型から変換:', dateString);
+        return `${parseInt(month)}月${parseInt(day)}日`;
+      }
+      
       // YYYY-MM-DD形式の文字列を直接変換
       if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
         const [year, month, day] = rawDate.trim().split('-');
         return `${parseInt(month)}月${parseInt(day)}日`;
       }
       
+      // その他の文字列形式もログ出力して詳細を確認
+      console.log('[formatDate] 未対応の形式:', typeof rawDate, rawDate);
       return null; // その他の形式は未対応として未検針扱い
     };
     
@@ -688,7 +707,7 @@
                       {meterReadings.map((reading, index) => {
                         // 分離アーキテクチャ: フォーマット関数を使用
                         const formattedDate = formatDate(reading.date);
-                        const inspectionStatus = formatInspectionStatus(reading.date, !!reading.currentReading);
+                        const inspectionStatus = formatInspectionStatus(reading.date);
                         const dateForDataAttribute = reading.date;
                         const currentReadingDisplay = formatReading(reading.currentReading);
                         
