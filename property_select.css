@@ -216,13 +216,22 @@ body {
   font-size: 16px;
   color: var(--mantine-color-gray-7);
   font-weight: 600;
+  flex: 1;
+}
+
+.property-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .completion-date {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--mantine-color-blue-6);
   font-weight: 500;
-  margin-top: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .property-arrow {
