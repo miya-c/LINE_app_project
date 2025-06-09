@@ -31,6 +31,29 @@
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyjjbTMa8QQB5GDe-_ZyFtsdmy1CaIYQylOE8_12xpSJff3D5hPfCPmu_wkb0JasDrB3g/exec';
       const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
+      // 検針完了日フォーマット関数
+      const formatCompletionDate = (dateStr) => {
+        if (!dateStr || dateStr.trim() === '') {
+          return '';
+        }
+        
+        try {
+          // YYYY-MM-DD形式の文字列をDate型に変換
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) {
+            return '';
+          }
+          
+          // 月日のみを取得（1桁の場合はゼロパディングなし）
+          const month = date.getMonth() + 1;
+          const day = date.getDate();
+          return `[検針完了日：${month}月${day}日]`;
+        } catch (error) {
+          console.error('[ReactApp] formatCompletionDate error:', error);
+          return '';
+        }
+      };
+
       React.useEffect(() => {
         const initializeWoff = async () => {
           try {
@@ -430,6 +453,12 @@
                       <div className="property-name">
                         {property.name != null ? property.name : '名称なし'}
                       </div>
+                      {/* 検針完了日の表示 */}
+                      {formatCompletionDate(property.completionDate) && (
+                        <div className="completion-date">
+                          {formatCompletionDate(property.completionDate)}
+                        </div>
+                      )}
                     </div>
                     <svg className="property-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

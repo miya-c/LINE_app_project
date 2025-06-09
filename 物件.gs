@@ -371,9 +371,13 @@ function handleGetProperties() {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (row[0] && row[1]) { // 物件IDと物件名が両方存在
+        // 検針完了日を取得（3列目、インデックス2）
+        const completionDate = row[2] ? toJSTDateString(row[2]) : '';
+        
         properties.push({ 
           id: String(row[0]).trim(), 
-          name: String(row[1]).trim()
+          name: String(row[1]).trim(),
+          completionDate: completionDate // 検針完了日を追加
         });
       }
     }
