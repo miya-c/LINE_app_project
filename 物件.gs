@@ -372,7 +372,11 @@ function handleGetProperties() {
       const row = data[i];
       if (row[0] && row[1]) { // 物件IDと物件名が両方存在
         // 検針完了日を取得（3列目、インデックス2）
-        const completionDate = row[2] ? toJSTDateString(row[2]) : '';
+        const rawCompletionDate = row[2];
+        console.log(`[GAS DEBUG] 行${i}: 物件ID=${row[0]}, 物件名=${row[1]}, 検針完了日(生データ)=${rawCompletionDate}, 型=${typeof rawCompletionDate}`);
+        
+        const completionDate = rawCompletionDate ? toJSTDateString(rawCompletionDate) : '';
+        console.log(`[GAS DEBUG] 行${i}: 処理後検針完了日=${completionDate}`);
         
         properties.push({ 
           id: String(row[0]).trim(), 

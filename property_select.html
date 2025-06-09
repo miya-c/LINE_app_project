@@ -116,10 +116,28 @@
             // 配列でない場合の対応
             if (Array.isArray(data)) {
               console.log('[ReactApp] Data is array, setting properties');
+              console.log('[ReactApp] First property sample:', data[0]);
+              // 検針完了日フィールドの確認ログ
+              if (data.length > 0 && data[0]) {
+                console.log('[ReactApp] completionDate field check:', {
+                  hasCompletionDate: 'completionDate' in data[0],
+                  completionDateValue: data[0].completionDate,
+                  completionDateType: typeof data[0].completionDate
+                });
+              }
               setProperties(data);
             } else if (data.properties && Array.isArray(data.properties)) {
               // propertiesプロパティに配列が含まれている場合
               console.log('[ReactApp] Data has properties array, setting properties');
+              console.log('[ReactApp] First property sample:', data.properties[0]);
+              // 検針完了日フィールドの確認ログ
+              if (data.properties.length > 0 && data.properties[0]) {
+                console.log('[ReactApp] completionDate field check:', {
+                  hasCompletionDate: 'completionDate' in data.properties[0],
+                  completionDateValue: data.properties[0].completionDate,
+                  completionDateType: typeof data.properties[0].completionDate
+                });
+              }
               setProperties(data.properties);
             } else if (data.availableSheets) {
               // シートが見つからない場合の特別処理
