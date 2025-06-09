@@ -72,6 +72,13 @@ function toJSTDateString(value) {
   return '';
 }
 
+// 現在の日本時間（JST）をYYYY-MM-DD形式で取得する関数
+function getJSTDateString() {
+  // Google Apps Scriptの場合、Utilities.formatDate を使用
+  const now = new Date();
+  return Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+}
+
 // スプレッドシートIDを設定ファイルから取得
 // getConfigSpreadsheetId() 関数は spreadsheet_config.gs で定義されています
 function getSpreadsheetId() {
