@@ -577,6 +577,634 @@ function createInitialInspectionData() {
   }
 }
 
+// --- パフォーマンス改善機能（Phase 1）---
+
+// データ高速検索用のインデックスを作成する関数
+function createDataIndexes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return null;
+  }
+
+  try {
+    Logger.log('🔍 データインデックス作成を開始します...');
+    const startTime = new Date();
+    
+    // inspection_dataシートからデータを読み込み
+    const inspectionDataSheet = ss.getSheetByName('inspection_data');
+    if (!inspectionDataSheet) {
+      safeAlert('エラー', 'inspection_dataシートが見つかりません');
+      return null;
+    }
+
+    const inspectionData = inspectionDataSheet.getDataRange().getValues();
+    if (inspectionData.length <= 1) {
+      safeAlert('情報', 'inspection_dataシートにデータがありません');
+      return null;
+    }
+
+    const headers = inspectionData[0];
+    const recordIdIndex = headers.indexOf('記録ID');
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const roomIdIndex = headers.indexOf('部屋ID');
+    const propertyNameIndex = headers.indexOf('物件名');
+    const roomNameIndex = headers.indexOf('部屋名');
+    const inspectionDateIndex = headers.indexOf('検針日時');
+    const currentReadingIndex = headers.indexOf('今回の指示数');
+    const previousReadingIndex = headers.indexOf('前回指示数');
+    const usageIndex = headers.indexOf('今回使用量');
+
+    if ([recordIdIndex, propertyIdIndex, roomIdIndex].includes(-1)) {
+      safeAlert('エラー', '必要な列（記録ID、物件ID、部屋ID）が見つかりません');
+      return null;
+    }
+
+    // 各種インデックスマップを作成
+    const indexes = {
+      byRecordId: new Map(),           // 記録ID → 行データ
+      byPropertyId: new Map(),         // 物件ID → 行データ配列
+      byRoomId: new Map(),             // 部屋ID → 行データ
+      byPropertyRoom: new Map(),       // 物件ID_部屋ID → 行データ
+      duplicateRecordIds: new Set(),   // 重複した記録ID
+      properties: new Set(),           // ユニークな物件ID一覧
+      rooms: new Set()                 // ユニークな部屋ID一覧
+    };
+
+    // データをスキャンしてインデックスを構築
+    for (let i = 1; i < inspectionData.length; i++) {
+      const row = inspectionData[i];
+      const recordId = String(row[recordIdIndex]).trim();
+      const propertyId = String(row[propertyIdIndex]).trim();
+      const roomId = String(row[roomIdIndex]).trim();
+      const propertyName = String(row[propertyNameIndex] || '').trim();
+      const roomName = String(row[roomNameIndex] || '').trim();
+      const inspectionDate = String(row[inspectionDateIndex] || '').trim();
+      const currentReading = String(row[currentReadingIndex] || '').trim();
+      const previousReading = String(row[previousReadingIndex] || '').trim();
+      const usage = String(row[usageIndex] || '').trim();
+
+      const rowData = {
+        rowIndex: i,
+        recordId,
+        propertyId,
+        roomId,
+        propertyName,
+        roomName,
+        inspectionDate,
+        currentReading,
+        previousReading,
+        usage,
+        rawData: row
+      };
+
+      // 記録IDインデックス（重複チェック付き）
+      if (recordId) {
+        if (indexes.byRecordId.has(recordId)) {
+          indexes.duplicateRecordIds.add(recordId);
+          Logger.log(`⚠️ 重複記録ID発見: ${recordId} (行 ${i + 1})`);
+        } else {
+          indexes.byRecordId.set(recordId, rowData);
+        }
+      }
+
+      // 物件IDインデックス
+      if (propertyId) {
+        indexes.properties.add(propertyId);
+        if (!indexes.byPropertyId.has(propertyId)) {
+          indexes.byPropertyId.set(propertyId, []);
+        }
+        indexes.byPropertyId.get(propertyId).push(rowData);
+      }
+
+      // 部屋IDインデックス
+      if (roomId) {
+        indexes.rooms.add(roomId);
+        if (indexes.byRoomId.has(roomId)) {
+          Logger.log(`⚠️ 重複部屋ID発見: ${roomId} (行 ${i + 1})`);
+        } else {
+          indexes.byRoomId.set(roomId, rowData);
+        }
+      }
+
+      // 物件-部屋組み合わせインデックス
+      if (propertyId && roomId) {
+        const key = `${propertyId}_${roomId}`;
+        if (indexes.byPropertyRoom.has(key)) {
+          Logger.log(`⚠️ 重複物件-部屋組み合わせ発見: ${key} (行 ${i + 1})`);
+        } else {
+          indexes.byPropertyRoom.set(key, rowData);
+        }
+      }
+    }
+
+    const endTime = new Date();
+    const processingTime = (endTime - startTime) / 1000;
+
+    // インデックス統計をログ出力
+    Logger.log('✅ データインデックス作成完了');
+    Logger.log(`📊 処理時間: ${processingTime}秒`);
+    Logger.log(`📈 総レコード数: ${inspectionData.length - 1}`);
+    Logger.log(`🏢 ユニーク物件数: ${indexes.properties.size}`);
+    Logger.log(`🏠 ユニーク部屋数: ${indexes.rooms.size}`);
+    Logger.log(`⚠️ 重複記録ID数: ${indexes.duplicateRecordIds.size}`);
+
+    safeAlert('完了', `データインデックス作成完了\n処理時間: ${processingTime}秒\n総レコード数: ${inspectionData.length - 1}`);
+
+    return indexes;
+
+  } catch (e) {
+    Logger.log(`❌ データインデックス作成エラー: ${e.message}\n${e.stack}`);
+    safeAlert('エラー', `データインデックス作成中にエラーが発生しました: ${e.message}`);
+    return null;
+  }
+}
+
+// データ整合性チェック関数
+function validateInspectionDataIntegrity() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+
+  try {
+    Logger.log('🔍 データ整合性チェックを開始します...');
+    const startTime = new Date();
+
+    // 各マスタシートを取得
+    const propertyMasterSheet = ss.getSheetByName('物件マスタ');
+    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+    const inspectionDataSheet = ss.getSheetByName('inspection_data');
+
+    if (!propertyMasterSheet || !roomMasterSheet || !inspectionDataSheet) {
+      safeAlert('エラー', '必要なシート（物件マスタ、部屋マスタ、inspection_data）が見つかりません');
+      return;
+    }
+
+    // 物件マスタから有効な物件IDを取得
+    const propertyMasterData = propertyMasterSheet.getDataRange().getValues();
+    const validPropertyIds = new Set();
+    for (let i = 1; i < propertyMasterData.length; i++) {
+      const propertyId = String(propertyMasterData[i][0]).trim();
+      if (propertyId) {
+        validPropertyIds.add(propertyId);
+      }
+    }
+
+    // 部屋マスタから有効な部屋IDと物件-部屋の組み合わせを取得
+    const roomMasterData = roomMasterSheet.getDataRange().getValues();
+    const validRoomIds = new Set();
+    const validPropertyRoomCombinations = new Set();
+    for (let i = 1; i < roomMasterData.length; i++) {
+      const propertyId = String(roomMasterData[i][0]).trim();
+      const roomId = String(roomMasterData[i][1]).trim();
+      if (propertyId && roomId) {
+        validRoomIds.add(roomId);
+        validPropertyRoomCombinations.add(`${propertyId}_${roomId}`);
+      }
+    }
+
+    // データインデックスを作成
+    const indexes = createDataIndexes();
+    if (!indexes) {
+      return;
+    }
+
+    // 整合性チェック結果
+    const issues = {
+      invalidPropertyIds: [],
+      invalidRoomIds: [],
+      invalidCombinations: [],
+      duplicateRecordIds: Array.from(indexes.duplicateRecordIds),
+      missingRecordIds: [],
+      inconsistentPropertyNames: []
+    };
+
+    // 検針データの各レコードをチェック
+    indexes.byRecordId.forEach((rowData, recordId) => {
+      const { propertyId, roomId, propertyName } = rowData;
+
+      // 記録IDチェック
+      if (!recordId || recordId === '') {
+        issues.missingRecordIds.push(`行 ${rowData.rowIndex + 1}`);
+      }
+
+      // 物件IDチェック
+      if (propertyId && !validPropertyIds.has(propertyId)) {
+        issues.invalidPropertyIds.push(`行 ${rowData.rowIndex + 1}: ${propertyId}`);
+      }
+
+      // 部屋IDチェック
+      if (roomId && !validRoomIds.has(roomId)) {
+        issues.invalidRoomIds.push(`行 ${rowData.rowIndex + 1}: ${roomId}`);
+      }
+
+      // 物件-部屋組み合わせチェック
+      if (propertyId && roomId) {
+        const combination = `${propertyId}_${roomId}`;
+        if (!validPropertyRoomCombinations.has(combination)) {
+          issues.invalidCombinations.push(`行 ${rowData.rowIndex + 1}: ${combination}`);
+        }
+      }
+
+      // 物件名の整合性チェック（物件マスタと比較）
+      if (propertyId && validPropertyIds.has(propertyId)) {
+        const masterPropertyName = propertyMasterData.find(row => 
+          String(row[0]).trim() === propertyId
+        )?.[1];
+        if (masterPropertyName && String(masterPropertyName).trim() !== propertyName) {
+          issues.inconsistentPropertyNames.push(
+            `行 ${rowData.rowIndex + 1}: 検針データ="${propertyName}" vs マスタ="${masterPropertyName}"`
+          );
+        }
+      }
+    });
+
+    const endTime = new Date();
+    const processingTime = (endTime - startTime) / 1000;
+
+    // 結果をレポート
+    Logger.log('✅ データ整合性チェック完了');
+    Logger.log(`📊 処理時間: ${processingTime}秒`);
+    Logger.log(`📈 チェック対象レコード数: ${indexes.byRecordId.size}`);
+
+    let alertMessage = `データ整合性チェック完了\n処理時間: ${processingTime}秒\n\n`;
+    let hasIssues = false;
+
+    if (issues.invalidPropertyIds.length > 0) {
+      hasIssues = true;
+      Logger.log(`❌ 無効な物件ID: ${issues.invalidPropertyIds.length}件`);
+      alertMessage += `❌ 無効な物件ID: ${issues.invalidPropertyIds.length}件\n`;
+      issues.invalidPropertyIds.slice(0, 3).forEach(issue => Logger.log(`  ${issue}`));
+    }
+
+    if (issues.invalidRoomIds.length > 0) {
+      hasIssues = true;
+      Logger.log(`❌ 無効な部屋ID: ${issues.invalidRoomIds.length}件`);
+      alertMessage += `❌ 無効な部屋ID: ${issues.invalidRoomIds.length}件\n`;
+      issues.invalidRoomIds.slice(0, 3).forEach(issue => Logger.log(`  ${issue}`));
+    }
+
+    if (issues.invalidCombinations.length > 0) {
+      hasIssues = true;
+      Logger.log(`❌ 無効な物件-部屋組み合わせ: ${issues.invalidCombinations.length}件`);
+      alertMessage += `❌ 無効な物件-部屋組み合わせ: ${issues.invalidCombinations.length}件\n`;
+      issues.invalidCombinations.slice(0, 3).forEach(issue => Logger.log(`  ${issue}`));
+    }
+
+    if (issues.duplicateRecordIds.length > 0) {
+      hasIssues = true;
+      Logger.log(`❌ 重複記録ID: ${issues.duplicateRecordIds.length}件`);
+      alertMessage += `❌ 重複記録ID: ${issues.duplicateRecordIds.length}件\n`;
+      issues.duplicateRecordIds.slice(0, 3).forEach(id => Logger.log(`  ${id}`));
+    }
+
+    if (issues.missingRecordIds.length > 0) {
+      hasIssues = true;
+      Logger.log(`❌ 記録ID未設定: ${issues.missingRecordIds.length}件`);
+      alertMessage += `❌ 記録ID未設定: ${issues.missingRecordIds.length}件\n`;
+    }
+
+    if (issues.inconsistentPropertyNames.length > 0) {
+      hasIssues = true;
+      Logger.log(`⚠️ 物件名不整合: ${issues.inconsistentPropertyNames.length}件`);
+      alertMessage += `⚠️ 物件名不整合: ${issues.inconsistentPropertyNames.length}件\n`;
+      issues.inconsistentPropertyNames.slice(0, 2).forEach(issue => Logger.log(`  ${issue}`));
+    }
+
+    if (!hasIssues) {
+      alertMessage += '✅ データ整合性に問題はありませんでした';
+      Logger.log('✅ データ整合性に問題はありませんでした');
+    } else {
+      alertMessage += '\n詳細はログを確認してください';
+    }
+
+    safeAlert('整合性チェック結果', alertMessage);
+
+    return issues;
+
+  } catch (e) {
+    Logger.log(`❌ データ整合性チェックエラー: ${e.message}\n${e.stack}`);
+    safeAlert('エラー', `データ整合性チェック中にエラーが発生しました: ${e.message}`);
+    return null;
+  }
+}
+
+// --- Phase 2: 重複データクリーンアップ機能 ---
+
+// 重複データクリーンアップ機能（最適化版）
+function optimizedCleanupDuplicateInspectionData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+
+  try {
+    Logger.log('🧹 重複データクリーンアップを開始します...');
+    const startTime = new Date();
+
+    // データインデックスを作成して重複を検出
+    const indexes = createDataIndexes();
+    if (!indexes) {
+      return;
+    }
+
+    const inspectionDataSheet = ss.getSheetByName('inspection_data');
+    if (!inspectionDataSheet) {
+      safeAlert('エラー', 'inspection_dataシートが見つかりません');
+      return;
+    }
+
+    // バックアップの作成
+    Logger.log('💾 データのバックアップを作成しています...');
+    try {
+      const backupSheetName = `inspection_data_backup_${Utilities.formatDate(new Date(), 'JST', 'yyyyMMdd_HHmmss')}`;
+      const backupSheet = ss.insertSheet(backupSheetName);
+      const sourceRange = inspectionDataSheet.getDataRange();
+      const sourceValues = sourceRange.getValues();
+      if (sourceValues.length > 0) {
+        backupSheet.getRange(1, 1, sourceValues.length, sourceValues[0].length).setValues(sourceValues);
+        Logger.log(`✅ バックアップシート「${backupSheetName}」を作成しました`);
+      }
+    } catch (backupError) {
+      Logger.log(`⚠️ バックアップ作成エラー: ${backupError.message}`);
+      // バックアップが失敗した場合は処理を中断
+      safeAlert('警告', 'バックアップの作成に失敗しました。安全のため処理を中断します。');
+      return;
+    }
+
+    // 重複パターンの検出（仕様による重複は除外）
+    const duplicatePatterns = {
+      duplicateRecordIds: Array.from(indexes.duplicateRecordIds),  // 記録IDの重複のみチェック
+      emptyDataRows: []               // 空のデータ行のみ削除対象
+    };
+
+    indexes.byRecordId.forEach((rowData, recordId) => {
+      // 空のデータ行を検出（必須項目が全て空の場合のみ削除対象とする）
+      // 注意：記録ID、物件ID、部屋IDが存在する場合は削除しない（仕様上の未処理データ）
+      const hasEssentialData = rowData.recordId && rowData.propertyId && rowData.roomId;
+      const hasOptionalData = rowData.inspectionDate || 
+                            rowData.currentReading || 
+                            rowData.previousReading ||
+                            rowData.usage;
+      
+      // 必須項目も任意項目も空の場合のみ削除対象とする
+      if (!hasEssentialData && !hasOptionalData) {
+        duplicatePatterns.emptyDataRows.push({
+          recordId,
+          rowIndex: rowData.rowIndex,
+          propertyId: rowData.propertyId,
+          roomId: rowData.roomId,
+          roomName: rowData.roomName
+        });
+      }
+    });
+
+    // クリーンアップ実行の確認と結果の準備
+    const cleanupResults = {
+      emptyRowsCleaned: 0,
+      duplicateRecordIdsFound: 0,
+      totalRowsDeleted: 0,
+      errors: []
+    };
+
+    // 1. 記録IDの重複を報告（削除はしない、警告のみ）
+    if (duplicatePatterns.duplicateRecordIds.length > 0) {
+      Logger.log(`⚠️ 記録IDの重複が検出されました: ${duplicatePatterns.duplicateRecordIds.length}件`);
+      cleanupResults.duplicateRecordIdsFound = duplicatePatterns.duplicateRecordIds.length;
+      duplicatePatterns.duplicateRecordIds.forEach(recordId => {
+        Logger.log(`  重複記録ID: ${recordId}`);
+      });
+    }
+
+    // 2. 完全に空のデータ行を削除
+    if (duplicatePatterns.emptyDataRows.length > 0) {
+      Logger.log(`🗑️ 完全に空のデータ行: ${duplicatePatterns.emptyDataRows.length}件`);
+      Logger.log(`⚠️ 注意: 記録ID・物件ID・部屋IDがある未処理データは削除しません`);
+      
+      // 行番号の大きい順にソートして削除（インデックスのずれを防ぐ）
+      const sortedEmptyRows = duplicatePatterns.emptyDataRows.sort((a, b) => b.rowIndex - a.rowIndex);
+      
+      sortedEmptyRows.forEach(emptyRow => {
+        try {
+          inspectionDataSheet.deleteRow(emptyRow.rowIndex + 1);
+          cleanupResults.emptyRowsCleaned++;
+          cleanupResults.totalRowsDeleted++;
+          Logger.log(`    削除: 行${emptyRow.rowIndex + 1} (記録ID: ${emptyRow.recordId})`);
+        } catch (error) {
+          cleanupResults.errors.push(`空行${emptyRow.rowIndex + 1}の削除エラー: ${error.message}`);
+        }
+      });
+    }
+
+    const endTime = new Date();
+    const processingTime = (endTime - startTime) / 1000;
+
+    // 結果をレポート
+    Logger.log('✅ 重複データクリーンアップ完了');
+    Logger.log(`📊 処理時間: ${processingTime}秒`);
+    Logger.log(`🧹 削除された行数: ${cleanupResults.totalRowsDeleted}`);
+    Logger.log(`  - 空のデータ行: ${cleanupResults.emptyRowsCleaned}件`);
+    if (cleanupResults.duplicateRecordIdsFound > 0) {
+      Logger.log(`⚠️ 記録ID重複（警告のみ）: ${cleanupResults.duplicateRecordIdsFound}件`);
+    }
+
+    let alertMessage = `重複データクリーンアップ完了\n処理時間: ${processingTime}秒\n\n`;
+    alertMessage += `🧹 削除された行数: ${cleanupResults.totalRowsDeleted}\n`;
+    
+    if (cleanupResults.emptyRowsCleaned > 0) {
+      alertMessage += `  - 空のデータ行: ${cleanupResults.emptyRowsCleaned}件\n`;
+    }
+    
+    if (cleanupResults.duplicateRecordIdsFound > 0) {
+      alertMessage += `\n⚠️ 記録ID重複（警告のみ）: ${cleanupResults.duplicateRecordIdsFound}件\n`;
+      alertMessage += `※記録IDの重複は手動で確認してください\n`;
+    }
+
+    if (cleanupResults.errors.length > 0) {
+      alertMessage += `\n⚠️ エラー: ${cleanupResults.errors.length}件\n詳細はログを確認してください`;
+      cleanupResults.errors.forEach(error => Logger.log(`❌ ${error}`));
+    }
+
+    if (cleanupResults.totalRowsDeleted === 0 && cleanupResults.duplicateRecordIdsFound === 0) {
+      alertMessage += '\n✅ クリーンアップが必要なデータはありませんでした';
+    } else {
+      alertMessage += '\n\n✅ データベースのクリーンアップが完了しました';
+      alertMessage += '\n※同一物件・同一部屋名の重複は仕様として保持されています';
+      alertMessage += '\n※未処理のメーター読み取りデータは保護されています';
+    }
+
+    safeAlert('クリーンアップ完了', alertMessage);
+
+    return cleanupResults;
+
+  } catch (e) {
+    Logger.log(`❌ 重複データクリーンアップエラー: ${e.message}\n${e.stack}`);
+    safeAlert('エラー', `重複データクリーンアップ中にエラーが発生しました: ${e.message}`);
+    return null;
+  }
+}
+
+// --- Phase 3: バッチ処理機能 ---
+
+// 全体最適化バッチ処理（全機能を順次実行）
+function runComprehensiveDataOptimization() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+
+  try {
+    Logger.log('🚀 総合データ最適化バッチ処理を開始します...');
+    const overallStartTime = new Date();
+    
+    const batchResults = {
+      steps: [],
+      totalProcessingTime: 0,
+      overallSuccess: true
+    };
+
+    safeAlert('開始', '総合データ最適化を開始します。この処理には数分かかる場合があります。');
+
+    // Step 1: 物件マスタIDフォーマット
+    Logger.log('📋 Step 1: 物件マスタIDフォーマット実行中...');
+    try {
+      const step1Start = new Date();
+      formatPropertyIdsInPropertyMaster();
+      const step1Time = (new Date() - step1Start) / 1000;
+      batchResults.steps.push({ name: '物件マスタIDフォーマット', success: true, time: step1Time });
+      Logger.log(`✅ Step 1完了 (${step1Time}秒)`);
+    } catch (e) {
+      batchResults.steps.push({ name: '物件マスタIDフォーマット', success: false, error: e.message });
+      batchResults.overallSuccess = false;
+      Logger.log(`❌ Step 1エラー: ${e.message}`);
+    }
+
+    // Step 2: 部屋マスタIDフォーマット
+    Logger.log('📋 Step 2: 部屋マスタIDフォーマット実行中...');
+    try {
+      const step2Start = new Date();
+      formatPropertyIdsInRoomMaster();
+      const step2Time = (new Date() - step2Start) / 1000;
+      batchResults.steps.push({ name: '部屋マスタIDフォーマット', success: true, time: step2Time });
+      Logger.log(`✅ Step 2完了 (${step2Time}秒)`);
+    } catch (e) {
+      batchResults.steps.push({ name: '部屋マスタIDフォーマット', success: false, error: e.message });
+      batchResults.overallSuccess = false;
+      Logger.log(`❌ Step 2エラー: ${e.message}`);
+    }
+
+    // Step 3: 部屋マスタ孤立データ削除
+    Logger.log('📋 Step 3: 部屋マスタ孤立データ削除実行中...');
+    try {
+      const step3Start = new Date();
+      cleanUpOrphanedRooms();
+      const step3Time = (new Date() - step3Start) / 1000;
+      batchResults.steps.push({ name: '部屋マスタ孤立データ削除', success: true, time: step3Time });
+      Logger.log(`✅ Step 3完了 (${step3Time}秒)`);
+    } catch (e) {
+      batchResults.steps.push({ name: '部屋マスタ孤立データ削除', success: false, error: e.message });
+      batchResults.overallSuccess = false;
+      Logger.log(`❌ Step 3エラー: ${e.message}`);
+    }
+
+    // Step 4: 新規部屋反映
+    Logger.log('📋 Step 4: 新規部屋反映実行中...');
+    try {
+      const step4Start = new Date();
+      populateInspectionDataFromMasters();
+      const step4Time = (new Date() - step4Start) / 1000;
+      batchResults.steps.push({ name: '新規部屋反映', success: true, time: step4Time });
+      Logger.log(`✅ Step 4完了 (${step4Time}秒)`);
+    } catch (e) {
+      batchResults.steps.push({ name: '新規部屋反映', success: false, error: e.message });
+      batchResults.overallSuccess = false;
+      Logger.log(`❌ Step 4エラー: ${e.message}`);
+    }
+
+    // Step 5: データ整合性チェック
+    Logger.log('📋 Step 5: データ整合性チェック実行中...');
+    try {
+      const step5Start = new Date();
+      const integrityResults = validateInspectionDataIntegrity();
+      const step5Time = (new Date() - step5Start) / 1000;
+      batchResults.steps.push({ 
+        name: 'データ整合性チェック', 
+        success: true, 
+        time: step5Time,
+        details: integrityResults 
+      });
+      Logger.log(`✅ Step 5完了 (${step5Time}秒)`);
+    } catch (e) {
+      batchResults.steps.push({ name: 'データ整合性チェック', success: false, error: e.message });
+      batchResults.overallSuccess = false;
+      Logger.log(`❌ Step 5エラー: ${e.message}`);
+    }
+
+    // Step 6: 重複データクリーンアップ
+    Logger.log('📋 Step 6: 重複データクリーンアップ実行中...');
+    try {
+      const step6Start = new Date();
+      const cleanupResults = optimizedCleanupDuplicateInspectionData();
+      const step6Time = (new Date() - step6Start) / 1000;
+      batchResults.steps.push({ 
+        name: '重複データクリーンアップ', 
+        success: true, 
+        time: step6Time,
+        details: cleanupResults 
+      });
+      Logger.log(`✅ Step 6完了 (${step6Time}秒)`);
+    } catch (e) {
+      batchResults.steps.push({ name: '重複データクリーンアップ', success: false, error: e.message });
+      batchResults.overallSuccess = false;
+      Logger.log(`❌ Step 6エラー: ${e.message}`);
+    }
+
+    const overallEndTime = new Date();
+    batchResults.totalProcessingTime = (overallEndTime - overallStartTime) / 1000;
+
+    // 結果サマリー
+    const successfulSteps = batchResults.steps.filter(step => step.success).length;
+    const failedSteps = batchResults.steps.filter(step => !step.success).length;
+    
+    Logger.log('🎯 総合データ最適化バッチ処理完了');
+    Logger.log(`📊 総処理時間: ${batchResults.totalProcessingTime}秒`);
+    Logger.log(`✅ 成功: ${successfulSteps}件`);
+    Logger.log(`❌ 失敗: ${failedSteps}件`);
+
+    let alertMessage = `総合データ最適化完了\n総処理時間: ${batchResults.totalProcessingTime}秒\n\n`;
+    alertMessage += `✅ 成功: ${successfulSteps}件\n`;
+    
+    if (failedSteps > 0) {
+      alertMessage += `❌ 失敗: ${failedSteps}件\n\n`;
+      alertMessage += '失敗した処理:\n';
+      batchResults.steps.filter(step => !step.success).forEach(step => {
+        alertMessage += `  - ${step.name}\n`;
+      });
+      alertMessage += '\n詳細はログを確認してください';
+    } else {
+      alertMessage += '\n🎉 すべての最適化処理が正常に完了しました！';
+      alertMessage += '\n\n✨ データベースの品質と性能が向上しました';
+    }
+
+    safeAlert('バッチ処理完了', alertMessage);
+
+    return batchResults;
+
+  } catch (e) {
+    Logger.log(`❌ 総合データ最適化バッチ処理エラー: ${e.message}\n${e.stack}`);
+    safeAlert('エラー', `総合データ最適化バッチ処理中にエラーが発生しました: ${e.message}`);
+    return null;
+  }
+}
+
 // --- 統合された onOpen 関数 ---
 function onOpen() {
   // スプレッドシートが開かれた時に自動実行される関数
@@ -594,6 +1222,12 @@ function onOpen() {
     menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    menu.addSeparator();
+    menu.addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity');
+    menu.addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
+    menu.addItem('⚡ データインデックス作成', 'createDataIndexes');
+    menu.addSeparator();
+    menu.addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization');
 
     menu.addToUi();
     Logger.log('✅ 総合カスタム処理メニューが正常に作成されました');
@@ -628,6 +1262,12 @@ function createCustomMenu() {
     menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    menu.addSeparator();
+    menu.addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity');
+    menu.addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
+    menu.addItem('⚡ データインデックス作成', 'createDataIndexes');
+    menu.addSeparator();
+    menu.addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization');
 
     menu.addToUi();
     Logger.log('✅ 総合カスタム処理メニューが正常に作成されました');
@@ -734,6 +1374,12 @@ function createCustomMenuOnOpen() {
     menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    menu.addSeparator();
+    menu.addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity');
+    menu.addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
+    menu.addItem('⚡ データインデックス作成', 'createDataIndexes');
+    menu.addSeparator();
+    menu.addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization');
 
     menu.addToUi();
     Logger.log('総合カスタム処理メニューが正常に作成されました。');
@@ -797,6 +1443,12 @@ function forceCreateMenu() {
     menu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
     menu.addSeparator();
     menu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    menu.addSeparator();
+    menu.addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity');
+    menu.addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
+    menu.addItem('⚡ データインデックス作成', 'createDataIndexes');
+    menu.addSeparator();
+    menu.addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization');
 
     menu.addToUi();
     
