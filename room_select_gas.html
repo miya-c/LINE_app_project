@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>部屋選択 (GAS版)</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- CSSをインライン化 -->
+  <style>
+    /* Room Select Application Styles for GAS */
+    :root {
+      --mantine-color-blue-6: #228be6;
+      --mantine-color-blue-7: #1c7ed6;
+      --mantine-color-blue-8: #1971c2;
+      --mantine-color-blue-light: #e7f5ff;
+      --mantine-color-gray-0: #f8f9fa;
+      --mantine-color-gray-1: #f1f3f4;
+      --mantine-color-gray-2: #e9ecef;
+      --mantine-color-gray-3: #dee2e6;
+      --mantine-color-gray-6: #868e96;
+      --mantine-color-gray-7: #495057;
+      --mantine-color-red-6: #fa5252;
+      --mantine-color-red-light: #fff5f5;
+      --mantine-radius-sm: 4px;
+      --mantine-radius-md: 8px;
+      --mantine-spacing-xs: 10px;
+      --mantine-spacing-sm: 12px;
+      --mantine-spacing-md: 16px;
+      --mantine-spacing-lg: 20px;
+      --mantine-spacing-xl: 32px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      line-height: 1.55;
+      color: var(--mantine-color-gray-7);
+      background-color: var(--mantine-color-gray-0);
+    }
+
+    .mantine-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--mantine-spacing-lg);
+      width: 100%;
+    }
+
+    .mantine-title {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin: var(--mantine-spacing-xl) 0 var(--mantine-spacing-lg) 0;
+      color: var(--mantine-color-gray-7);
+      text-align: center;
+    }
+
+    .mantine-text-input {
+      width: 100%;
+      padding: var(--mantine-spacing-xs);
+      border: 1px solid var(--mantine-color-gray-3);
+      border-radius: var(--mantine-radius-sm);
+      font-size: 14px;
+      color: var(--mantine-color-gray-7);
+      margin-bottom: var(--mantine-spacing-md);
+      font-family: inherit;
+      transition: border-color 150ms ease;
+    }
+
+    .mantine-text-input:focus {
+      outline: none;
+      border-color: var(--mantine-color-blue-6);
+      box-shadow: 0 0 0 1px var(--mantine-color-blue-6);
+    }
+
+    .mantine-text-input::placeholder {
+      color: var(--mantine-color-gray-6);
+    }
+
+    .mantine-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--mantine-spacing-xs);
+      padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+      border: none;
+      border-radius: var(--mantine-radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 150ms ease;
+      font-family: inherit;
+      line-height: 1;
+      margin-bottom: var(--mantine-spacing-md);
+    }
+
+    .mantine-button-variant-light {
+      background-color: var(--mantine-color-blue-light);
+      color: var(--mantine-color-blue-6);
+    }
+
+    .mantine-button-variant-light:hover {
+      background-color: var(--mantine-color-blue-6);
+      color: white;
+    }
+
+    .mantine-alert {
+      padding: var(--mantine-spacing-md);
+      border-radius: var(--mantine-radius-md);
+      margin-bottom: var(--mantine-spacing-md);
+      background-color: var(--mantine-color-red-light);
+      color: var(--mantine-color-red-6);
+      border: 1px solid var(--mantine-color-red-6);
+    }
+
+    .room-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--mantine-spacing-sm);
+    }
+
+    .room-item {
+      display: flex;
+      align-items: center;
+      padding: var(--mantine-spacing-md);
+      background-color: white;
+      border: 1px solid var(--mantine-color-gray-2);
+      border-radius: var(--mantine-radius-md);
+      cursor: pointer;
+      transition: all 150ms ease;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .room-item:hover {
+      background-color: var(--mantine-color-blue-light);
+      border-color: var(--mantine-color-blue-6);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .room-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .room-id {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--mantine-color-gray-7);
+      margin-bottom: 2px;
+    }
+
+    .room-name {
+      font-size: 14px;
+      color: var(--mantine-color-gray-6);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .room-arrow {
+      width: 20px;
+      height: 20px;
+      color: var(--mantine-color-gray-6);
+      flex-shrink: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--mantine-spacing-xl);
+      color: var(--mantine-color-gray-6);
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .loading-text {
+      margin-top: var(--mantine-spacing-md);
+      font-size: 16px;
+      color: var(--mantine-color-gray-7);
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      border: 3px solid var(--mantine-color-gray-2);
+      border-top: 3px solid var(--mantine-color-blue-6);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+    }
+
+    @media (max-width: 768px) {
+      .mantine-container {
+        padding: 0 var(--mantine-spacing-sm);
+      }
+      
+      .mantine-title {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text">データを読み込んでいます...</div>
+    </div>
+  </div>
+
+  <script>
+    // GASテンプレートデータの取得
+    window.gasPropertyId = '<?= propertyId ?>';
+    window.gasPropertyName = '<?= propertyName ?>';
+    window.gasRooms = <?!= rooms ?>;
+
+    console.log('GAS Template Data:', {
+      propertyId: window.gasPropertyId,
+      propertyName: window.gasPropertyName,
+      rooms: window.gasRooms
+    });
+
+    // アプリケーションの状態
+    let appState = {
+      propertyId: window.gasPropertyId,
+      propertyName: window.gasPropertyName,
+      rooms: [],
+      filteredRooms: [],
+      searchTerm: '',
+      loading: true,
+      error: null,
+      isNavigating: false,
+      navigationMessage: ''
+    };
+
+    // UIレンダリング関数
+    const renderLoadingOverlay = (message = 'データを読み込んでいます...') => {
+      return `
+        <div class="loading-overlay">
+          <div class="spinner"></div>
+          <div class="loading-text">${message}</div>
+        </div>
+      `;
+    };
+
+    const renderBackButton = () => {
+      return `
+        <button class="mantine-button mantine-button-variant-light" onclick="handleBack()">
+          ← 物件選択に戻る
+        </button>
+      `;
+    };
+
+    const renderSearchInput = () => {
+      return `
+        <input 
+          type="text" 
+          class="mantine-text-input" 
+          placeholder="部屋番号または部屋名で検索..." 
+          value="${appState.searchTerm}"
+          oninput="handleSearchChange(event)"
+        />
+      `;
+    };
+
+    const renderErrorAlert = () => {
+      if (!appState.error) return '';
+      
+      return `
+        <div class="mantine-alert">
+          ${appState.error}
+        </div>
+      `;
+    };
+
+    const renderEmptyStates = () => {
+      if (appState.loading) return '';
+      
+      if (appState.rooms.length === 0) {
+        return `
+          <div class="empty-state">
+            この物件には部屋が登録されていません。
+          </div>
+        `;
+      }
+      
+      if (appState.filteredRooms.length === 0 && appState.searchTerm) {
+        return `
+          <div class="empty-state">
+            「${appState.searchTerm}」に一致する部屋が見つかりません。
+          </div>
+        `;
+      }
+      
+      return '';
+    };
+
+    const renderRoomList = () => {
+      if (appState.loading || appState.rooms.length === 0 || appState.filteredRooms.length === 0) {
+        return '';
+      }
+      
+      const roomItems = appState.filteredRooms.map(room => `
+        <div class="room-item" onclick="handleRoomSelect('${room.id}', '${room.name.replace(/'/g, "\\'")}')">
+          <div class="room-info">
+            <div class="room-id">${room.id}</div>
+            <div class="room-name">${room.name}</div>
+          </div>
+          <div class="room-arrow">→</div>
+        </div>
+      `).join('');
+      
+      return `
+        <div class="room-list">
+          ${roomItems}
+        </div>
+      `;
+    };
+
+    const renderApp = () => {
+      if (appState.isNavigating) {
+        return renderLoadingOverlay(appState.navigationMessage);
+      }
+      
+      let content = `
+        <div class="mantine-container">
+          ${renderBackButton()}
+          <h1 class="mantine-title">部屋選択</h1>
+          <p style="text-align: center; color: var(--mantine-color-gray-6); margin-bottom: var(--mantine-spacing-lg);">
+            物件: ${appState.propertyName}
+          </p>
+          ${renderSearchInput()}
+          ${renderErrorAlert()}
+          ${renderEmptyStates()}
+          ${renderRoomList()}
+        </div>
+      `;
+      
+      document.getElementById('root').innerHTML = content;
+    };
+
+    // イベントハンドラ
+    const handleSearchChange = (event) => {
+      appState.searchTerm = event.target.value;
+      filterRooms();
+    };
+
+    const filterRooms = () => {
+      if (!appState.searchTerm.trim()) {
+        appState.filteredRooms = [...appState.rooms];
+      } else {
+        const term = appState.searchTerm.toLowerCase();
+        appState.filteredRooms = appState.rooms.filter(room => 
+          room.id.toLowerCase().includes(term) || 
+          room.name.toLowerCase().includes(term)
+        );
+      }
+      renderApp();
+    };
+
+    const handleRoomSelect = (roomId, roomName) => {
+      console.log(`Room selected: ${roomId} - ${roomName}`);
+      
+      if (!roomId || !roomName) {
+        alert('選択された部屋情報が無効です。');
+        return;
+      }
+      
+      appState.isNavigating = true;
+      appState.navigationMessage = '検針画面を準備しています...';
+      renderApp();
+      
+      // スクロールを上部に移動
+      window.scrollTo(0, 0);
+      
+      setTimeout(() => {
+        // 検針画面のダイアログを開く
+        google.script.run.openMeterReadingDialog(
+          appState.propertyId, 
+          appState.propertyName, 
+          roomId, 
+          roomName
+        );
+      }, 300);
+    };
+
+    const handleBack = () => {
+      appState.isNavigating = true;
+      appState.navigationMessage = '物件選択画面に戻っています...';
+      renderApp();
+      
+      setTimeout(() => {
+        google.script.run.showPropertySelectDialog();
+      }, 300);
+    };
+
+    // 初期化処理
+    const initializeApp = () => {
+      try {
+        console.log('Initializing Room Select App...');
+        console.log('Property ID:', appState.propertyId);
+        console.log('Property Name:', appState.propertyName);
+        console.log('Rooms data:', appState.rooms);
+        
+        // GASテンプレートからのデータをチェック
+        if (!appState.propertyId || !appState.propertyName) {
+          throw new Error('物件情報が正しく渡されていません。');
+        }
+        
+        // 部屋データの処理
+        if (window.gasRooms) {
+          if (Array.isArray(window.gasRooms)) {
+            appState.rooms = window.gasRooms;
+          } else if (window.gasRooms.result && Array.isArray(window.gasRooms.result)) {
+            appState.rooms = window.gasRooms.result;
+          } else if (window.gasRooms.rooms && Array.isArray(window.gasRooms.rooms)) {
+            appState.rooms = window.gasRooms.rooms;
+          } else {
+            console.error('Unexpected rooms data format:', window.gasRooms);
+            appState.rooms = [];
+          }
+        } else {
+          appState.rooms = [];
+        }
+        
+        console.log('Processed rooms:', appState.rooms);
+        
+        appState.filteredRooms = [...appState.rooms];
+        appState.loading = false;
+        
+        renderApp();
+        
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        appState.error = `アプリケーションの初期化に失敗しました: ${error.message}`;
+        appState.loading = false;
+        renderApp();
+      }
+    };
+
+    // DOMContentLoadedイベントでアプリを初期化
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+      initializeApp();
+    }
+  </script>
+</body>
+</html>
