@@ -242,6 +242,75 @@
       rooms: window.gasRooms
     });
 
+    // ===================================
+    // 日付処理関数（room_select.htmlと統一）
+    // ===================================
+    
+    const formatDateForDisplay = (rawDate) => {
+      if (!rawDate) return null;
+      
+      try {
+        // Case 1: Date型オブジェクトの場合
+        if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+          console.log('[formatDateForDisplay] Date型を処理:', rawDate);
+          const year = rawDate.getFullYear();
+          const month = rawDate.getMonth() + 1;
+          const day = rawDate.getDate();
+          console.log(`[formatDateForDisplay] Date型から抽出: ${year}年${month}月${day}日`);
+          return `${month}月${day}日`;
+        }
+        
+        // Case 2: 文字列形式の日付処理
+        let dateStr = String(rawDate).trim();
+        console.log('[formatDateForDisplay] 文字列を処理:', dateStr);
+        
+        // YYYY/MM/DD または YYYY-MM-DD 形式
+        const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+        if (match) {
+          const [, year, month, day] = match;
+          const result = `${parseInt(month)}月${parseInt(day)}日`;
+          console.log(`[formatDateForDisplay] 文字列から抽出: ${result}`);
+          return result;
+        }
+        
+        // その他の日付文字列パターンを試行
+        const dateObj = new Date(dateStr);
+        if (!isNaN(dateObj.getTime())) {
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          console.log(`[formatDateForDisplay] Date変換成功: ${month}月${day}日`);
+          return `${month}月${day}日`;
+        }
+        
+        return null;
+      } catch (error) {
+        console.warn('[formatDateForDisplay] 日付フォーマットエラー:', rawDate, error);
+        return null;
+      }
+    };
+    
+    const formatInspectionStatus = (room) => {
+      console.log('[formatInspectionStatus] 呼び出し - 引数:', room);
+      
+      // hasActualReadingを優先的に使用
+      if (room.hasActualReading !== undefined) {
+        const result = room.hasActualReading
+          ? { status: '検針済み', displayDate: formatDateForDisplay(room.rawInspectionDate) }
+          : { status: '未検針', displayDate: null };
+        console.log('[formatInspectionStatus] hasActualReading使用結果:', result);
+        return result;
+      }
+      
+      // フォールバック：rawInspectionDateのみで判定
+      const formattedDate = formatDateForDisplay(room.rawInspectionDate);
+      const result = formattedDate ? 
+        { status: '検針済み', displayDate: formattedDate } : 
+        { status: '未検針', displayDate: null };
+      
+      console.log('[formatInspectionStatus] フォールバック結果:', result);
+      return result;
+    };
+
     // アプリケーションの状態
     let appState = {
       propertyId: window.gasPropertyId,
@@ -322,15 +391,38 @@
         return '';
       }
       
-      const roomItems = appState.filteredRooms.map(room => `
-        <div class="room-item" onclick="handleRoomSelect('${room.id}', '${room.name.replace(/'/g, "\\'")}')">
-          <div class="room-info">
-            <div class="room-id">${room.id}</div>
-            <div class="room-name">${room.name}</div>
+      const roomItems = appState.filteredRooms.map(room => {
+        console.log('[renderRoomList] 部屋データ処理:', {
+          roomId: room.id,
+          name: room.name,
+          rawInspectionDate: room.rawInspectionDate,
+          hasActualReading: room.hasActualReading,
+          rawInspectionDateType: typeof room.rawInspectionDate
+        });
+        
+        // 検針状況をフォーマット
+        const inspectionStatus = formatInspectionStatus(room);
+        
+        // 検針状況の表示用HTML生成
+        let statusDisplay = '';
+        if (inspectionStatus.status === '検針済み' && inspectionStatus.displayDate) {
+          statusDisplay = `<span style="color: #228be6; font-weight: 500; font-size: 0.9em; margin-left: 8px;">[検針日：${inspectionStatus.displayDate}]</span>`;
+        } else if (inspectionStatus.status === '検針済み' && !inspectionStatus.displayDate) {
+          statusDisplay = `<span style="color: #228be6; font-weight: 500; font-size: 0.9em; margin-left: 8px;">[検針済み]</span>`;
+        } else if (inspectionStatus.status === '未検針') {
+          statusDisplay = `<span style="color: #fa5252; font-weight: 600; font-size: 0.9em; margin-left: 8px;">[未検針]</span>`;
+        }
+        
+        return `
+          <div class="room-item" onclick="handleRoomSelect('${room.id}', '${room.name.replace(/'/g, "\\'")}')">
+            <div class="room-info">
+              <div class="room-id">${room.name}${statusDisplay}</div>
+              <div class="room-name">部屋ID: ${room.id}</div>
+            </div>
+            <div class="room-arrow">→</div>
           </div>
-          <div class="room-arrow">→</div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
       
       return `
         <div class="room-list">
@@ -380,6 +472,11 @@
       renderApp();
     };
 
+    // 実行環境を判定
+    const isWebApp = () => {
+      return !window.google?.script?.run;
+    };
+
     const handleRoomSelect = (roomId, roomName) => {
       console.log(`Room selected: ${roomId} - ${roomName}`);
       
@@ -395,77 +492,185 @@
       // スクロールを上部に移動
       window.scrollTo(0, 0);
       
-      setTimeout(() => {
-        // 検針画面のダイアログを開く
-        google.script.run.openMeterReadingDialog(
-          appState.propertyId, 
-          appState.propertyName, 
-          roomId, 
-          roomName
-        );
-      }, 300);
+      try {
+        if (isWebApp()) {
+          // ✅ Web App環境: 検針ページへ遷移
+          const baseUrl = window.location.origin + window.location.pathname;
+          const meterReadingUrl = `${baseUrl}?page=meter_reading&propertyId=${encodeURIComponent(appState.propertyId)}&propertyName=${encodeURIComponent(appState.propertyName)}&roomId=${encodeURIComponent(roomId)}&roomName=${encodeURIComponent(roomName)}`;
+          window.location.href = meterReadingUrl;
+        } else {
+          // GAS環境: ダイアログを開く
+          setTimeout(() => {
+            google.script.run.openMeterReadingDialog(
+              appState.propertyId, 
+              appState.propertyName, 
+              roomId, 
+              roomName
+            );
+          }, 300);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`エラー: ${error.message}`);
+        appState.isNavigating = false;
+        renderApp();
+      }
     };
 
     const handleBack = () => {
-      appState.isNavigating = true;
-      appState.navigationMessage = '物件選択画面に戻っています...';
-      renderApp();
-      
-      setTimeout(() => {
-        google.script.run.showPropertySelectDialog();
-      }, 300);
+      if (isWebApp()) {
+        // Web App環境: 物件選択ページへ遷移
+        console.log('Web App環境: 物件選択ページへ遷移');
+        appState.isNavigating = true;
+        appState.navigationMessage = '物件選択画面に戻っています...';
+        renderApp();
+        
+        setTimeout(() => {
+          const baseUrl = window.location.origin + window.location.pathname;
+          const propertySelectUrl = `${baseUrl}?page=property_select`;
+          window.location.href = propertySelectUrl;
+        }, 300);
+      } else {
+        // GAS環境: ダイアログを表示
+        console.log('GAS環境: 物件選択ダイアログを表示');
+        appState.isNavigating = true;
+        appState.navigationMessage = '物件選択画面に戻っています...';
+        renderApp();
+        
+        setTimeout(() => {
+          google.script.run.showPropertySelectDialog();
+        }, 300);
+      }
     };
 
     // 初期化処理
-    const initializeApp = () => {
+    const initializeApp = async () => {
       try {
         console.log('Initializing Room Select App...');
         
+        // 環境判定
+        const webAppMode = isWebApp();
+        console.log('実行環境:', webAppMode ? 'Web App' : 'GAS ダイアログ');
+        
         // Web App環境でのURLパラメータ処理
-        const urlParams = new URLSearchParams(window.location.search);
-        const propertyIdFromUrl = urlParams.get('propertyId');
-        const propertyNameFromUrl = urlParams.get('propertyName');
-        
-        if (propertyIdFromUrl && propertyNameFromUrl) {
-          console.log('Using URL parameters for property info');
-          appState.propertyId = decodeURIComponent(propertyIdFromUrl);
-          appState.propertyName = decodeURIComponent(propertyNameFromUrl);
-        }
-        
-        console.log('Property ID:', appState.propertyId);
-        console.log('Property Name:', appState.propertyName);
-        console.log('Rooms data:', appState.rooms);
-        
-        // GASテンプレートからのデータをチェック
-        if (!appState.propertyId || !appState.propertyName) {
-          throw new Error('物件情報が正しく渡されていません。');
-        }
-        
-        // 部屋データの処理
-        if (window.gasRooms) {
-          if (Array.isArray(window.gasRooms)) {
-            appState.rooms = window.gasRooms;
-          } else if (window.gasRooms.result && Array.isArray(window.gasRooms.result)) {
-            appState.rooms = window.gasRooms.result;
-          } else if (window.gasRooms.rooms && Array.isArray(window.gasRooms.rooms)) {
-            appState.rooms = window.gasRooms.rooms;
+        if (webAppMode) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const propertyIdFromUrl = urlParams.get('propertyId');
+          const propertyNameFromUrl = urlParams.get('propertyName');
+          
+          console.log('URLパラメータ:', { propertyIdFromUrl, propertyNameFromUrl });
+          
+          if (propertyIdFromUrl && propertyNameFromUrl) {
+            appState.propertyId = decodeURIComponent(propertyIdFromUrl);
+            appState.propertyName = decodeURIComponent(propertyNameFromUrl);
+            
+            console.log('Web App環境 - 部屋データをAPIから取得中...');
+            
+            try {
+              const baseUrl = window.location.origin + window.location.pathname;
+              const apiUrl = `${baseUrl}?action=getRooms&propertyId=${encodeURIComponent(appState.propertyId)}`;
+              console.log('API URL:', apiUrl);
+              
+              const response = await fetch(apiUrl);
+              console.log('API Response Status:', response.status);
+              
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              
+              const data = await response.json();
+              console.log('API Response Data:', data);
+              
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              
+              // レスポンス形式の処理
+              if (Array.isArray(data)) {
+                appState.rooms = data;
+              } else if (data.result && Array.isArray(data.result)) {
+                appState.rooms = data.result;
+              } else if (data.rooms && Array.isArray(data.rooms)) {
+                appState.rooms = data.rooms;
+              } else {
+                console.error('予期しないAPI応答形式:', data);
+                throw new Error('部屋データの形式が正しくありません');
+              }
+              
+              console.log('✅ Web App API 部屋データ取得成功 - 件数:', appState.rooms.length);
+              
+            } catch (apiError) {
+              console.error('❌ Web App API エラー:', apiError);
+              appState.error = `部屋データの取得に失敗しました: ${apiError.message}`;
+              appState.loading = false;
+              renderApp();
+              return;
+            }
           } else {
-            console.error('Unexpected rooms data format:', window.gasRooms);
-            appState.rooms = [];
+            console.error('Web App環境: 必要なURLパラメータが不足');
+            appState.error = 'URLパラメータが不足しています。物件選択画面から再度アクセスしてください。';
+            appState.loading = false;
+            renderApp();
+            return;
           }
         } else {
-          appState.rooms = [];
+          // GAS環境：テンプレートデータを使用
+          console.log('GAS環境 - テンプレートデータを使用');
+          
+          appState.propertyId = window.gasPropertyId || '';
+          appState.propertyName = window.gasPropertyName || '';
+          
+          console.log('GASテンプレートデータ:', {
+            propertyId: appState.propertyId,
+            propertyName: appState.propertyName,
+            rooms: window.gasRooms
+          });
+          
+          if (!appState.propertyId || !appState.propertyName) {
+            console.error('GAS環境: 物件情報が不足');
+            appState.error = '物件情報が正しく渡されていません。';
+            appState.loading = false;
+            renderApp();
+            return;
+          }
+          
+          // 部屋データの処理
+          if (window.gasRooms) {
+            try {
+              if (typeof window.gasRooms === 'string') {
+                appState.rooms = JSON.parse(window.gasRooms);
+              } else if (Array.isArray(window.gasRooms)) {
+                appState.rooms = window.gasRooms;
+              } else if (window.gasRooms.result && Array.isArray(window.gasRooms.result)) {
+                appState.rooms = window.gasRooms.result;
+              } else if (window.gasRooms.rooms && Array.isArray(window.gasRooms.rooms)) {
+                appState.rooms = window.gasRooms.rooms;
+              } else {
+                console.error('予期しない部屋データ形式:', window.gasRooms);
+                appState.rooms = [];
+              }
+            } catch (parseError) {
+              console.error('部屋データの解析エラー:', parseError);
+              appState.rooms = [];
+            }
+          } else {
+            console.warn('GASテンプレートに部屋データがありません');
+            appState.rooms = [];
+          }
+          
+          console.log('✅ GAS 部屋データ取得成功 - 件数:', appState.rooms.length);
         }
         
-        console.log('Processed rooms:', appState.rooms);
-        
+        // 最終処理
         appState.filteredRooms = [...appState.rooms];
         appState.loading = false;
+        
+        console.log('初期化完了 - 部屋数:', appState.rooms.length);
         
         renderApp();
         
       } catch (error) {
-        console.error('Error initializing app:', error);
+        console.error('❌ アプリ初期化エラー:', error);
         appState.error = `アプリケーションの初期化に失敗しました: ${error.message}`;
         appState.loading = false;
         renderApp();

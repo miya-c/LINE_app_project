@@ -1064,8 +1064,15 @@ body {
         appState.navigationMessage = '画面を切り替えています...';
         renderApp();
         
-        // Call GAS function to go back to room selection
-        await callGasFunction('openRoomSelectDialog', appState.propertyId, appState.propertyName);
+        if (isWebApp()) {
+          // ✅ Web App環境: 部屋選択ページへ遷移
+          const baseUrl = window.location.origin + window.location.pathname;
+          const roomSelectUrl = `${baseUrl}?page=room_select&propertyId=${encodeURIComponent(appState.propertyId)}&propertyName=${encodeURIComponent(appState.propertyName)}`;
+          window.location.href = roomSelectUrl;
+        } else {
+          // GAS環境: ダイアログを開く
+          await callGasFunction('openRoomSelectDialog', appState.propertyId, appState.propertyName);
+        }
         
       } catch (error) {
         console.error('[meter_reading] 戻るボタン処理エラー:', error);
@@ -1211,6 +1218,33 @@ body {
       }
     };
 
+    // Web App環境での検針データ取得
+    const loadMeterReadingsWebApp = async (propertyId, roomId) => {
+      try {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const fetchUrl = `${baseUrl}?action=getMeterReadings&propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(roomId)}`;
+        
+        console.log('[meter_reading] Web App検針データ取得URL:', fetchUrl);
+        
+        const response = await fetch(fetchUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('[meter_reading] Web App検針データ取得結果:', result);
+        
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
+        return result.readings || result || [];
+      } catch (error) {
+        console.error('[meter_reading] Web App検針データ取得エラー:', error);
+        throw error;
+      }
+    };
+
     // ===================================
     // Application Initialization
     // ===================================
@@ -1219,46 +1253,85 @@ body {
       try {
         console.log('[meter_reading] アプリを初期化します。');
         
-        // GASテンプレートからのデータを取得
-        appState.propertyId = window.gasPropertyId || 'N/A';
-        appState.propertyName = window.gasPropertyName || 'N/A';
-        appState.roomId = window.gasRoomId || 'N/A';
-        appState.roomName = window.gasRoomName || 'N/A';
-
-        console.log('[meter_reading] GASテンプレートデータ詳細:');
-        console.log('[meter_reading] - propertyId:', `"${appState.propertyId}"`, '型:', typeof appState.propertyId);
-        console.log('[meter_reading] - propertyName:', `"${appState.propertyName}"`, '型:', typeof appState.propertyName);
-        console.log('[meter_reading] - roomId:', `"${appState.roomId}"`, '型:', typeof appState.roomId);
-        console.log('[meter_reading] - roomName:', `"${appState.roomName}"`, '型:', typeof appState.roomName);
-
-        if (!appState.propertyId || !appState.roomId || appState.propertyId === 'N/A' || appState.roomId === 'N/A') {
-          console.error('[meter_reading] 物件IDまたは部屋IDがGASテンプレートから正しく取得できません。');
-          appState.error = '物件情報または部屋情報が不足しているため、検針データを取得できません。';
-          appState.loading = false;
-          renderApp();
-          return;
-        }
-
-        // GASテンプレートから検針データを取得
-        if (window.gasMeterReadings) {
-          console.log('[meter_reading] GASテンプレートから検針データを取得:', window.gasMeterReadings);
-          let readings;
-          if (Array.isArray(window.gasMeterReadings)) {
-            readings = window.gasMeterReadings;
-          } else if (window.gasMeterReadings.readings && Array.isArray(window.gasMeterReadings.readings)) {
-            readings = window.gasMeterReadings.readings;
-          } else if (window.gasMeterReadings.result && Array.isArray(window.gasMeterReadings.result)) {
-            readings = window.gasMeterReadings.result;
-          } else {
-            console.error('[meter_reading] 予期しない検針データ形式:', window.gasMeterReadings);
-            readings = [];
-          }
+        // Web App環境でのURLパラメータ処理
+        if (isWebApp()) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const propertyIdFromUrl = urlParams.get('propertyId');
+          const propertyNameFromUrl = urlParams.get('propertyName');
+          const roomIdFromUrl = urlParams.get('roomId');
+          const roomNameFromUrl = urlParams.get('roomName');
           
-          appState.meterReadings = readings;
-          console.log('[meter_reading] ✅ テンプレートデータ取得成功 - 件数:', readings.length);
+          if (propertyIdFromUrl && propertyNameFromUrl && roomIdFromUrl && roomNameFromUrl) {
+            console.log('[meter_reading] Web App環境: URLパラメータを使用');
+            appState.propertyId = decodeURIComponent(propertyIdFromUrl);
+            appState.propertyName = decodeURIComponent(propertyNameFromUrl);
+            appState.roomId = decodeURIComponent(roomIdFromUrl);
+            appState.roomName = decodeURIComponent(roomNameFromUrl);
+            
+            console.log('[meter_reading] URLパラメータ詳細:');
+            console.log('[meter_reading] - propertyId:', `"${appState.propertyId}"`);
+            console.log('[meter_reading] - propertyName:', `"${appState.propertyName}"`);
+            console.log('[meter_reading] - roomId:', `"${appState.roomId}"`);
+            console.log('[meter_reading] - roomName:', `"${appState.roomName}"`);
+            
+            // Web App環境で検針データを取得
+            try {
+              const readings = await loadMeterReadingsWebApp(appState.propertyId, appState.roomId);
+              appState.meterReadings = Array.isArray(readings) ? readings : [];
+              console.log('[meter_reading] ✅ Web App検針データ取得成功 - 件数:', appState.meterReadings.length);
+            } catch (error) {
+              console.error('[meter_reading] Web App検針データ取得失敗:', error);
+              appState.meterReadings = [];
+            }
+          } else {
+            console.error('[meter_reading] Web App環境: 必要なURLパラメータが不足しています');
+            appState.error = 'URLパラメータが不足しています。物件選択画面から再度アクセスしてください。';
+            appState.loading = false;
+            renderApp();
+            return;
+          }
         } else {
-          console.log('[meter_reading] ⚠️ GASテンプレートに検針データがありません（初回検針状態）');
-          appState.meterReadings = [];
+          // GAS環境: テンプレートからのデータを取得
+          appState.propertyId = window.gasPropertyId || 'N/A';
+          appState.propertyName = window.gasPropertyName || 'N/A';
+          appState.roomId = window.gasRoomId || 'N/A';
+          appState.roomName = window.gasRoomName || 'N/A';
+
+          console.log('[meter_reading] GASテンプレートデータ詳細:');
+          console.log('[meter_reading] - propertyId:', `"${appState.propertyId}"`, '型:', typeof appState.propertyId);
+          console.log('[meter_reading] - propertyName:', `"${appState.propertyName}"`, '型:', typeof appState.propertyName);
+          console.log('[meter_reading] - roomId:', `"${appState.roomId}"`, '型:', typeof appState.roomId);
+          console.log('[meter_reading] - roomName:', `"${appState.roomName}"`, '型:', typeof appState.roomName);
+
+          if (!appState.propertyId || !appState.roomId || appState.propertyId === 'N/A' || appState.roomId === 'N/A') {
+            console.error('[meter_reading] 物件IDまたは部屋IDがGASテンプレートから正しく取得できません。');
+            appState.error = '物件情報または部屋情報が不足しているため、検針データを取得できません。';
+            appState.loading = false;
+            renderApp();
+            return;
+          }
+
+          // GASテンプレートから検針データを取得
+          if (window.gasMeterReadings) {
+            console.log('[meter_reading] GASテンプレートから検針データを取得:', window.gasMeterReadings);
+            let readings;
+            if (Array.isArray(window.gasMeterReadings)) {
+              readings = window.gasMeterReadings;
+            } else if (window.gasMeterReadings.readings && Array.isArray(window.gasMeterReadings.readings)) {
+              readings = window.gasMeterReadings.readings;
+            } else if (window.gasMeterReadings.result && Array.isArray(window.gasMeterReadings.result)) {
+              readings = window.gasMeterReadings.result;
+            } else {
+              console.error('[meter_reading] 予期しない検針データ形式:', window.gasMeterReadings);
+              readings = [];
+            }
+            
+            appState.meterReadings = readings;
+            console.log('[meter_reading] ✅ テンプレートデータ取得成功 - 件数:', readings.length);
+          } else {
+            console.log('[meter_reading] ⚠️ GASテンプレートに検針データがありません（初回検針状態）');
+            appState.meterReadings = [];
+          }
         }
         
         appState.loading = false;

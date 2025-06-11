@@ -257,22 +257,60 @@ function doGet(e) {
         .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
     }
     
-    // 部屋選択ページ（将来的な拡張）
+    // 部屋選択ページ
     else if (page === 'room_select') {
+      console.log('[doGet] 部屋選択ページ処理開始');
       const propertyId = e.parameter.propertyId;
       const propertyName = e.parameter.propertyName;
       
+      console.log('[doGet] 受信パラメータ:', { propertyId, propertyName });
+      
       if (!propertyId || !propertyName) {
-        throw new Error('部屋選択ページには propertyId と propertyName パラメータが必要です');
+        const errorMsg = '部屋選択ページには propertyId と propertyName パラメータが必要です';
+        console.error('[doGet]', errorMsg);
+        throw new Error(errorMsg);
       }
+      
+      console.log('[doGet] 部屋データ取得開始');
+      const rooms = getRooms(propertyId);
+      console.log('[doGet] 取得した部屋データ:', rooms);
       
       const htmlOutput = HtmlService.createTemplateFromFile('room_select_gas');
       htmlOutput.propertyId = propertyId;
       htmlOutput.propertyName = propertyName;
-      htmlOutput.rooms = JSON.stringify(getRooms(propertyId));
+      htmlOutput.rooms = JSON.stringify(rooms);
+      
+      console.log('[doGet] HTMLテンプレート準備完了');
       
       return htmlOutput.evaluate()
         .setTitle(`部屋選択 - ${propertyName}`)
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    }
+    
+    // 検針入力ページ
+    else if (page === 'meter_reading') {
+      const propertyId = e.parameter.propertyId;
+      const propertyName = e.parameter.propertyName;
+      const roomId = e.parameter.roomId;
+      const roomName = e.parameter.roomName;
+      
+      if (!propertyId || !propertyName || !roomId || !roomName) {
+        throw new Error('検針入力ページには propertyId, propertyName, roomId, roomName パラメータが必要です');
+      }
+      
+      console.log('[doGet] 検針入力ページを表示');
+      
+      const meterReadings = getMeterReadings(propertyId, roomId);
+      const htmlOutput = HtmlService.createTemplateFromFile('meter_reading_gas');
+      htmlOutput.propertyId = propertyId;
+      htmlOutput.propertyName = propertyName;
+      htmlOutput.roomId = roomId;
+      htmlOutput.roomName = roomName;
+      htmlOutput.meterReadings = JSON.stringify(meterReadings);
+      
+      return htmlOutput.evaluate()
+        .setTitle(`検針入力 - ${propertyName} ${roomName}`)
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
     }
@@ -370,13 +408,120 @@ function getProperties() {
 }
 
 /**
- * 指定した物件の部屋一覧を取得
+ * 指定した物件の部屋一覧を取得（検針状況付き）
+ * @param {string} propertyId - 物件ID
+ * @return {Array} 部屋一覧
+ */
+/**
+ * 指定した物件の部屋一覧を取得（検針状況付き）
  * @param {string} propertyId - 物件ID
  * @return {Array} 部屋一覧
  */
 function getRooms(propertyId) {
   try {
     console.log('[getRooms] 開始 - propertyId:', propertyId);
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const roomSheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
+    const inspectionSheet = ss.getSheetByName('inspection_data');
+    
+    if (!roomSheet) {
+      throw new Error('部屋マスタ または room_master シートが見つかりません');
+    }
+    
+    // 部屋マスタからデータを取得
+    const roomRange = roomSheet.getDataRange();
+    const roomValues = roomRange.getValues();
+    
+    if (roomValues.length <= 1) {
+      console.log('[getRooms] 部屋データが存在しません');
+      return [];
+    }
+    
+    const roomHeaders = roomValues[0];
+    const propertyIdIndex = roomHeaders.indexOf('物件ID');
+    const roomIdIndex = roomHeaders.indexOf('部屋ID');
+    const roomNameIndex = roomHeaders.indexOf('部屋名');
+    
+    if (propertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
+      throw new Error('部屋マスタに必要な列（物件ID、部屋ID、部屋名）が見つかりません');
+    }
+    
+    // 検針データを取得（検針状況確認用）
+    let inspectionData = [];
+    if (inspectionSheet) {
+      const inspectionRange = inspectionSheet.getDataRange();
+      const inspectionValues = inspectionRange.getValues();
+      
+      if (inspectionValues.length > 1) {
+        const inspectionHeaders = inspectionValues[0];
+        const inspPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
+        const inspRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
+        const inspectionDateIndex = inspectionHeaders.indexOf('検針日');
+        const currentReadingIndex = inspectionHeaders.indexOf('今回指示数（水道）');
+        
+        for (let i = 1; i < inspectionValues.length; i++) {
+          const row = inspectionValues[i];
+          if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim()) {
+            inspectionData.push({
+              propertyId: row[inspPropertyIdIndex],
+              roomId: row[inspRoomIdIndex],
+              inspectionDate: row[inspectionDateIndex],
+              currentReading: row[currentReadingIndex],
+              hasActualReading: row[currentReadingIndex] !== null && 
+                               row[currentReadingIndex] !== undefined && 
+                               String(row[currentReadingIndex]).trim() !== ''
+            });
+          }
+        }
+      }
+    }
+    
+    // 部屋データを処理
+    const rooms = [];
+    for (let i = 1; i < roomValues.length; i++) {
+      const row = roomValues[i];
+      if (String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
+          row[roomIdIndex] && row[roomNameIndex]) {
+        
+        const roomId = String(row[roomIdIndex]).trim();
+        
+        // この部屋の検針データを検索
+        const roomInspection = inspectionData.find(insp => 
+          String(insp.roomId).trim() === roomId
+        );
+        
+        const room = {
+          id: roomId,
+          name: String(row[roomNameIndex]).trim(),
+          propertyId: String(row[propertyIdIndex]).trim(),
+          rawInspectionDate: roomInspection ? roomInspection.inspectionDate : null,
+          hasActualReading: roomInspection ? roomInspection.hasActualReading : false
+        };
+        
+        rooms.push(room);
+      }
+    }
+    
+    console.log('[getRooms] 取得した部屋数:', rooms.length);
+    console.log('[getRooms] 最初の部屋データ:', rooms[0] || 'なし');
+    
+    return rooms;
+    
+  } catch (error) {
+    console.error('[getRooms] エラー:', error);
+    throw new Error('部屋データの取得に失敗しました: ' + error.message);
+  }
+}
+
+/**
+ * レガシー部屋一覧取得（フォールバック用）
+ * @param {string} propertyId - 物件ID
+ * @return {Array} 部屋一覧
+ */
+function getRoomsLegacy(propertyId) {
+  try {
+    console.log('[getRoomsLegacy] 開始 - propertyId:', propertyId);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     // 日本語名を優先、なければ英語名を試行
@@ -402,11 +547,11 @@ function getRooms(propertyId) {
       }
     }
     
-    console.log('[getRooms] 取得した部屋数:', rooms.length);
+    console.log('[getRoomsLegacy] 取得した部屋数:', rooms.length);
     return rooms;
   } catch (error) {
-    console.error('[getRooms] エラー:', error);
-    throw new Error('部屋データの取得に失敗しました: ' + error.message);
+    console.error('[getRoomsLegacy] エラー:', error);
+    throw new Error('レガシー部屋データの取得に失敗しました: ' + error.message);
   }
 }
 
@@ -1050,8 +1195,61 @@ function createDataIndexes() {
   safeAlert('情報', 'データインデックス作成機能は実装中です。');
 }
 
-function runComprehensiveDataOptimization() {
-  safeAlert('情報', '総合データ最適化機能は実装中です。');
+/**
+ * 部屋選択の問題を診断するテスト関数
+ */
+function debugRoomSelection() {
+  console.log('='.repeat(50));
+  console.log('部屋選択問題診断テスト');
+  console.log('='.repeat(50));
+  
+  try {
+    // 1. 物件データテスト
+    console.log('1. 物件データテスト');
+    const properties = getProperties();
+    console.log('物件数:', properties.length);
+    if (properties.length > 0) {
+      const testPropertyId = properties[0].id;
+      console.log('テスト用物件ID:', testPropertyId);
+      
+      // 2. 部屋データテスト
+      console.log('2. 部屋データテスト');
+      const rooms = getRooms(testPropertyId);
+      console.log('部屋数:', rooms.length);
+      console.log('部屋データサンプル:', rooms.slice(0, 2));
+      
+      // 3. Web AppURLテスト
+      console.log('3. Web App URLテスト');
+      const webAppUrl = ScriptApp.getService().getUrl();
+      console.log('Web App URL:', webAppUrl);
+      
+      const testUrls = [
+        `${webAppUrl}`,
+        `${webAppUrl}?action=getProperties`,
+        `${webAppUrl}?action=getRooms&propertyId=${encodeURIComponent(testPropertyId)}`,
+        `${webAppUrl}?page=room_select&propertyId=${encodeURIComponent(testPropertyId)}&propertyName=${encodeURIComponent(properties[0].name)}`
+      ];
+      
+      console.log('テスト用URL一覧:');
+      testUrls.forEach((url, index) => {
+        console.log(`${index + 1}. ${url}`);
+      });
+      
+      return {
+        success: true,
+        propertyCount: properties.length,
+        roomCount: rooms.length,
+        testUrls: testUrls
+      };
+    } else {
+      console.log('❌ 物件データが見つかりません');
+      return { success: false, error: '物件データが見つかりません' };
+    }
+    
+  } catch (error) {
+    console.error('❌ 診断テストエラー:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
