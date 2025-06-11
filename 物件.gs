@@ -241,8 +241,8 @@ function getGasVersion() {
   };
 }
 
-// メイン処理関数
-function doGet(e) {
+// API処理関数（旧doGet関数 - 現在は非アクティブ）
+function doGetApi(e) {
   try {
     const timestamp = new Date().toISOString();    console.log(`[GAS DEBUG ${timestamp}] doGet開始 - バージョン: v8-STRING-DATE-ONLY`);
     console.log(`[GAS DEBUG] 🔧 完全String型日付処理版が動作中です（Date型を一切使用せず1日ずれ問題解決）!`);

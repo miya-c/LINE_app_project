@@ -254,8 +254,51 @@
         }
       };
 
-      // GAS関数を呼び出すためのヘルパー関数
+      // 実行環境を判定
+      const isWebApp = () => {
+        return !window.google?.script?.run;
+      };
+
+      // GAS関数を呼び出すためのヘルパー関数（環境対応）
       const callGasFunction = (functionName, ...args) => {
+        if (isWebApp()) {
+          // Web App環境ではAPIとして呼び出し
+          const baseUrl = window.location.origin + window.location.pathname;
+          
+          if (functionName === 'getProperties') {
+            return fetch(`${baseUrl}?action=getProperties`)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+              })
+              .then(data => {
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+                return data;
+              });
+          } else if (functionName === 'getRooms') {
+            const propertyId = args[0];
+            return fetch(`${baseUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+              })
+              .then(data => {
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+                return data;
+              });
+          } else {
+            return Promise.reject(new Error(`Web App環境では ${functionName} 関数は制限されています`));
+          }
+        }
+        
         return new Promise((resolve, reject) => {
           google.script.run
             .withSuccessHandler(resolve)
@@ -273,6 +316,7 @@
         const fetchProperties = async () => {
           setLoading(true);
           setError(null);
+          
           try {
             console.log('[ReactApp] Fetching properties from GAS...');
             
@@ -325,6 +369,12 @@
       const handlePropertySelect = async (property) => {
         console.log('[ReactApp] handlePropertySelect called with:', property);
         
+        // Web App環境の場合は操作を制限
+        if (isWebApp()) {
+          alert('Web App環境では物件選択機能は制限されています。完全な機能をご利用いただくには、Googleスプレッドシートのメニューからアクセスしてください。');
+          return;
+        }
+        
         if (!property) {
           console.error('[ReactApp] Property is null or undefined');
           alert('選択された物件情報が無効です。');
@@ -352,13 +402,29 @@
         try {
           console.log(`[ReactApp] Property selected: ${property.id} - ${property.name}`);
           
-          setNavigationMessage('画面を切り替えています...');
-          
-          // GAS環境では新しいHTMLダイアログを開く
-          setTimeout(() => {
-            // 部屋選択ダイアログを開く（GAS関数を呼び出し）
-            google.script.run.openRoomSelectDialog(property.id, property.name);
-          }, 300);
+          if (isWebApp()) {
+            // Web App環境では部屋データを取得してから画面遷移
+            setNavigationMessage('部屋情報を読み込んでいます...');
+            
+            const rooms = await callGasFunction('getRooms', property.id);
+            console.log('[ReactApp] Fetched rooms:', rooms);
+            
+            // 部屋選択ページのURLを構築
+            const baseUrl = window.location.origin + window.location.pathname;
+            const roomSelectUrl = `${baseUrl}?page=room_select&propertyId=${encodeURIComponent(property.id)}&propertyName=${encodeURIComponent(property.name)}`;
+            
+            console.log('[ReactApp] Navigating to room selection:', roomSelectUrl);
+            window.location.href = roomSelectUrl;
+            
+          } else {
+            // GAS環境では新しいHTMLダイアログを開く
+            setNavigationMessage('画面を切り替えています...');
+            
+            setTimeout(() => {
+              // 部屋選択ダイアログを開く（GAS関数を呼び出し）
+              google.script.run.openRoomSelectDialog(property.id, property.name);
+            }, 300);
+          }
           
         } catch (error) {
           console.error('[ReactApp] Error fetching rooms or navigating:', error);

@@ -420,6 +420,18 @@
     const initializeApp = () => {
       try {
         console.log('Initializing Room Select App...');
+        
+        // Web App環境でのURLパラメータ処理
+        const urlParams = new URLSearchParams(window.location.search);
+        const propertyIdFromUrl = urlParams.get('propertyId');
+        const propertyNameFromUrl = urlParams.get('propertyName');
+        
+        if (propertyIdFromUrl && propertyNameFromUrl) {
+          console.log('Using URL parameters for property info');
+          appState.propertyId = decodeURIComponent(propertyIdFromUrl);
+          appState.propertyName = decodeURIComponent(propertyNameFromUrl);
+        }
+        
         console.log('Property ID:', appState.propertyId);
         console.log('Property Name:', appState.propertyName);
         console.log('Rooms data:', appState.rooms);

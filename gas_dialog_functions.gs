@@ -169,6 +169,170 @@ function openMeterReadingDialog(propertyId, propertyName, roomId, roomName) {
 }
 
 /**
+ * Web App用のメイン関数 - property_select_gas.htmlをWebアプリとして提供
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {HtmlOutput} HTMLページ
+ */
+function doGet(e) {
+  try {
+    console.log('[doGet] Web App アクセス開始');
+    console.log('[doGet] パラメータ:', e?.parameter);
+    
+    // API要求の場合（actionパラメータが存在）
+    if (e?.parameter?.action) {
+      const action = e.parameter.action;
+      console.log('[doGet] API要求 - アクション:', action);
+      
+      switch (action) {
+        case 'getProperties':
+          console.log('[doGet] API: getProperties');
+          try {
+            const properties = getProperties();
+            return ContentService
+              .createTextOutput(JSON.stringify(properties))
+              .setMimeType(ContentService.MimeType.JSON);
+          } catch (apiError) {
+            console.error('[doGet] getProperties API エラー:', apiError);
+            return ContentService
+              .createTextOutput(JSON.stringify({ error: `物件データ取得エラー: ${apiError.message}` }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+          
+        case 'getRooms':
+          console.log('[doGet] API: getRooms');
+          try {
+            const propertyId = e.parameter.propertyId;
+            if (!propertyId) {
+              throw new Error('propertyId パラメータが必要です');
+            }
+            const rooms = getRooms(propertyId);
+            return ContentService
+              .createTextOutput(JSON.stringify(rooms))
+              .setMimeType(ContentService.MimeType.JSON);
+          } catch (apiError) {
+            console.error('[doGet] getRooms API エラー:', apiError);
+            return ContentService
+              .createTextOutput(JSON.stringify({ error: `部屋データ取得エラー: ${apiError.message}` }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+          
+        case 'getMeterReadings':
+          console.log('[doGet] API: getMeterReadings');
+          try {
+            const propertyId = e.parameter.propertyId;
+            const roomId = e.parameter.roomId;
+            if (!propertyId || !roomId) {
+              throw new Error('propertyId および roomId パラメータが必要です');
+            }
+            const readings = getMeterReadings(propertyId, roomId);
+            return ContentService
+              .createTextOutput(JSON.stringify(readings))
+              .setMimeType(ContentService.MimeType.JSON);
+          } catch (apiError) {
+            console.error('[doGet] getMeterReadings API エラー:', apiError);
+            return ContentService
+              .createTextOutput(JSON.stringify({ error: `検針データ取得エラー: ${apiError.message}` }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+          
+        default:
+          console.log('[doGet] 未対応のAPI要求:', action);
+          return ContentService
+            .createTextOutput(JSON.stringify({ error: `未対応のAPI要求: ${action}` }))
+            .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    // HTML表示要求の場合
+    const page = e?.parameter?.page || 'property_select';
+    console.log('[doGet] HTML表示要求 - ページ:', page);
+    
+    // 物件選択ページを返す（デフォルト）
+    if (page === 'property_select' || !page) {
+      const htmlOutput = HtmlService.createTemplateFromFile('property_select_gas');
+      
+      return htmlOutput.evaluate()
+        .setTitle('水道検針アプリ - 物件選択')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    }
+    
+    // 部屋選択ページ（将来的な拡張）
+    else if (page === 'room_select') {
+      const propertyId = e.parameter.propertyId;
+      const propertyName = e.parameter.propertyName;
+      
+      if (!propertyId || !propertyName) {
+        throw new Error('部屋選択ページには propertyId と propertyName パラメータが必要です');
+      }
+      
+      const htmlOutput = HtmlService.createTemplateFromFile('room_select_gas');
+      htmlOutput.propertyId = propertyId;
+      htmlOutput.propertyName = propertyName;
+      htmlOutput.rooms = JSON.stringify(getRooms(propertyId));
+      
+      return htmlOutput.evaluate()
+        .setTitle(`部屋選択 - ${propertyName}`)
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    }
+    
+    // 未対応のページ
+    else {
+      throw new Error(`未対応のページが要求されました: ${page}`);
+    }
+    
+  } catch (error) {
+    console.error('[doGet] エラー:', error);
+    
+    // API要求でのエラー処理
+    if (e?.parameter?.action) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          error: `APIエラー: ${error.message}`,
+          action: e.parameter.action,
+          timestamp: new Date().toISOString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // HTML表示でのエラー処理
+    const errorHtml = HtmlService.createHtmlOutput(`
+      <html>
+        <head>
+          <title>エラー - 水道検針アプリ</title>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; text-align: center; background: #f5f5f5; }
+            .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; }
+            .error h2 { margin-top: 0; }
+            .back-button { margin-top: 20px; }
+            .back-button a { display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h2>🚨 アプリケーションエラー</h2>
+            <p>申し訳ございません。アプリケーションの読み込みに失敗しました。</p>
+            <p><strong>エラー詳細:</strong> ${error.message}</p>
+            <div class="back-button">
+              <a href="javascript:history.back()">戻る</a>
+              <a href="${ScriptApp.getService().getUrl()}">ホームに戻る</a>
+            </div>
+            <p><small>管理者にお問い合わせください。</small></p>
+          </div>
+        </body>
+      </html>
+    `);
+    
+    return errorHtml
+      .setTitle('エラー - 水道検針アプリ')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+}
+
+/**
  * 物件一覧を取得
  * @return {Array} 物件一覧
  */
