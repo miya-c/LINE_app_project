@@ -205,14 +205,37 @@ function doGet(e) {
             if (!propertyId) {
               throw new Error('propertyId パラメータが必要です');
             }
+            
+            console.log('[doGet] 部屋データ取得開始 - propertyId:', propertyId);
             const rooms = getRooms(propertyId);
+            console.log('[doGet] 部屋データ取得完了 - 件数:', Array.isArray(rooms) ? rooms.length : 'not array');
+            
+            // 統一されたレスポンス形式で返す
+            const response = {
+              success: true,
+              result: Array.isArray(rooms) ? rooms : [],
+              count: Array.isArray(rooms) ? rooms.length : 0,
+              timestamp: new Date().toISOString()
+            };
+            
             return ContentService
-              .createTextOutput(JSON.stringify(rooms))
+              .createTextOutput(JSON.stringify(response))
               .setMimeType(ContentService.MimeType.JSON);
+              
           } catch (apiError) {
             console.error('[doGet] getRooms API エラー:', apiError);
+            
+            // エラーレスポンスも統一形式
+            const errorResponse = {
+              success: false,
+              error: `部屋データ取得エラー: ${apiError.message}`,
+              result: [],
+              count: 0,
+              timestamp: new Date().toISOString()
+            };
+            
             return ContentService
-              .createTextOutput(JSON.stringify({ error: `部屋データ取得エラー: ${apiError.message}` }))
+              .createTextOutput(JSON.stringify(errorResponse))
               .setMimeType(ContentService.MimeType.JSON);
           }
           
@@ -259,33 +282,88 @@ function doGet(e) {
     
     // 部屋選択ページ
     else if (page === 'room_select') {
-      console.log('[doGet] 部屋選択ページ処理開始');
+      console.log('[doGet] 🏠 部屋選択ページ処理開始');
       const propertyId = e.parameter.propertyId;
       const propertyName = e.parameter.propertyName;
       
-      console.log('[doGet] 受信パラメータ:', { propertyId, propertyName });
+      console.log('[doGet] 📝 受信パラメータ:');
+      console.log('- propertyId:', `"${propertyId}"`);
+      console.log('- propertyName:', `"${propertyName}"`);
       
       if (!propertyId || !propertyName) {
         const errorMsg = '部屋選択ページには propertyId と propertyName パラメータが必要です';
-        console.error('[doGet]', errorMsg);
-        throw new Error(errorMsg);
+        console.error('[doGet] ❌', errorMsg);
+        
+        const errorHtml = HtmlService.createHtmlOutput(`
+          <html>
+            <head>
+              <title>パラメータエラー</title>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
+                .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; }
+                .back-button a { display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; margin: 10px; }
+              </style>
+            </head>
+            <body>
+              <div class="error">
+                <h2>🚨 パラメータエラー</h2>
+                <p>${errorMsg}</p>
+                <p>propertyId: ${propertyId || '(なし)'}<br>propertyName: ${propertyName || '(なし)'}</p>
+                <div class="back-button">
+                  <a href="${ScriptApp.getService().getUrl()}">物件選択に戻る</a>
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        
+        return errorHtml.setTitle('パラメータエラー');
       }
       
-      console.log('[doGet] 部屋データ取得開始');
-      const rooms = getRooms(propertyId);
-      console.log('[doGet] 取得した部屋データ:', rooms);
-      
-      const htmlOutput = HtmlService.createTemplateFromFile('room_select_gas');
-      htmlOutput.propertyId = propertyId;
-      htmlOutput.propertyName = propertyName;
-      htmlOutput.rooms = JSON.stringify(rooms);
-      
-      console.log('[doGet] HTMLテンプレート準備完了');
-      
-      return htmlOutput.evaluate()
-        .setTitle(`部屋選択 - ${propertyName}`)
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+      try {
+        console.log('[doGet] 📊 部屋データ取得開始...');
+        const rooms = getRooms(propertyId);
+        console.log('[doGet] ✅ 部屋データ取得完了 - 件数:', rooms.length);
+        
+        const htmlOutput = HtmlService.createTemplateFromFile('room_select_gas');
+        htmlOutput.propertyId = String(propertyId);
+        htmlOutput.propertyName = String(propertyName);
+        htmlOutput.rooms = JSON.stringify(rooms);
+        
+        return htmlOutput.evaluate()
+          .setTitle(`部屋選択 - ${propertyName}`)
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+          
+      } catch (roomError) {
+        console.error('[doGet] 💥 部屋データ取得エラー:', roomError);
+        
+        const errorHtml = HtmlService.createHtmlOutput(`
+          <html>
+            <head>
+              <title>部屋データエラー</title>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
+                .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; }
+                .back-button a { display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; margin: 10px; }
+              </style>
+            </head>
+            <body>
+              <div class="error">
+                <h2>🚨 部屋データ取得エラー</h2>
+                <p>物件: ${propertyName}<br>エラー: ${roomError.message}</p>
+                <div class="back-button">
+                  <a href="${ScriptApp.getService().getUrl()}">物件選択に戻る</a>
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        
+        return errorHtml.setTitle('部屋データエラー');
+      }
     }
     
     // 検針入力ページ

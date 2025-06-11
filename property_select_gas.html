@@ -383,13 +383,34 @@
         try {
           if (isWebApp()) {
             // ✅ Web App環境: 部屋選択ページへ遷移
+            console.log('[ReactApp] Web App 遷移処理開始');
             const baseUrl = window.location.origin + window.location.pathname;
             const roomSelectUrl = `${baseUrl}?page=room_select&propertyId=${encodeURIComponent(property.id)}&propertyName=${encodeURIComponent(property.name)}`;
+            
+            console.log('[ReactApp] 遷移URL:', roomSelectUrl);
+            console.log('[ReactApp] パラメータ詳細:');
+            console.log('- propertyId:', property.id);
+            console.log('- propertyName:', property.name);
+            console.log('- エンコード後propertyId:', encodeURIComponent(property.id));
+            console.log('- エンコード後propertyName:', encodeURIComponent(property.name));
+            
+            // 遷移実行
             window.location.href = roomSelectUrl;
           } else {
             // GAS環境: ダイアログを開く
+            console.log('[ReactApp] GAS ダイアログ処理開始');
             setTimeout(() => {
-              google.script.run.openRoomSelectDialog(property.id, property.name);
+              google.script.run
+                .withSuccessHandler(() => {
+                  console.log('[ReactApp] ダイアログが正常に開かれました');
+                  setIsNavigating(false);
+                })
+                .withFailureHandler((error) => {
+                  console.error('[ReactApp] ダイアログ表示エラー:', error);
+                  setError(`ダイアログの表示に失敗しました: ${error.message}`);
+                  setIsNavigating(false);
+                })
+                .openRoomSelectDialog(property.id, property.name);
             }, 300);
           }
         } catch (error) {

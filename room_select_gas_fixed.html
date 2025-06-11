@@ -573,9 +573,7 @@
     // 初期化処理
     const initializeApp = async () => {
       try {
-        console.log('=== Room Select App 初期化開始 ===');
-        console.log('現在のURL:', window.location.href);
-        console.log('URLパラメータ:', window.location.search);
+        console.log('Initializing Room Select App...');
         
         // 環境判定
         const webAppMode = isWebApp();
@@ -583,170 +581,88 @@
         
         // Web App環境でのURLパラメータ処理
         if (webAppMode) {
-          console.log('🌐 Web App環境での初期化開始');
-          
           const urlParams = new URLSearchParams(window.location.search);
           const propertyIdFromUrl = urlParams.get('propertyId');
           const propertyNameFromUrl = urlParams.get('propertyName');
           
-          console.log('🔍 URLパラメータ確認:');
-          console.log('- propertyId:', `"${propertyIdFromUrl}"`);
-          console.log('- propertyName:', `"${propertyNameFromUrl}"`);
-          console.log('- 全パラメータ:', Array.from(urlParams.entries()));
+          console.log('URLパラメータ:', { propertyIdFromUrl, propertyNameFromUrl });
           
           if (propertyIdFromUrl && propertyNameFromUrl) {
             appState.propertyId = decodeURIComponent(propertyIdFromUrl);
             appState.propertyName = decodeURIComponent(propertyNameFromUrl);
             
-            console.log('📍 デコード後のパラメータ:');
-            console.log('- propertyId:', `"${appState.propertyId}"`);
-            console.log('- propertyName:', `"${appState.propertyName}"`);
-            
-            console.log('📡 Web App API 部屋データ取得開始...');
+            console.log('Web App環境 - 部屋データをAPIから取得中...');
             
             try {
               const baseUrl = window.location.origin + window.location.pathname;
               const apiUrl = `${baseUrl}?action=getRooms&propertyId=${encodeURIComponent(appState.propertyId)}`;
+              console.log('API URL:', apiUrl);
               
-              console.log('📡 API URL:', apiUrl);
-              
-              // タイムアウト付きのfetch
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => {
-                console.error('⏰ API リクエストタイムアウト (15秒)');
-                controller.abort();
-              }, 15000);
-              
-              const response = await fetch(apiUrl, { 
-                signal: controller.signal,
-                headers: {
-                  'Accept': 'application/json',
-                  'Cache-Control': 'no-cache'
-                }
-              });
-              
-              clearTimeout(timeoutId);
-              
-              console.log('📡 API Response Status:', response.status);
-              console.log('📡 API Response Headers:', {
-                'Content-Type': response.headers.get('Content-Type'),
-                'Content-Length': response.headers.get('Content-Length')
-              });
+              const response = await fetch(apiUrl);
+              console.log('API Response Status:', response.status);
               
               if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
               }
               
-              const contentType = response.headers.get('Content-Type');
-              console.log('📡 Content-Type:', contentType);
+              const data = await response.json();
+              console.log('API Response Data:', data);
               
-              let data;
-              if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
-              } else {
-                const textData = await response.text();
-                console.log('📡 Raw Response (first 500 chars):', textData.substring(0, 500));
-                
-                // HTMLが返された場合のエラー検出
-                if (textData.trim().startsWith('<')) {
-                  throw new Error('APIからJSONではなくHTMLが返されました。サーバーエラーの可能性があります。');
-                }
-                
-                try {
-                  data = JSON.parse(textData);
-                } catch (parseError) {
-                  console.error('JSON解析エラー:', parseError);
-                  throw new Error(`JSONパース失敗: ${parseError.message}`);
-                }
+              if (data.error) {
+                throw new Error(data.error);
               }
               
-              console.log('✅ API Response Data:', data);
-              console.log('✅ Data Type:', typeof data);
-              console.log('✅ Is Array:', Array.isArray(data));
-              
-              // 統一されたレスポンス形式の処理
-              if (data.success === false) {
-                throw new Error(data.error || 'サーバーエラーが発生しました');
-              }
-              
-              // データ抽出の優先順位を明確化
-              let roomsData = [];
-              if (data.result && Array.isArray(data.result)) {
-                roomsData = data.result;
-              } else if (Array.isArray(data)) {
-                roomsData = data;
+              // レスポンス形式の処理
+              if (Array.isArray(data)) {
+                appState.rooms = data;
+              } else if (data.result && Array.isArray(data.result)) {
+                appState.rooms = data.result;
               } else if (data.rooms && Array.isArray(data.rooms)) {
-                roomsData = data.rooms;
+                appState.rooms = data.rooms;
               } else {
-                console.error('❌ 予期しないAPI応答形式:', data);
-                console.error('❌ データの構造:', Object.keys(data || {}));
+                console.error('予期しないAPI応答形式:', data);
                 throw new Error('部屋データの形式が正しくありません');
               }
               
-              appState.rooms = roomsData;
-              console.log('🎉 Web App API 部屋データ取得成功!');
-              console.log('- 部屋数:', appState.rooms.length);
-              console.log('- 最初の部屋:', appState.rooms[0] || 'なし');
+              console.log('✅ Web App API 部屋データ取得成功 - 件数:', appState.rooms.length);
               
             } catch (apiError) {
               console.error('❌ Web App API エラー:', apiError);
-              console.error('❌ エラー名:', apiError.name);
-              console.error('❌ エラーメッセージ:', apiError.message);
-              
-              // エラーの詳細情報を表示
-              let errorMessage = `部屋データの取得に失敗: ${apiError.message}`;
-              
-              if (apiError.name === 'AbortError') {
-                errorMessage = 'APIリクエストがタイムアウトしました。ネットワーク接続を確認してください。';
-              } else if (apiError.message.includes('Failed to fetch')) {
-                errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-              }
-              
-              appState.error = errorMessage;
+              appState.error = `部屋データの取得に失敗しました: ${apiError.message}`;
               appState.loading = false;
               renderApp();
               return;
             }
           } else {
-            console.error('❌ Web App環境: 必要なURLパラメータが不足');
-            console.error('❌ 期待値: propertyId, propertyName');
-            console.error('❌ 実際の値:', { propertyIdFromUrl, propertyNameFromUrl });
-            
-            appState.error = `URLパラメータが不足しています。物件選択画面から再度アクセスしてください。
-            
-詳細情報:
-- propertyId: ${propertyIdFromUrl || '(なし)'}
-- propertyName: ${propertyNameFromUrl || '(なし)'}
-- 現在のURL: ${window.location.href}`;
-            
+            console.error('Web App環境: 必要なURLパラメータが不足');
+            appState.error = 'URLパラメータが不足しています。物件選択画面から再度アクセスしてください。';
             appState.loading = false;
             renderApp();
             return;
           }
         } else {
           // GAS環境：テンプレートデータを使用
-          console.log('📋 GAS環境 - テンプレートデータを使用');
+          console.log('GAS環境 - テンプレートデータを使用');
           
           appState.propertyId = window.gasPropertyId || '';
           appState.propertyName = window.gasPropertyName || '';
           
-          console.log('📋 GASテンプレートデータ詳細:');
-          console.log('- propertyId:', `"${appState.propertyId}"`, '型:', typeof appState.propertyId);
-          console.log('- propertyName:', `"${appState.propertyName}"`, '型:', typeof appState.propertyName);
-          console.log('- rooms:', window.gasRooms);
+          console.log('GASテンプレートデータ:', {
+            propertyId: appState.propertyId,
+            propertyName: appState.propertyName,
+            rooms: window.gasRooms
+          });
           
-          if (!appState.propertyId || !appState.propertyName || 
-              appState.propertyId === '<?= propertyId ?>' || 
-              appState.propertyName === '<?= propertyName ?>') {
-            console.error('❌ GAS環境: 物件情報が不足または未処理');
-            appState.error = '物件情報が正しく渡されていません。GASテンプレートの処理を確認してください。';
+          if (!appState.propertyId || !appState.propertyName) {
+            console.error('GAS環境: 物件情報が不足');
+            appState.error = '物件情報が正しく渡されていません。';
             appState.loading = false;
             renderApp();
             return;
           }
           
           // 部屋データの処理
-          if (window.gasRooms && window.gasRooms !== '<?!= rooms ?>') {
+          if (window.gasRooms) {
             try {
               if (typeof window.gasRooms === 'string') {
                 appState.rooms = JSON.parse(window.gasRooms);
@@ -757,15 +673,15 @@
               } else if (window.gasRooms.rooms && Array.isArray(window.gasRooms.rooms)) {
                 appState.rooms = window.gasRooms.rooms;
               } else {
-                console.error('❌ 予期しない部屋データ形式:', window.gasRooms);
+                console.error('予期しない部屋データ形式:', window.gasRooms);
                 appState.rooms = [];
               }
             } catch (parseError) {
-              console.error('❌ 部屋データの解析エラー:', parseError);
+              console.error('部屋データの解析エラー:', parseError);
               appState.rooms = [];
             }
           } else {
-            console.warn('⚠️ GASテンプレートに部屋データがありません');
+            console.warn('GASテンプレートに部屋データがありません');
             appState.rooms = [];
           }
           
@@ -776,26 +692,13 @@
         appState.filteredRooms = [...appState.rooms];
         appState.loading = false;
         
-        console.log('🎊 初期化完了!');
-        console.log('- 総部屋数:', appState.rooms.length);
-        console.log('- フィルタ済み部屋数:', appState.filteredRooms.length);
-        console.log('- 物件ID:', `"${appState.propertyId}"`);
-        console.log('- 物件名:', `"${appState.propertyName}"`);
-        console.log('=== Room Select App 初期化完了 ===');
+        console.log('初期化完了 - 部屋数:', appState.rooms.length);
         
         renderApp();
         
       } catch (error) {
-        console.error('💥 アプリ初期化エラー:', error);
-        console.error('💥 エラースタック:', error.stack);
-        
-        appState.error = `アプリケーションの初期化に失敗しました: ${error.message}
-        
-詳細情報:
-- エラー名: ${error.name}
-- 現在のURL: ${window.location.href}
-- 実行環境: ${isWebApp() ? 'Web App' : 'GAS'}`;
-        
+        console.error('❌ アプリ初期化エラー:', error);
+        appState.error = `アプリケーションの初期化に失敗しました: ${error.message}`;
         appState.loading = false;
         renderApp();
       }
