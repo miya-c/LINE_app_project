@@ -610,96 +610,133 @@
               
               console.log('📡 API URL:', apiUrl);
               
-              // タイムアウト付きのfetch
+              // 🔥 より短いタイムアウトとキャンセル可能なリクエスト
               const controller = new AbortController();
               const timeoutId = setTimeout(() => {
-                console.error('⏰ API リクエストタイムアウト (15秒)');
+                console.error('⏰ API リクエストタイムアウト (8秒)');
                 controller.abort();
-              }, 15000);
+              }, 8000); // 15秒から8秒に短縮
               
               const response = await fetch(apiUrl, { 
                 signal: controller.signal,
+                method: 'GET',
                 headers: {
                   'Accept': 'application/json',
-                  'Cache-Control': 'no-cache'
+                  'Cache-Control': 'no-cache',
+                  'X-Requested-With': 'XMLHttpRequest'
                 }
               });
               
               clearTimeout(timeoutId);
               
               console.log('📡 API Response Status:', response.status);
+              console.log('📡 API Response OK:', response.ok);
               console.log('📡 API Response Headers:', {
                 'Content-Type': response.headers.get('Content-Type'),
-                'Content-Length': response.headers.get('Content-Length')
+                'Content-Length': response.headers.get('Content-Length'),
+                'X-Frame-Options': response.headers.get('X-Frame-Options')
               });
               
               if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const errorText = await response.text();
+                console.error('📡 HTTP Error Response Body:', errorText.substring(0, 500));
+                throw new Error(`HTTP ${response.status}: ${response.statusText}. Response: ${errorText.substring(0, 100)}`);
               }
               
               const contentType = response.headers.get('Content-Type');
-              console.log('📡 Content-Type:', contentType);
+              console.log('📡 Content-Type確認:', contentType);
               
               let data;
               if (contentType && contentType.includes('application/json')) {
                 data = await response.json();
               } else {
                 const textData = await response.text();
-                console.log('📡 Raw Response (first 500 chars):', textData.substring(0, 500));
+                console.log('📡 Non-JSON Response (first 500 chars):', textData.substring(0, 500));
                 
-                // HTMLが返された場合のエラー検出
+                // HTMLが返された場合の詳細分析
                 if (textData.trim().startsWith('<')) {
-                  throw new Error('APIからJSONではなくHTMLが返されました。サーバーエラーの可能性があります。');
+                  console.error('❌ HTMLレスポンスを検出 - GAS側でエラーが発生');
+                  
+                  // HTMLエラーの詳細を抽出
+                  const titleMatch = textData.match(/<title>(.*?)<\/title>/i);
+                  const errorTitle = titleMatch ? titleMatch[1] : 'Unknown Error';
+                  
+                  throw new Error(`GAS側でエラーが発生しました: ${errorTitle}. HTMLが返されました。`);
+                }
+                
+                // JSON以外のテキストレスポンス
+                if (textData.includes('ScriptError') || textData.includes('Exception')) {
+                  throw new Error(`GASスクリプトエラー: ${textData.substring(0, 200)}`);
                 }
                 
                 try {
                   data = JSON.parse(textData);
                 } catch (parseError) {
-                  console.error('JSON解析エラー:', parseError);
-                  throw new Error(`JSONパース失敗: ${parseError.message}`);
+                  console.error('❌ JSON解析エラー:', parseError);
+                  console.error('❌ 解析対象データ:', textData.substring(0, 200));
+                  throw new Error(`JSONパース失敗: ${parseError.message}. Response: ${textData.substring(0, 100)}`);
                 }
               }
               
               console.log('✅ API Response Data:', data);
               console.log('✅ Data Type:', typeof data);
-              console.log('✅ Is Array:', Array.isArray(data));
+              console.log('✅ Data Keys:', Object.keys(data || {}));
               
-              // 統一されたレスポンス形式の処理
+              // 🔥 統一されたレスポンス形式の処理
               if (data.success === false) {
+                console.error('❌ APIがエラーを返しました:', data.error);
+                console.error('❌ Debug Info:', data.debugInfo);
                 throw new Error(data.error || 'サーバーエラーが発生しました');
               }
               
-              // データ抽出の優先順位を明確化
+              // 🔥 データ抽出の明確化
               let roomsData = [];
-              if (data.result && Array.isArray(data.result)) {
+              if (data.success === true && Array.isArray(data.data)) {
+                // 新しい統一形式
+                roomsData = data.data;
+                console.log('📊 統一形式のデータを使用:', roomsData.length, '件');
+              } else if (data.result && Array.isArray(data.result)) {
+                // 既存の result 形式
                 roomsData = data.result;
+                console.log('📊 result形式のデータを使用:', roomsData.length, '件');
               } else if (Array.isArray(data)) {
+                // 直接配列形式
                 roomsData = data;
+                console.log('📊 直接配列のデータを使用:', roomsData.length, '件');
               } else if (data.rooms && Array.isArray(data.rooms)) {
+                // rooms プロパティ形式
                 roomsData = data.rooms;
+                console.log('📊 rooms形式のデータを使用:', roomsData.length, '件');
               } else {
                 console.error('❌ 予期しないAPI応答形式:', data);
                 console.error('❌ データの構造:', Object.keys(data || {}));
-                throw new Error('部屋データの形式が正しくありません');
+                console.error('❌ 各プロパティの型:', Object.entries(data || {}).map(([key, value]) => `${key}: ${typeof value}`));
+                throw new Error(`部屋データの形式が正しくありません。受信形式: ${typeof data}`);
               }
               
               appState.rooms = roomsData;
               console.log('🎉 Web App API 部屋データ取得成功!');
               console.log('- 部屋数:', appState.rooms.length);
               console.log('- 最初の部屋:', appState.rooms[0] || 'なし');
+              console.log('- 部屋データサンプル:', appState.rooms.slice(0, 2));
               
             } catch (apiError) {
               console.error('❌ Web App API エラー:', apiError);
               console.error('❌ エラー名:', apiError.name);
               console.error('❌ エラーメッセージ:', apiError.message);
+              console.error('❌ エラースタック:', apiError.stack);
               
-              // エラーの詳細情報を表示
-              let errorMessage = `部屋データの取得に失敗: ${apiError.message}`;
+              // 🔥 より具体的なエラーメッセージ
+              let errorMessage = `部屋データの取得に失敗しました: ${apiError.message}`;
               
               if (apiError.name === 'AbortError') {
-                errorMessage = 'APIリクエストがタイムアウトしました。ネットワーク接続を確認してください。';
+                errorMessage = 'APIリクエストがタイムアウトしました (8秒)。サーバーの応答が遅い可能性があります。\n\n対処法:\n1. ページを再読み込みしてください\n2. インターネット接続を確認してください\n3. 管理者に連絡してください';
               } else if (apiError.message.includes('Failed to fetch')) {
-                errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+                errorMessage = 'ネットワークエラーが発生しました。インターネット接続とGAS URLを確認してください。\n\n対処法:\n1. インターネット接続を確認\n2. VPNを無効にしてみる\n3. ブラウザのキャッシュをクリア';
+              } else if (apiError.message.includes('HTMLが返されました')) {
+                errorMessage = 'GAS側でエラーが発生しています。Google Apps Scriptの設定を確認してください。\n\n対処法:\n1. GASプロジェクトを確認\n2. 権限設定を確認\n3. ログを確認';
+              } else if (apiError.message.includes('JSONパース失敗')) {
+                errorMessage = 'サーバーからの応答形式に問題があります。\n\n対処法:\n1. GAS Web Appを再デプロイ\n2. ブラウザのキャッシュをクリア\n3. 管理者に連絡';
               }
               
               appState.error = errorMessage;
@@ -708,16 +745,19 @@
               return;
             }
           } else {
+            // URLパラメータ不足エラーをより詳細に
             console.error('❌ Web App環境: 必要なURLパラメータが不足');
             console.error('❌ 期待値: propertyId, propertyName');
             console.error('❌ 実際の値:', { propertyIdFromUrl, propertyNameFromUrl });
+            console.error('❌ 全URLパラメータ:', Array.from(urlParams.entries()));
             
             appState.error = `URLパラメータが不足しています。物件選択画面から再度アクセスしてください。
-            
+
 詳細情報:
 - propertyId: ${propertyIdFromUrl || '(なし)'}
 - propertyName: ${propertyNameFromUrl || '(なし)'}
-- 現在のURL: ${window.location.href}`;
+- 現在のURL: ${window.location.href}
+- 必要な操作: 物件選択画面から部屋を再選択してください`;
             
             appState.loading = false;
             renderApp();

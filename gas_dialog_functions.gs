@@ -209,14 +209,23 @@ function doGet(e) {
             console.log('[doGet] 部屋データ取得開始 - propertyId:', propertyId);
             const rooms = getRooms(propertyId);
             console.log('[doGet] 部屋データ取得完了 - 件数:', Array.isArray(rooms) ? rooms.length : 'not array');
+            console.log('[doGet] 部屋データサンプル:', rooms.slice(0, 2));
             
-            // 統一されたレスポンス形式で返す
+            // 🔥 統一されたレスポンス形式で返す（これが重要）
             const response = {
               success: true,
-              result: Array.isArray(rooms) ? rooms : [],
+              data: Array.isArray(rooms) ? rooms : [],
               count: Array.isArray(rooms) ? rooms.length : 0,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              propertyId: propertyId,
+              debugInfo: {
+                functionCalled: 'getRooms',
+                roomsType: typeof rooms,
+                isArray: Array.isArray(rooms)
+              }
             };
+            
+            console.log('[doGet] 送信するレスポンス:', JSON.stringify(response).substring(0, 500));
             
             return ContentService
               .createTextOutput(JSON.stringify(response))
@@ -229,9 +238,15 @@ function doGet(e) {
             const errorResponse = {
               success: false,
               error: `部屋データ取得エラー: ${apiError.message}`,
-              result: [],
+              data: [],
               count: 0,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              propertyId: e.parameter.propertyId || 'unknown',
+              debugInfo: {
+                errorType: apiError.name,
+                errorMessage: apiError.message,
+                errorStack: apiError.stack
+              }
             };
             
             return ContentService
@@ -1362,4 +1377,91 @@ function finalDeploymentCheck() {
   
   console.log('='.repeat(80));
   return 'デプロイ最終確認完了';
+}
+
+/**
+ * Web App API詳細診断用関数 - 実際のレスポンスを確認
+ */
+function debugWebAppApiDetailed() {
+  console.log('='.repeat(60));
+  console.log('Web App API 詳細診断');
+  console.log('='.repeat(60));
+  
+  try {
+    // 1. 基本情報
+    console.log('1. 基本情報');
+    const webAppUrl = ScriptApp.getService().getUrl();
+    console.log('Web App URL:', webAppUrl);
+    console.log('実行ユーザー:', Session.getActiveUser().getEmail());
+    console.log('現在時刻:', new Date().toISOString());
+    
+    // 2. 物件データテスト
+    console.log('2. 物件データテスト');
+    const properties = getProperties();
+    console.log('物件数:', properties.length);
+    console.log('最初の物件:', properties[0] || 'なし');
+    
+    // 3. 部屋データテスト（最初の物件で）
+    if (properties.length > 0) {
+      console.log('3. 部屋データテスト');
+      const testPropertyId = properties[0].id;
+      console.log('テスト物件ID:', testPropertyId);
+      
+      const rooms = getRooms(testPropertyId);
+      console.log('部屋数:', Array.isArray(rooms) ? rooms.length : 'not array');
+      console.log('部屋データ型:', typeof rooms);
+      console.log('最初の部屋:', rooms[0] || 'なし');
+      
+      // 4. API形式テスト（実際のdoGetを呼び出し）
+      console.log('4. API形式テスト');
+      const mockEvent = {
+        parameter: {
+          action: 'getRooms',
+          propertyId: testPropertyId
+        }
+      };
+      
+      try {
+        const apiResponse = doGet(mockEvent);
+        const responseText = apiResponse.getContent();
+        console.log('API レスポンステキスト長:', responseText.length);
+        console.log('API レスポンス（最初の500文字）:', responseText.substring(0, 500));
+        
+        try {
+          const parsedResponse = JSON.parse(responseText);
+          console.log('API レスポンス解析成功');
+          console.log('- success:', parsedResponse.success);
+          console.log('- data type:', typeof parsedResponse.data);
+          console.log('- data is array:', Array.isArray(parsedResponse.data));
+          console.log('- count:', parsedResponse.count);
+        } catch (parseError) {
+          console.error('API レスポンス解析エラー:', parseError.message);
+        }
+      } catch (apiError) {
+        console.error('API呼び出しエラー:', apiError.message);
+      }
+    }
+    
+    // 5. テスト用URL生成
+    console.log('5. テスト用URL');
+    if (properties.length > 0) {
+      const testUrls = [
+        `${webAppUrl}`,
+        `${webAppUrl}?action=getProperties`,
+        `${webAppUrl}?action=getRooms&propertyId=${encodeURIComponent(properties[0].id)}`,
+        `${webAppUrl}?page=room_select&propertyId=${encodeURIComponent(properties[0].id)}&propertyName=${encodeURIComponent(properties[0].name)}`
+      ];
+      
+      testUrls.forEach((url, index) => {
+        console.log(`${index + 1}. ${url}`);
+      });
+    }
+    
+    console.log('='.repeat(60));
+    return 'API詳細診断完了 - ログを確認してください';
+    
+  } catch (error) {
+    console.error('API詳細診断エラー:', error);
+    return `診断エラー: ${error.message}`;
+  }
 }
