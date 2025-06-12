@@ -14,19 +14,7 @@
       --mantine-color-blue-8: #1971c2;
       --mantine-color-blue-light: #e7f5ff;
       --mantine-color-gray-0: #f8f9fa;
-      --mantine-c      let content = `
-        <div class="mantine-container">
-          ${renderBackButton()}
-          <h1 class="mantine-title">部屋選択</h1>
-          <p style="text-align: center; color: var(--mantine-color-gray-6); margin-bottom: var(--mantine-spacing-lg);">
-            物件: ${appState.propertyName}
-          </p>
-          ${renderInspectionCompleteButton()}
-          ${renderSearchInput()}
-          ${renderErrorAlert()}
-          ${renderEmptyStates()}
-          ${renderRoomList()}
-        </div>`; #f1f3f4;
+      --mantine-color-gray-1: #f1f3f4;
       --mantine-color-gray-2: #e9ecef;
       --mantine-color-gray-3: #dee2e6;
       --mantine-color-gray-6: #868e96;
@@ -253,29 +241,6 @@
       animation: spin 1s linear infinite;
     }
 
-    /* 検針完了ボタンのスタイル */
-    .inspection-complete-btn {
-      background-color: var(--mantine-color-blue-6) !important;
-      color: white !important;
-      font-weight: 600;
-      padding: 12px 24px;
-      border: none;
-      border-radius: var(--mantine-radius-md);
-      transition: all 0.2s ease;
-    }
-
-    .inspection-complete-btn:hover:not(:disabled) {
-      background-color: var(--mantine-color-blue-7) !important;
-      transform: translateY(-1px);
-    }
-
-    .inspection-complete-btn:disabled {
-      background-color: var(--mantine-color-gray-3) !important;
-      color: var(--mantine-color-gray-6) !important;
-      cursor: not-allowed;
-      transform: none;
-    }
-
     @media (max-width: 768px) {
       .mantine-container {
         padding: 0 var(--mantine-spacing-sm);
@@ -384,8 +349,7 @@
       loading: true,
       error: null,
       isNavigating: false,
-      navigationMessage: '',
-      isUpdatingInspection: false
+      navigationMessage: ''
     };
 
     // 環境判定関数
@@ -408,20 +372,6 @@
         <button class="mantine-button mantine-button-variant-light" onclick="handleBack()">
           ← 物件選択に戻る
         </button>
-      `;
-    };
-
-    const renderInspectionCompleteButton = () => {
-      return `
-        <div style="text-align: center; margin-bottom: var(--mantine-spacing-lg);">
-          <button 
-            class="mantine-button inspection-complete-btn" 
-            onclick="handleInspectionComplete()"
-            ${appState.isUpdatingInspection ? 'disabled' : ''}
-          >
-            ${appState.isUpdatingInspection ? '更新中...' : '検針完了'}
-          </button>
-        </div>
       `;
     };
 
@@ -620,136 +570,6 @@
       }
     };
 
-    // バックエンドから最新の部屋データを取得する関数
-    const refreshRoomDataFromBackend = async (propertyId) => {
-      try {
-        console.log('[room_select_gas] 🔄 バックエンドから最新データを取得中...', propertyId);
-        
-        if (!isWebApp()) {
-          console.log('[room_select_gas] GAS環境では自動更新はサポートされていません');
-          throw new Error('GAS環境では自動更新はサポートされていません');
-        }
-
-        const baseUrl = window.location.origin + window.location.pathname;
-        const requestUrl = `${baseUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`;
-        
-        console.log('[room_select_gas] API リクエストURL:', requestUrl);
-        
-        const response = await fetch(requestUrl, { method: 'GET' });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('[room_select_gas] バックエンドレスポンス:', result);
-        
-        if (result.error) {
-          throw new Error(result.error);
-        }
-
-        // レスポンス形式の統一処理
-        let roomsData;
-        if (result.success === true && Array.isArray(result.data)) {
-          roomsData = result.data; // 新しい統一フォーマット
-        } else if (result.result && Array.isArray(result.result)) {
-          roomsData = result.result; // 既存のresultフォーマット
-        } else if (Array.isArray(result)) {
-          roomsData = result; // 直接配列フォーマット
-        } else {
-          throw new Error('予期しないレスポンス形式です');
-        }
-
-        console.log('[room_select_gas] ✅ 最新データ取得完了:', roomsData.length, '件');
-        
-        return roomsData;
-        
-      } catch (error) {
-        console.error('[room_select_gas] ❌ バックエンドデータ取得エラー:', error);
-        throw error;
-      }
-    };
-
-    // 検針完了処理
-    const handleInspectionComplete = async () => {
-      if (!appState.propertyId) {
-        alert('物件IDが見つかりません。');
-        return;
-      }
-
-      try {
-        appState.isUpdatingInspection = true;
-        renderApp();
-
-        console.log('[room_select_gas] 検針完了処理開始 - propertyId:', appState.propertyId);
-
-        if (isWebApp()) {
-          // Web App環境: API経由で更新
-          const baseUrl = window.location.origin + window.location.pathname;
-          const requestUrl = `${baseUrl}?action=updateInspectionComplete&propertyId=${encodeURIComponent(appState.propertyId)}`;
-
-          console.log('[room_select_gas] 検針完了リクエスト送信 (Web App):', requestUrl);
-
-          const response = await fetch(requestUrl, {
-            method: 'GET'
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const result = await response.json();
-
-          if (result.error) {
-            throw new Error(result.error);
-          }
-
-          console.log('[room_select_gas] 検針完了APIレスポンス:', result);
-          alert('検針完了日を更新しました。');
-
-          // 最新データで部屋リストを更新
-          try {
-            console.log('[room_select_gas] 最新データで部屋リストを更新中...');
-            const latestRooms = await refreshRoomDataFromBackend(appState.propertyId);
-            appState.rooms = latestRooms;
-            appState.filteredRooms = [...latestRooms];
-            console.log('[room_select_gas] ✅ 部屋リスト更新完了');
-          } catch (refreshError) {
-            console.warn('[room_select_gas] ⚠️ 部屋データの自動更新に失敗:', refreshError);
-            // 更新失敗は警告のみ、メイン処理は継続
-          }
-
-        } else {
-          // GAS環境: 直接関数呼び出し
-          console.log('[room_select_gas] 検針完了処理 (GAS環境)');
-          
-          google.script.run
-            .withSuccessHandler((result) => {
-              console.log('[room_select_gas] GAS検針完了処理成功:', result);
-              alert('検針完了日を更新しました。');
-              appState.isUpdatingInspection = false;
-              renderApp();
-            })
-            .withFailureHandler((error) => {
-              console.error('[room_select_gas] GAS検針完了処理エラー:', error);
-              alert(`検針完了処理でエラーが発生しました: ${error.message || error}`);
-              appState.isUpdatingInspection = false;
-              renderApp();
-            })
-            .updateInspectionComplete(appState.propertyId);
-          
-          return; // GAS環境では非同期処理のため、ここで終了
-        }
-        
-      } catch (error) {
-        console.error('[room_select_gas] 検針完了処理エラー:', error);
-        alert(`検針完了処理でエラーが発生しました: ${error.message}`);
-      } finally {
-        appState.isUpdatingInspection = false;
-        renderApp();
-      }
-    };
-
     // 初期化処理
     const initializeApp = async () => {
       try {
@@ -774,11 +594,24 @@
           console.log('- propertyName:', `"${propertyNameFromUrl}"`);
           console.log('- 全パラメータ:', Array.from(urlParams.entries()));
           
-          // 強制更新フラグのチェック
-          const forceRefresh = sessionStorage.getItem('forceRoomRefresh');
-          if (forceRefresh === 'true') {
-            console.log('🔄 強制更新フラグが検出されました - 最新データを取得します');
-            sessionStorage.removeItem('forceRoomRefresh'); // フラグをクリア
+          // URLパラメータの厳密な検証
+          if (!propertyIdFromUrl || !propertyNameFromUrl || 
+              propertyIdFromUrl.trim() === '' || propertyNameFromUrl.trim() === '') {
+            console.error('❌ Web App環境: 必要なURLパラメータが不足または空');
+            console.error('❌ 期待値: propertyId, propertyName');
+            console.error('❌ 実際の値:', { propertyIdFromUrl, propertyNameFromUrl });
+            
+            appState.error = `URLパラメータが不足しています。物件選択画面から再度アクセスしてください。
+
+詳細情報:
+- propertyId: ${propertyIdFromUrl || '(なし)'}
+- propertyName: ${propertyNameFromUrl || '(なし)'}
+- 現在のURL: ${window.location.href}
+- 必要な操作: 物件選択画面から部屋を再選択してください`;
+            
+            appState.loading = false;
+            renderApp();
+            return;
           }
           
           if (propertyIdFromUrl && propertyNameFromUrl) {
@@ -797,20 +630,19 @@
               
               console.log('📡 API URL:', apiUrl);
               
-              // 🔥 より短いタイムアウトとキャンセル可能なリクエスト
+              // タイムアウト付きAPIリクエスト
               const controller = new AbortController();
               const timeoutId = setTimeout(() => {
-                console.error('⏰ API リクエストタイムアウト (8秒)');
+                console.error('⏰ API リクエストタイムアウト (10秒)');
                 controller.abort();
-              }, 8000); // 15秒から8秒に短縮
+              }, 10000);
               
               const response = await fetch(apiUrl, { 
                 signal: controller.signal,
                 method: 'GET',
                 headers: {
                   'Accept': 'application/json',
-                  'Cache-Control': 'no-cache',
-                  'X-Requested-With': 'XMLHttpRequest'
+                  'Cache-Control': 'no-cache'
                 }
               });
               
@@ -818,16 +650,11 @@
               
               console.log('📡 API Response Status:', response.status);
               console.log('📡 API Response OK:', response.ok);
-              console.log('📡 API Response Headers:', {
-                'Content-Type': response.headers.get('Content-Type'),
-                'Content-Length': response.headers.get('Content-Length'),
-                'X-Frame-Options': response.headers.get('X-Frame-Options')
-              });
               
               if (!response.ok) {
                 const errorText = await response.text();
                 console.error('📡 HTTP Error Response Body:', errorText.substring(0, 500));
-                throw new Error(`HTTP ${response.status}: ${response.statusText}. Response: ${errorText.substring(0, 100)}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
               }
               
               const contentType = response.headers.get('Content-Type');
@@ -836,6 +663,73 @@
               let data;
               if (contentType && contentType.includes('application/json')) {
                 data = await response.json();
+              } else {
+                const textData = await response.text();
+                console.log('📡 Non-JSON Response (first 500 chars):', textData.substring(0, 500));
+                
+                // HTMLが返された場合のエラー処理
+                if (textData.trim().startsWith('<')) {
+                  console.error('❌ HTMLレスポンスを検出 - GAS側でエラーが発生');
+                  throw new Error('GAS側でエラーが発生しました。管理者に連絡してください。');
+                }
+                
+                // JSONパースを試行
+                try {
+                  data = JSON.parse(textData);
+                } catch (parseError) {
+                  console.error('❌ JSON解析エラー:', parseError);
+                  throw new Error(`APIレスポンスの解析に失敗しました: ${parseError.message}`);
+                }
+              }
+              
+              console.log('✅ API Response Data:', data);
+              console.log('✅ Data Type:', typeof data);
+              
+              // 統一されたレスポンス形式の処理
+              if (data.success === false) {
+                console.error('❌ APIがエラーを返しました:', data.error);
+                throw new Error(data.error || 'サーバーエラーが発生しました');
+              }
+              
+              // データ抽出の優先順位
+              let roomsData = [];
+              if (data.success === true && Array.isArray(data.data)) {
+                roomsData = data.data;
+                console.log('📊 統一形式のデータを使用:', roomsData.length, '件');
+              } else if (data.result && Array.isArray(data.result)) {
+                roomsData = data.result;
+                console.log('📊 result形式のデータを使用:', roomsData.length, '件');
+              } else if (Array.isArray(data)) {
+                roomsData = data;
+                console.log('📊 直接配列のデータを使用:', roomsData.length, '件');
+              } else {
+                console.error('❌ 予期しないAPI応答形式:', data);
+                throw new Error('部屋データの形式が正しくありません');
+              }
+              
+              appState.rooms = roomsData;
+              console.log('✅ Web App API 部屋データ取得成功!');
+              console.log('- 部屋数:', appState.rooms.length);
+              
+            } catch (apiError) {
+              console.error('❌ Web App API エラー:', apiError);
+              
+              // より具体的なエラーメッセージ
+              let errorMessage = `部屋データの取得に失敗しました: ${apiError.message}`;
+              
+              if (apiError.name === 'AbortError') {
+                errorMessage = 'APIリクエストがタイムアウトしました。ページを再読み込みしてください。';
+              } else if (apiError.message.includes('Failed to fetch')) {
+                errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+              } else if (apiError.message.includes('GAS側でエラー')) {
+                errorMessage = 'サーバー側でエラーが発生しています。管理者に連絡してください。';
+              }
+              
+              appState.error = errorMessage;
+              appState.loading = false;
+              renderApp();
+              return;
+            }
               } else {
                 const textData = await response.text();
                 console.log('📡 Non-JSON Response (first 500 chars):', textData.substring(0, 500));
@@ -962,11 +856,12 @@
           console.log('- propertyName:', `"${appState.propertyName}"`, '型:', typeof appState.propertyName);
           console.log('- rooms:', window.gasRooms);
           
+          // GASテンプレートの未処理チェック
           if (!appState.propertyId || !appState.propertyName || 
               appState.propertyId === '<?= propertyId ?>' || 
               appState.propertyName === '<?= propertyName ?>') {
-            console.error('❌ GAS環境: 物件情報が不足または未処理');
-            appState.error = '物件情報が正しく渡されていません。GASテンプレートの処理を確認してください。';
+            console.error('❌ GAS環境: 物件情報が未処理または不足');
+            appState.error = 'GASテンプレートの処理が正しく行われていません。管理者に連絡してください。';
             appState.loading = false;
             renderApp();
             return;
@@ -981,8 +876,8 @@
                 appState.rooms = window.gasRooms;
               } else if (window.gasRooms.result && Array.isArray(window.gasRooms.result)) {
                 appState.rooms = window.gasRooms.result;
-              } else if (window.gasRooms.rooms && Array.isArray(window.gasRooms.rooms)) {
-                appState.rooms = window.gasRooms.rooms;
+              } else if (window.gasRooms.data && Array.isArray(window.gasRooms.data)) {
+                appState.rooms = window.gasRooms.data;
               } else {
                 console.error('❌ 予期しない部屋データ形式:', window.gasRooms);
                 appState.rooms = [];
