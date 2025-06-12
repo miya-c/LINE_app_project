@@ -273,6 +273,39 @@ function doGet(e) {
               .setMimeType(ContentService.MimeType.JSON);
           }
           
+        case 'updateInspectionComplete':
+          console.log('[doGet] API: updateInspectionComplete');
+          try {
+            const propertyId = e.parameter.propertyId;
+            if (!propertyId) {
+              throw new Error('propertyId パラメータが必要です');
+            }
+            
+            console.log('[doGet] 検針完了更新開始 - propertyId:', propertyId);
+            const result = updateInspectionComplete(propertyId);
+            console.log('[doGet] 検針完了更新完了 - 結果:', result);
+            
+            const response = {
+              success: true,
+              data: result,
+              timestamp: new Date().toISOString(),
+              propertyId: propertyId,
+              debugInfo: {
+                functionCalled: 'updateInspectionComplete',
+                resultType: typeof result
+              }
+            };
+            
+            return ContentService
+              .createTextOutput(JSON.stringify(response))
+              .setMimeType(ContentService.MimeType.JSON);
+          } catch (apiError) {
+            console.error('[doGet] updateInspectionComplete API エラー:', apiError);
+            return ContentService
+              .createTextOutput(JSON.stringify({ error: `検針完了更新エラー: ${apiError.message}` }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+          
         default:
           console.log('[doGet] 未対応のAPI要求:', action);
           return ContentService
@@ -743,6 +776,92 @@ function updateMeterReadings(propertyId, roomId, readings) {
       error: error.message,
       message: '検針データの更新に失敗しました'
     };
+  }
+}
+
+/**
+ * 物件の検針完了日を更新
+ * @param {string} propertyId - 物件ID
+ * @return {Object} 更新結果
+ */
+function updateInspectionComplete(propertyId) {
+  try {
+    console.log('[updateInspectionComplete] 開始 - propertyId:', propertyId);
+    
+    if (!propertyId) {
+      throw new Error('物件IDが指定されていません');
+    }
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertySheet = ss.getSheetByName('物件マスタ') || ss.getSheetByName('property_master');
+    
+    if (!propertySheet) {
+      throw new Error('物件マスタ または property_master シートが見つかりません');
+    }
+    
+    const range = propertySheet.getDataRange();
+    const values = range.getValues();
+    
+    if (values.length <= 1) {
+      throw new Error('物件データが存在しません');
+    }
+    
+    const headers = values[0];
+    const propertyIdIndex = headers.indexOf('物件ID');
+    let inspectionCompleteIndex = headers.indexOf('検針完了日');
+    
+    // 検針完了日の列が存在しない場合は最後の列に追加
+    if (inspectionCompleteIndex === -1) {
+      console.log('[updateInspectionComplete] 検針完了日列が存在しないため追加します');
+      
+      // ヘッダーに検針完了日を追加
+      const lastColumn = headers.length;
+      propertySheet.getRange(1, lastColumn + 1).setValue('検針完了日');
+      inspectionCompleteIndex = lastColumn;
+      
+      console.log('[updateInspectionComplete] 検針完了日列を追加しました - 列番号:', inspectionCompleteIndex + 1);
+    }
+    
+    if (propertyIdIndex === -1) {
+      throw new Error('物件マスタに物件ID列が見つかりません');
+    }
+    
+    // 対象物件を検索
+    let targetRowIndex = -1;
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][propertyIdIndex]).trim() === String(propertyId).trim()) {
+        targetRowIndex = i + 1; // スプレッドシートは1ベース
+        break;
+      }
+    }
+    
+    if (targetRowIndex === -1) {
+      throw new Error(`物件ID "${propertyId}" が見つかりません`);
+    }
+    
+    // 現在の日時を設定
+    const currentDate = new Date();
+    const formattedDate = Utilities.formatDate(currentDate, Session.getScriptTimeZone(), 'yyyy/MM/dd HH:mm:ss');
+    
+    // 検針完了日を更新
+    propertySheet.getRange(targetRowIndex, inspectionCompleteIndex + 1).setValue(formattedDate);
+    
+    console.log('[updateInspectionComplete] 検針完了日を更新しました');
+    console.log('- 物件ID:', propertyId);
+    console.log('- 行番号:', targetRowIndex);
+    console.log('- 検針完了日:', formattedDate);
+    
+    return {
+      success: true,
+      propertyId: propertyId,
+      inspectionCompleteDate: formattedDate,
+      rowIndex: targetRowIndex,
+      message: '検針完了日を更新しました'
+    };
+    
+  } catch (error) {
+    console.error('[updateInspectionComplete] エラー:', error);
+    throw new Error(`検針完了日の更新に失敗しました: ${error.message}`);
   }
 }
 
