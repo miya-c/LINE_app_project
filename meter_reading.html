@@ -312,30 +312,44 @@
           console.log('[meter_reading] Response.data:', responseObject?.data, 'isArray:', Array.isArray(responseObject?.data));
           
           let actualDataPayload;
-          // 🔥 統一レスポンス形式に対応した処理（詳細デバッグ付き）
+          console.log('[meter_reading] 🔍 レスポンス形式判定開始');
+
+          // 🔥 シンプル化された統一レスポンス判定処理
+          // パターン1: 統一形式 {success: true, data: []}
           if (responseObject && responseObject.success === true && Array.isArray(responseObject.data)) {
-            // 新しい統一形式: {success: true, data: [], count: 0}
-            console.log('[meter_reading] ✅ 統一形式のデータを使用');
             actualDataPayload = { 
               readings: responseObject.data,
               debugInfo: responseObject.debugInfo || {}
             };
-          } else if (responseObject && typeof responseObject === 'object' && responseObject !== null && 'readings' in responseObject) {
-            console.log('[meter_reading] Server response has expected structure with readings property.');
+            console.log('[meter_reading] ✅ 統一形式採用 - データ件数:', responseObject.data.length);
+          }
+          // パターン2: readings プロパティ
+          else if (responseObject && Array.isArray(responseObject.readings)) {
             actualDataPayload = responseObject;
-          } else if (Array.isArray(responseObject)) {
-            console.warn('[meter_reading] Server response is a direct array. Creating wrapper structure.');
+            console.log('[meter_reading] ⚠️ readings形式採用');
+          }
+          // パターン3: 直接配列
+          else if (Array.isArray(responseObject)) {
             actualDataPayload = { 
               readings: responseObject, 
-              debugInfo: { 
-                message: "Response was a direct array, wrapper created on client-side",
-                clientSideProcessing: true
-              } 
+              debugInfo: { directArray: true }
             };
-          } else {
-            console.error('[meter_reading] Unrecognized server response structure:', responseObject);
-            throw new Error('サーバーからの応答の形式が認識できません。');
+            console.log('[meter_reading] ⚠️ 直接配列形式採用');
           }
+          // エラー処理
+          else {
+            console.error('[meter_reading] ❌ すべてのパターンに該当しない:', {
+              responseObject: responseObject,
+              hasSuccess: 'success' in (responseObject || {}),
+              successValue: responseObject?.success,
+              hasData: 'data' in (responseObject || {}),
+              dataValue: responseObject?.data,
+              isDataArray: Array.isArray(responseObject?.data)
+            });
+            throw new Error('検針データの形式が認識できません');
+          }
+
+          console.log('[meter_reading] 最終採用データ:', actualDataPayload.readings.length, '件');
 
           if (actualDataPayload.error) {
             console.error('[meter_reading] Server returned an error:', actualDataPayload.error);

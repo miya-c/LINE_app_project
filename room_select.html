@@ -191,32 +191,39 @@
             throw new Error(result.error);
           }
 
-          // 🔥 統一レスポンス形式に対応した処理（詳細デバッグ付き）
+          // 🔥 シンプル化された統一レスポンス判定処理
           let roomsData;
-          console.log('[room_select] レスポンス詳細分析:');
-          console.log('  - typeof result:', typeof result);
-          console.log('  - result.success:', result?.success, 'exact comparison:', result?.success === true);
-          console.log('  - result.data:', result?.data, 'isArray:', Array.isArray(result?.data));
-          console.log('  - result keys:', Object.keys(result || {}));
-          
+          console.log('[room_select] 🔍 レスポンス形式判定開始');
+
+          // パターン1: 統一形式 {success: true, data: []}
           if (result && result.success === true && Array.isArray(result.data)) {
-            // 新しい統一形式: {success: true, data: [], count: 0}
             roomsData = result.data;
-            console.log('[room_select] ✅ 統一形式のデータを使用:', roomsData.length, '件');
-          } else if (result && Array.isArray(result.result)) {
-            // 既存の result 形式
-            roomsData = result.result;
-            console.log('[room_select] ⚠️ レガシーresult形式を使用');
-          } else if (result && result.result && Array.isArray(result.result.rooms)) {
-            roomsData = result.result.rooms;
-            console.log('[room_select] ⚠️ レガシーresult.rooms形式を使用');
-          } else if (result && Array.isArray(result.rooms)) {
-            roomsData = result.rooms;
-            console.log('[room_select] ⚠️ rooms配列形式を使用');
-          } else {
-            console.error('[room_select] 予期しないレスポンス形式:', result);
-            throw new Error('予期しないレスポンス形式です。APIレスポンスを確認してください。');
+            console.log('[room_select] ✅ 統一形式採用 - データ件数:', roomsData.length);
           }
+          // パターン2: 直接配列
+          else if (Array.isArray(result)) {
+            roomsData = result;
+            console.log('[room_select] ⚠️ 直接配列形式採用');
+          }
+          // パターン3: rooms プロパティ
+          else if (result && Array.isArray(result.rooms)) {
+            roomsData = result.rooms;
+            console.log('[room_select] ⚠️ rooms形式採用');
+          }
+          // エラー処理
+          else {
+            console.error('[room_select] ❌ すべてのパターンに該当しない:', {
+              result: result,
+              hasSuccess: 'success' in (result || {}),
+              successValue: result?.success,
+              hasData: 'data' in (result || {}),
+              dataValue: result?.data,
+              isDataArray: Array.isArray(result?.data)
+            });
+            throw new Error('部屋データの形式が認識できません');
+          }
+
+          console.log('[room_select] 最終採用データ:', roomsData.length, '件');
 
           console.log('[room_select] ✅ 最新データ取得完了:', roomsData.length, '件');
           
