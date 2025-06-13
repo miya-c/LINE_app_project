@@ -370,15 +370,20 @@
     window.pwaUtils = new PWAUtils();
     
     // GASテンプレートデータの取得
-    window.gasPropertyId = '<?= propertyId ?>';
-    window.gasPropertyName = '<?= propertyName ?>';
-    window.gasRooms = <?!= rooms ?>;
+    try {
+      window.gasPropertyId = '<?= propertyId ?>';
+      window.gasPropertyName = '<?= propertyName ?>';
+      // Use server-side JSON stringification (GAS template)
+      window.gasRooms = /* <?!= JSON.stringify(rooms) ?> */ [];
+    } catch (e) {
+      console.error('GAS template data parsing error:', e);
+      window.gasRooms = [];
+    }
 
-    console.log('GAS Template Data:', {
-      propertyId: window.gasPropertyId,
-      propertyName: window.gasPropertyName,
-      rooms: window.gasRooms
-    });
+    console.log('GAS Template Data:');
+    console.log('Property ID:', window.gasPropertyId);
+    console.log('Property Name:', window.gasPropertyName);
+    console.log('Rooms:', window.gasRooms);
 
     // ===================================
     // 日付処理関数
@@ -720,17 +725,32 @@
                 throw new Error(data.error);
               }
               
-              // レスポンス形式の処理
-              if (Array.isArray(data)) {
-                appState.rooms = data;
+              // 🔥 統一レスポンス形式に対応した処理
+              let roomsData;
+              if (data.success === true && Array.isArray(data.data)) {
+                // 新しい統一形式: {success: true, data: [], count: 0}
+                roomsData = data.data;
+                console.log('[room_select_gas] ✅ 統一形式のデータを使用:', roomsData.length, '件');
               } else if (data.result && Array.isArray(data.result)) {
-                appState.rooms = data.result;
+                // 既存の result 形式
+                roomsData = data.result;
+                console.log('[room_select_gas] ⚠️ レガシーresult形式を使用');
+              } else if (Array.isArray(data)) {
+                // 直接配列形式
+                roomsData = data;
+                console.log('[room_select_gas] ⚠️ 直接配列形式を使用');
               } else if (data.rooms && Array.isArray(data.rooms)) {
-                appState.rooms = data.rooms;
+                // rooms プロパティ形式
+                roomsData = data.rooms;
+                console.log('[room_select_gas] ⚠️ roomsプロパティ形式を使用');
               } else {
-                console.error('予期しないAPI応答形式:', data);
-                throw new Error('部屋データの形式が正しくありません');
+                console.error('[room_select_gas] 予期しないレスポンス形式:', data);
+                console.error('[room_select_gas] Response keys:', Object.keys(data || {}));
+                console.error('[room_select_gas] Response content:', data);
+                throw new Error('部屋データの形式が正しくありません。APIレスポンスを確認してください。');
               }
+              
+              appState.rooms = roomsData;
               
               console.log('✅ Web App API 部屋データ取得成功 - 件数:', appState.rooms.length);
               
@@ -772,18 +792,41 @@
           // 部屋データの処理
           if (window.gasRooms) {
             try {
+              let roomsData;
               if (typeof window.gasRooms === 'string') {
-                appState.rooms = JSON.parse(window.gasRooms);
+                const parsedData = JSON.parse(window.gasRooms);
+                // 文字列から解析したデータの形式確認
+                if (parsedData.success === true && Array.isArray(parsedData.data)) {
+                  roomsData = parsedData.data;
+                  console.log('[room_select_gas] ✅ GAS統一形式データを使用:', roomsData.length, '件');
+                } else if (parsedData.result && Array.isArray(parsedData.result)) {
+                  roomsData = parsedData.result;
+                  console.log('[room_select_gas] ⚠️ GASレガシーresult形式を使用');
+                } else if (Array.isArray(parsedData)) {
+                  roomsData = parsedData;
+                  console.log('[room_select_gas] ⚠️ GAS直接配列形式を使用');
+                } else {
+                  console.error('[room_select_gas] 予期しないGASデータ形式:', parsedData);
+                  roomsData = [];
+                }
               } else if (Array.isArray(window.gasRooms)) {
-                appState.rooms = window.gasRooms;
+                roomsData = window.gasRooms;
+                console.log('[room_select_gas] ⚠️ GAS直接配列形式を使用');
+              } else if (window.gasRooms.success === true && Array.isArray(window.gasRooms.data)) {
+                roomsData = window.gasRooms.data;
+                console.log('[room_select_gas] ✅ GAS統一形式データを使用:', roomsData.length, '件');
               } else if (window.gasRooms.result && Array.isArray(window.gasRooms.result)) {
-                appState.rooms = window.gasRooms.result;
+                roomsData = window.gasRooms.result;
+                console.log('[room_select_gas] ⚠️ GASレガシーresult形式を使用');
               } else if (window.gasRooms.rooms && Array.isArray(window.gasRooms.rooms)) {
-                appState.rooms = window.gasRooms.rooms;
+                roomsData = window.gasRooms.rooms;
+                console.log('[room_select_gas] ⚠️ GASroomsプロパティ形式を使用');
               } else {
-                console.error('予期しない部屋データ形式:', window.gasRooms);
-                appState.rooms = [];
+                console.error('[room_select_gas] 予期しない部屋データ形式:', window.gasRooms);
+                roomsData = [];
               }
+              
+              appState.rooms = roomsData;
             } catch (parseError) {
               console.error('部屋データの解析エラー:', parseError);
               appState.rooms = [];

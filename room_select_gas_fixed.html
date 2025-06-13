@@ -264,13 +264,13 @@
     // GASテンプレートデータの取得
     window.gasPropertyId = '<?= propertyId ?>';
     window.gasPropertyName = '<?= propertyName ?>';
-    window.gasRooms = <?!= rooms ?>;
+    // Use server-side JSON stringification (GAS template)
+    window.gasRooms = /* <?!= JSON.stringify(rooms) ?> */ [];
 
-    console.log('GAS Template Data:', {
-      propertyId: window.gasPropertyId,
-      propertyName: window.gasPropertyName,
-      rooms: window.gasRooms
-    });
+    console.log('GAS Template Data:');
+    console.log('Property ID:', window.gasPropertyId);
+    console.log('Property Name:', window.gasPropertyName);
+    console.log('Rooms:', window.gasRooms);
 
     // ===================================
     // 日付処理関数

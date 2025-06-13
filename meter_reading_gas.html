@@ -520,15 +520,15 @@ body {
     window.gasPropertyName = '<?= propertyName ?>';
     window.gasRoomId = '<?= roomId ?>';
     window.gasRoomName = '<?= roomName ?>';
-    window.gasMeterReadings = <?!= meterReadings ?>;
+    // Use server-side JSON stringification (GAS template)
+    window.gasMeterReadings = /* <?!= JSON.stringify(meterReadings) ?> */ [];
 
-    console.log('GAS Template Data:', {
-      propertyId: window.gasPropertyId,
-      propertyName: window.gasPropertyName,
-      roomId: window.gasRoomId,
-      roomName: window.gasRoomName,
-      meterReadings: window.gasMeterReadings
-    });
+    console.log('GAS Template Data:');
+    console.log('Property ID:', window.gasPropertyId);
+    console.log('Property Name:', window.gasPropertyName);
+    console.log('Room ID:', window.gasRoomId);
+    console.log('Room Name:', window.gasRoomName);
+    console.log('Meter Readings:', window.gasMeterReadings);
 
     // 実行環境を判定
     const isWebApp = () => {
@@ -1253,7 +1253,32 @@ body {
           throw new Error(result.error);
         }
         
-        return result.readings || result || [];
+        // 🔥 統一レスポンス形式に対応した処理
+        let readings;
+        if (result.success === true && Array.isArray(result.data)) {
+          // 新しい統一形式: {success: true, data: [], count: 0}
+          readings = result.data;
+          console.log('[meter_reading_gas] ✅ 統一形式のデータを使用:', readings.length, '件');
+        } else if (result.readings && Array.isArray(result.readings)) {
+          // readings プロパティ形式
+          readings = result.readings;
+          console.log('[meter_reading_gas] ⚠️ readingsプロパティ形式を使用');
+        } else if (Array.isArray(result)) {
+          // 直接配列形式
+          readings = result;
+          console.log('[meter_reading_gas] ⚠️ 直接配列形式を使用');
+        } else if (result.result && Array.isArray(result.result)) {
+          // result プロパティ形式
+          readings = result.result;
+          console.log('[meter_reading_gas] ⚠️ レガシーresult形式を使用');
+        } else {
+          console.error('[meter_reading_gas] 予期しないレスポンス形式:', result);
+          console.error('[meter_reading_gas] Response keys:', Object.keys(result || {}));
+          console.error('[meter_reading_gas] Response content:', result);
+          throw new Error('検針データの形式が正しくありません。APIレスポンスを確認してください。');
+        }
+        
+        return readings || [];
       } catch (error) {
         console.error('[meter_reading] Web App検針データ取得エラー:', error);
         throw error;
@@ -1332,10 +1357,16 @@ body {
             let readings;
             if (Array.isArray(window.gasMeterReadings)) {
               readings = window.gasMeterReadings;
+              console.log('[meter_reading_gas] ⚠️ GAS直接配列形式を使用');
+            } else if (window.gasMeterReadings.success === true && Array.isArray(window.gasMeterReadings.data)) {
+              readings = window.gasMeterReadings.data;
+              console.log('[meter_reading_gas] ✅ GAS統一形式データを使用:', readings.length, '件');
             } else if (window.gasMeterReadings.readings && Array.isArray(window.gasMeterReadings.readings)) {
               readings = window.gasMeterReadings.readings;
+              console.log('[meter_reading_gas] ⚠️ GASreadingsプロパティ形式を使用');
             } else if (window.gasMeterReadings.result && Array.isArray(window.gasMeterReadings.result)) {
               readings = window.gasMeterReadings.result;
+              console.log('[meter_reading_gas] ⚠️ GASレガシーresult形式を使用');
             } else {
               console.error('[meter_reading] 予期しない検針データ形式:', window.gasMeterReadings);
               readings = [];
