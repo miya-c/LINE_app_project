@@ -188,13 +188,43 @@ function doGet(e) {
           console.log('[doGet] API: getProperties');
           try {
             const properties = getProperties();
+            console.log('[doGet] 物件データ取得完了 - 件数:', Array.isArray(properties) ? properties.length : 'not array');
+            
+            // 🔥 統一されたレスポンス形式で返す
+            const response = {
+              success: true,
+              data: Array.isArray(properties) ? properties : [],
+              count: Array.isArray(properties) ? properties.length : 0,
+              timestamp: new Date().toISOString(),
+              debugInfo: {
+                functionCalled: 'getProperties',
+                propertiesType: typeof properties,
+                isArray: Array.isArray(properties)
+              }
+            };
+            
             return ContentService
-              .createTextOutput(JSON.stringify(properties))
+              .createTextOutput(JSON.stringify(response))
               .setMimeType(ContentService.MimeType.JSON);
           } catch (apiError) {
             console.error('[doGet] getProperties API エラー:', apiError);
+            
+            // エラーレスポンスも統一形式
+            const errorResponse = {
+              success: false,
+              error: `物件データ取得エラー: ${apiError.message}`,
+              data: [],
+              count: 0,
+              timestamp: new Date().toISOString(),
+              debugInfo: {
+                errorType: apiError.name,
+                errorMessage: apiError.message,
+                errorStack: apiError.stack
+              }
+            };
+            
             return ContentService
-              .createTextOutput(JSON.stringify({ error: `物件データ取得エラー: ${apiError.message}` }))
+              .createTextOutput(JSON.stringify(errorResponse))
               .setMimeType(ContentService.MimeType.JSON);
           }
           
@@ -262,14 +292,50 @@ function doGet(e) {
             if (!propertyId || !roomId) {
               throw new Error('propertyId および roomId パラメータが必要です');
             }
+            
+            console.log('[doGet] 検針データ取得開始 - propertyId:', propertyId, 'roomId:', roomId);
             const readings = getMeterReadings(propertyId, roomId);
+            console.log('[doGet] 検針データ取得完了 - 件数:', Array.isArray(readings) ? readings.length : 'not array');
+            
+            // 🔥 統一されたレスポンス形式で返す
+            const response = {
+              success: true,
+              data: Array.isArray(readings) ? readings : [],
+              count: Array.isArray(readings) ? readings.length : 0,
+              timestamp: new Date().toISOString(),
+              propertyId: propertyId,
+              roomId: roomId,
+              debugInfo: {
+                functionCalled: 'getMeterReadings',
+                readingsType: typeof readings,
+                isArray: Array.isArray(readings)
+              }
+            };
+            
             return ContentService
-              .createTextOutput(JSON.stringify(readings))
+              .createTextOutput(JSON.stringify(response))
               .setMimeType(ContentService.MimeType.JSON);
           } catch (apiError) {
             console.error('[doGet] getMeterReadings API エラー:', apiError);
+            
+            // エラーレスポンスも統一形式
+            const errorResponse = {
+              success: false,
+              error: `検針データ取得エラー: ${apiError.message}`,
+              data: [],
+              count: 0,
+              timestamp: new Date().toISOString(),
+              propertyId: e.parameter.propertyId || 'unknown',
+              roomId: e.parameter.roomId || 'unknown',
+              debugInfo: {
+                errorType: apiError.name,
+                errorMessage: apiError.message,
+                errorStack: apiError.stack
+              }
+            };
+            
             return ContentService
-              .createTextOutput(JSON.stringify({ error: `検針データ取得エラー: ${apiError.message}` }))
+              .createTextOutput(JSON.stringify(errorResponse))
               .setMimeType(ContentService.MimeType.JSON);
           }
           

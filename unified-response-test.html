@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>統一レスポンス形式テスト - 水道メーター読み取りアプリ</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f7fa;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .status.pass {
+            background: #28a745;
+            color: white;
+        }
+        .status.fail {
+            background: #dc3545;
+            color: white;
+        }
+        .status.pending {
+            background: #ffc107;
+            color: #212529;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 統一レスポンス形式テスト</h1>
+        <p>修正した統一レスポンス形式 <code>{success: true, data: []}</code> の処理が正しく動作するかテストします。</p>
+        
+        <div class="test-section">
+            <h2>📡 GAS API接続テスト <span id="connection-status" class="status pending">未実行</span></h2>
+            <button class="test-button" onclick="testGasConnection()">GAS接続テスト</button>
+            <button class="test-button" onclick="testMockResponse()">モックレスポンステスト</button>
+            <div id="connection-result" class="result info" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🏠 統一形式処理テスト <span id="format-status" class="status pending">未実行</span></h2>
+            <button class="test-button" onclick="testUnifiedFormatDetection()">統一形式判定テスト</button>
+            <button class="test-button" onclick="testLegacyFormatFallback()">レガシー形式フォールバックテスト</button>
+            <div id="format-result" class="result info" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔄 リアルワークフローテスト <span id="workflow-status" class="status pending">未実行</span></h2>
+            <button class="test-button" onclick="testFullWorkflow()">完全ワークフローテスト</button>
+            <button class="test-button" onclick="clearTestResults()">結果クリア</button>
+            <div id="workflow-result" class="result info" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzc90nBqci0SDVA7BaV55E1li-SVjYTFO6asIFoK6ZaCXx0KOA0ekL4S3YsxslpwKuo3A/exec';
+        
+        function logResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${type}`;
+            element.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function updateStatus(statusElementId, status) {
+            const element = document.getElementById(statusElementId);
+            element.className = `status ${status}`;
+            element.textContent = status === 'pass' ? '✅ 成功' : status === 'fail' ? '❌ 失敗' : '⏳ 実行中';
+        }
+
+        async function testGasConnection() {
+            updateStatus('connection-status', 'pending');
+            logResult('connection-result', '🔌 GAS API接続テスト開始...', 'info');
+            
+            try {
+                // 物件データ取得テスト
+                const propertiesUrl = `${GAS_URL}?action=getProperties`;
+                logResult('connection-result', `📡 URL: ${propertiesUrl}`, 'info');
+                
+                const response = await fetch(propertiesUrl);
+                logResult('connection-result', `🌐 ステータス: ${response.status}`, 'info');
+                logResult('connection-result', `📋 ヘッダー: ${JSON.stringify([...response.headers])}`, 'info');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                logResult('connection-result', `📦 レスポンス構造分析:`, 'info');
+                logResult('connection-result', `  - Type: ${typeof data}`, 'info');
+                logResult('connection-result', `  - Keys: ${Object.keys(data || {})}`, 'info');
+                logResult('connection-result', `  - success: ${data?.success} (${typeof data?.success})`, 'info');
+                logResult('connection-result', `  - data: isArray=${Array.isArray(data?.data)}, length=${data?.data?.length}`, 'info');
+                logResult('connection-result', `  - count: ${data?.count}`, 'info');
+                
+                if (data.success === true && Array.isArray(data.data)) {
+                    logResult('connection-result', '✅ 統一レスポンス形式を正しく受信しました！', 'success');
+                    updateStatus('connection-status', 'pass');
+                } else {
+                    logResult('connection-result', '⚠️ レスポンス形式が統一形式ではありません', 'warning');
+                    logResult('connection-result', `実際のレスポンス: ${JSON.stringify(data, null, 2)}`, 'warning');
+                    updateStatus('connection-status', 'fail');
+                }
+                
+            } catch (error) {
+                logResult('connection-result', `❌ エラー: ${error.message}`, 'error');
+                logResult('connection-result', `スタック: ${error.stack}`, 'error');
+                updateStatus('connection-status', 'fail');
+            }
+        }
+
+        async function testMockResponse() {
+            logResult('connection-result', '\n🧪 モックレスポンステスト開始...', 'info');
+            
+            // 統一形式のモックデータ
+            const mockUnifiedResponse = {
+                success: true,
+                data: [
+                    { id: 'P000001', name: 'テスト物件1' },
+                    { id: 'P000002', name: 'テスト物件2' }
+                ],
+                count: 2,
+                timestamp: new Date().toISOString(),
+                debugInfo: { functionCalled: 'getProperties', isArray: true }
+            };
+            
+            // フロントエンド処理ロジックをテスト
+            logResult('connection-result', '🔍 統一形式判定テスト:', 'info');
+            
+            let result;
+            if (mockUnifiedResponse && mockUnifiedResponse.success === true && Array.isArray(mockUnifiedResponse.data)) {
+                result = mockUnifiedResponse.data;
+                logResult('connection-result', '✅ 統一形式として正しく判定されました', 'success');
+                logResult('connection-result', `📊 データ件数: ${result.length}`, 'success');
+            } else {
+                logResult('connection-result', '❌ 統一形式の判定に失敗しました', 'error');
+            }
+            
+            // レガシー形式のフォールバックテスト
+            const mockLegacyResponse = [
+                { id: 'P000001', name: 'レガシー物件1' },
+                { id: 'P000002', name: 'レガシー物件2' }
+            ];
+            
+            logResult('connection-result', '\n🔄 レガシー形式フォールバックテスト:', 'info');
+            
+            if (Array.isArray(mockLegacyResponse)) {
+                result = mockLegacyResponse;
+                logResult('connection-result', '✅ レガシー形式フォールバックが動作しました', 'success');
+                logResult('connection-result', `📊 データ件数: ${result.length}`, 'success');
+            } else {
+                logResult('connection-result', '❌ レガシー形式フォールバックに失敗しました', 'error');
+            }
+        }
+
+        async function testUnifiedFormatDetection() {
+            updateStatus('format-status', 'pending');
+            logResult('format-result', '🔍 統一形式判定テスト開始...', 'info');
+            
+            const testCases = [
+                {
+                    name: '統一形式（正常）',
+                    data: { success: true, data: [1, 2, 3], count: 3 },
+                    expected: true
+                },
+                {
+                    name: '統一形式（data空配列）',
+                    data: { success: true, data: [], count: 0 },
+                    expected: true
+                },
+                {
+                    name: 'success=false',
+                    data: { success: false, data: [1, 2, 3], count: 3 },
+                    expected: false
+                },
+                {
+                    name: 'dataが配列でない',
+                    data: { success: true, data: 'not array', count: 0 },
+                    expected: false
+                },
+                {
+                    name: 'successプロパティなし',
+                    data: { data: [1, 2, 3], count: 3 },
+                    expected: false
+                },
+                {
+                    name: '直接配列',
+                    data: [1, 2, 3],
+                    expected: false
+                }
+            ];
+            
+            let passCount = 0;
+            for (const testCase of testCases) {
+                const result = testCase.data && testCase.data.success === true && Array.isArray(testCase.data.data);
+                const passed = result === testCase.expected;
+                
+                if (passed) {
+                    passCount++;
+                    logResult('format-result', `✅ ${testCase.name}: 期待通り (${result})`, 'success');
+                } else {
+                    logResult('format-result', `❌ ${testCase.name}: 期待=${testCase.expected}, 実際=${result}`, 'error');
+                }
+            }
+            
+            const allPassed = passCount === testCases.length;
+            logResult('format-result', `\n📊 結果: ${passCount}/${testCases.length} テストが成功`, allPassed ? 'success' : 'error');
+            updateStatus('format-status', allPassed ? 'pass' : 'fail');
+        }
+
+        async function testLegacyFormatFallback() {
+            logResult('format-result', '\n🔄 レガシー形式フォールバックテスト開始...', 'info');
+            
+            const testCases = [
+                {
+                    name: 'result配列形式',
+                    data: { result: [1, 2, 3] },
+                    expectedPath: 'result'
+                },
+                {
+                    name: 'rooms配列形式',
+                    data: { rooms: [1, 2, 3] },
+                    expectedPath: 'rooms'
+                },
+                {
+                    name: '直接配列形式',
+                    data: [1, 2, 3],
+                    expectedPath: 'direct'
+                }
+            ];
+            
+            for (const testCase of testCases) {
+                let extractedData = null;
+                let path = '';
+                
+                // 実際のフォールバック処理をシミュレート
+                const data = testCase.data;
+                if (data && data.success === true && Array.isArray(data.data)) {
+                    extractedData = data.data;
+                    path = 'unified';
+                } else if (data && Array.isArray(data.result)) {
+                    extractedData = data.result;
+                    path = 'result';
+                } else if (Array.isArray(data)) {
+                    extractedData = data;
+                    path = 'direct';
+                } else if (data && Array.isArray(data.rooms)) {
+                    extractedData = data.rooms;
+                    path = 'rooms';
+                }
+                
+                const success = path === testCase.expectedPath && extractedData !== null;
+                
+                if (success) {
+                    logResult('format-result', `✅ ${testCase.name}: ${path}パスで正しく抽出 (${extractedData.length}件)`, 'success');
+                } else {
+                    logResult('format-result', `❌ ${testCase.name}: 期待=${testCase.expectedPath}, 実際=${path}`, 'error');
+                }
+            }
+        }
+
+        async function testFullWorkflow() {
+            updateStatus('workflow-status', 'pending');
+            logResult('workflow-result', '🚀 完全ワークフローテスト開始...', 'info');
+            
+            try {
+                // Step 1: 物件一覧取得
+                logResult('workflow-result', '\n📋 Step 1: 物件一覧取得...', 'info');
+                const propertiesResponse = await fetch(`${GAS_URL}?action=getProperties`);
+                const propertiesData = await propertiesResponse.json();
+                
+                logResult('workflow-result', `物件データ形式: ${propertiesData.success ? '統一形式' : 'その他'}`, 'info');
+                
+                let properties = [];
+                if (propertiesData.success === true && Array.isArray(propertiesData.data)) {
+                    properties = propertiesData.data;
+                    logResult('workflow-result', `✅ 物件データ取得成功: ${properties.length}件`, 'success');
+                } else {
+                    throw new Error('物件データの形式が正しくありません');
+                }
+                
+                if (properties.length === 0) {
+                    throw new Error('物件データが空です');
+                }
+                
+                // Step 2: 最初の物件の部屋一覧取得
+                const testProperty = properties[0];
+                logResult('workflow-result', `\n🏠 Step 2: 部屋一覧取得 (物件: ${testProperty.name})...`, 'info');
+                
+                const roomsResponse = await fetch(`${GAS_URL}?action=getRooms&propertyId=${encodeURIComponent(testProperty.id)}`);
+                const roomsData = await roomsResponse.json();
+                
+                logResult('workflow-result', `部屋データ形式: ${roomsData.success ? '統一形式' : 'その他'}`, 'info');
+                
+                let rooms = [];
+                if (roomsData.success === true && Array.isArray(roomsData.data)) {
+                    rooms = roomsData.data;
+                    logResult('workflow-result', `✅ 部屋データ取得成功: ${rooms.length}件`, 'success');
+                } else {
+                    throw new Error('部屋データの形式が正しくありません');
+                }
+                
+                // Step 3: フロントエンド処理シミュレーション
+                logResult('workflow-result', '\n⚙️ Step 3: フロントエンド処理シミュレーション...', 'info');
+                
+                // property_select.htmlの処理をシミュレート
+                let processedRooms = null;
+                if (roomsData && roomsData.success === true && Array.isArray(roomsData.data)) {
+                    processedRooms = roomsData.data;
+                    logResult('workflow-result', '✅ 統一形式として正しく処理されました', 'success');
+                } else if (roomsData && roomsData.result && Array.isArray(roomsData.result)) {
+                    processedRooms = roomsData.result;
+                    logResult('workflow-result', '⚠️ レガシーresult形式として処理されました', 'warning');
+                } else if (Array.isArray(roomsData)) {
+                    processedRooms = roomsData;
+                    logResult('workflow-result', '⚠️ 直接配列形式として処理されました', 'warning');
+                } else {
+                    throw new Error('部屋データの処理に失敗しました');
+                }
+                
+                logResult('workflow-result', `\n🎉 ワークフローテスト完了！`, 'success');
+                logResult('workflow-result', `📊 最終結果:`, 'success');
+                logResult('workflow-result', `  - 物件数: ${properties.length}`, 'success');
+                logResult('workflow-result', `  - 部屋数: ${processedRooms.length}`, 'success');
+                logResult('workflow-result', `  - API形式: 統一レスポンス形式`, 'success');
+                
+                updateStatus('workflow-status', 'pass');
+                
+            } catch (error) {
+                logResult('workflow-result', `❌ ワークフローエラー: ${error.message}`, 'error');
+                updateStatus('workflow-status', 'fail');
+            }
+        }
+
+        function clearTestResults() {
+            const resultElements = document.querySelectorAll('.result');
+            resultElements.forEach(el => {
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+            
+            const statusElements = document.querySelectorAll('.status');
+            statusElements.forEach(el => {
+                el.className = 'status pending';
+                el.textContent = '未実行';
+            });
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🧪 統一レスポンス形式テストツール初期化完了');
+            logResult('connection-result', '📝 テスト準備完了。各ボタンを押してテストを開始してください。', 'info');
+        });
+    </script>
+</body>
+</html>

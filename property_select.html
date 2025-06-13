@@ -230,14 +230,17 @@
           }          const roomData = await roomResponse.json();
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
+          console.log('[ReactApp] Room data keys:', Object.keys(roomData || {}));
+          console.log('[ReactApp] Room data.success:', roomData?.success, 'type:', typeof roomData?.success);
+          console.log('[ReactApp] Room data.data:', roomData?.data, 'isArray:', Array.isArray(roomData?.data));
           
-          // 🔥 統一レスポンス形式に対応した処理
+          // 🔥 統一レスポンス形式に対応した処理（詳細デバッグ付き）
           let rooms;
-          if (roomData.success === true && Array.isArray(roomData.data)) {
+          if (roomData && roomData.success === true && Array.isArray(roomData.data)) {
             // 新しい統一形式: {success: true, data: [], count: 0}
             rooms = roomData.data;
             console.log('[ReactApp] ✅ 統一形式のデータを使用:', rooms.length, '件');
-          } else if (roomData.result && Array.isArray(roomData.result)) {
+          } else if (roomData && roomData.result && Array.isArray(roomData.result)) {
             // 既存の result 形式
             rooms = roomData.result;
             console.log('[ReactApp] ⚠️ レガシーresult形式を使用');
@@ -245,7 +248,7 @@
             // 直接配列形式
             rooms = roomData;
             console.log('[ReactApp] ⚠️ 直接配列形式を使用');
-          } else if (roomData.rooms && Array.isArray(roomData.rooms)) {
+          } else if (roomData && roomData.rooms && Array.isArray(roomData.rooms)) {
             // rooms プロパティ形式
             rooms = roomData.rooms;
             console.log('[ReactApp] ⚠️ roomsプロパティ形式を使用');
@@ -253,7 +256,12 @@
             console.error('[ReactApp] Unexpected room data format:', roomData);
             console.error('[ReactApp] Response keys:', Object.keys(roomData || {}));
             console.error('[ReactApp] Response content:', roomData);
-            throw new Error('部屋データの形式が正しくありません。APIレスポンスを確認してください。');
+            console.error('[ReactApp] Detailed analysis:');
+            console.error('  - typeof roomData:', typeof roomData);
+            console.error('  - roomData.success:', roomData?.success, 'exact comparison:', roomData?.success === true);
+            console.error('  - roomData.data:', roomData?.data);
+            console.error('  - Array.isArray(roomData.data):', Array.isArray(roomData?.data));
+            throw new Error('部屋データの形式が予期されたものと異なります。');
           }
           
           console.log('[ReactApp] Processed rooms:', rooms);
