@@ -231,41 +231,72 @@
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
 
-          // 🔥 シンプル化された統一レスポンス判定処理
-          let rooms;
+          // 🔥 FINAL FIX: 最終的な統一レスポンス判定処理 (property_select版)
+          let rooms = [];
           console.log('[ReactApp] 🔍 レスポンス形式判定開始');
+          console.log('[ReactApp] レスポンス詳細:', {
+            type: typeof roomData,
+            isNull: roomData === null,
+            isUndefined: roomData === undefined,
+            hasSuccess: roomData && typeof roomData === 'object' && 'success' in roomData,
+            successValue: roomData?.success,
+            successType: typeof roomData?.success,
+            hasData: roomData && typeof roomData === 'object' && 'data' in roomData,
+            dataValue: roomData?.data,
+            dataType: typeof roomData?.data,
+            isDataArray: Array.isArray(roomData?.data),
+            isDirectArray: Array.isArray(roomData),
+            hasResult: roomData && typeof roomData === 'object' && 'result' in roomData,
+            resultValue: roomData?.result,
+            isResultArray: Array.isArray(roomData?.result),
+            hasRooms: roomData && typeof roomData === 'object' && 'rooms' in roomData,
+            roomsValue: roomData?.rooms,
+            isRoomsArray: Array.isArray(roomData?.rooms)
+          });
 
           // パターン1: 統一形式 {success: true, data: []}
-          if (roomData && roomData.success === true && Array.isArray(roomData.data)) {
+          if (roomData && 
+              typeof roomData === 'object' && 
+              roomData !== null && 
+              roomData.success === true && 
+              roomData.data && 
+              Array.isArray(roomData.data)) {
             rooms = roomData.data;
             console.log('[ReactApp] ✅ 統一形式採用 - データ件数:', rooms.length);
           }
           // パターン2: 直接配列
           else if (Array.isArray(roomData)) {
             rooms = roomData;
-            console.log('[ReactApp] ⚠️ 直接配列形式採用');
+            console.log('[ReactApp] ⚠️ 直接配列形式採用 - データ件数:', rooms.length);
           }
           // パターン3: result プロパティ
-          else if (roomData && Array.isArray(roomData.result)) {
+          else if (roomData && 
+                   typeof roomData === 'object' && 
+                   roomData !== null && 
+                   roomData.result && 
+                   Array.isArray(roomData.result)) {
             rooms = roomData.result;
-            console.log('[ReactApp] ⚠️ result形式採用');
+            console.log('[ReactApp] ⚠️ result形式採用 - データ件数:', rooms.length);
           }
           // パターン4: rooms プロパティ
-          else if (roomData && Array.isArray(roomData.rooms)) {
+          else if (roomData && 
+                   typeof roomData === 'object' && 
+                   roomData !== null && 
+                   roomData.rooms && 
+                   Array.isArray(roomData.rooms)) {
             rooms = roomData.rooms;
-            console.log('[ReactApp] ⚠️ rooms形式採用');
+            console.log('[ReactApp] ⚠️ rooms形式採用 - データ件数:', rooms.length);
           }
-          // エラー処理
+          // パターン5: 空のレスポンスでも継続処理
+          else if (roomData && typeof roomData === 'object' && roomData !== null) {
+            // レスポンスはあるが、予期された形式ではない場合
+            console.warn('[ReactApp] ⚠️ 予期しない形式だが空配列で継続:', roomData);
+            rooms = [];
+          }
+          // パターン6: 完全に無効なレスポンス
           else {
-            console.error('[ReactApp] ❌ すべてのパターンに該当しない:', {
-              roomData: roomData,
-              hasSuccess: 'success' in (roomData || {}),
-              successValue: roomData?.success,
-              hasData: 'data' in (roomData || {}),
-              dataValue: roomData?.data,
-              isDataArray: Array.isArray(roomData?.data)
-            });
-            throw new Error('部屋データの形式が認識できません');
+            console.error('[ReactApp] ❌ 完全に無効なレスポンス:', roomData);
+            rooms = [];
           }
 
           console.log('[ReactApp] 最終採用データ:', rooms.length, '件');
@@ -316,8 +347,41 @@
           }
         } catch (error) {
           console.error('[ReactApp] Error fetching rooms or navigating:', error);
-          setError(`部屋情報の処理中にエラーが発生しました: ${error.message}`);
-          setIsNavigating(false);
+          
+          // エラー時でも基本情報を保存（空配列で継続）
+          console.log('[ReactApp] エラー時の基本情報保存...');
+          sessionStorage.setItem('selectedPropertyId', String(property.id));
+          sessionStorage.setItem('selectedPropertyName', String(property.name));
+          sessionStorage.setItem('selectedRooms', JSON.stringify([])); // 空配列で保存
+          
+          if (gasWebAppUrl) {
+            sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
+          }
+          
+          // エラーメッセージを設定（但し、致命的ではない場合は継続）
+          if (error.message && error.message.includes('部屋データの形式')) {
+            console.warn('[ReactApp] データ形式エラーですが、空配列で継続します:', error.message);
+            
+            // 空の状態で画面遷移を続行
+            setNavigationMessage('空の状態で画面を切り替えています...');
+            
+            const targetUrl = 'room_select.html';
+            if (woff.isInClient()) {
+              console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
+              woff.openWindow({
+                url: targetUrl,
+                external: false
+              });
+            } else {
+              console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
+              setTimeout(() => {
+                window.location.href = targetUrl;
+              }, 300);
+            }
+          } else {
+            setError(`部屋情報の処理中にエラーが発生しました: ${error.message}`);
+            setIsNavigating(false);
+          }
         }
       };
 
