@@ -231,17 +231,29 @@
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
           
-          // レスポンス形式の統一処理（GASから { result: rooms } 形式で返される）
+          // 🔥 統一レスポンス形式に対応した処理
           let rooms;
-          if (Array.isArray(roomData)) {
-            rooms = roomData;
+          if (roomData.success === true && Array.isArray(roomData.data)) {
+            // 新しい統一形式: {success: true, data: [], count: 0}
+            rooms = roomData.data;
+            console.log('[ReactApp] ✅ 統一形式のデータを使用:', rooms.length, '件');
           } else if (roomData.result && Array.isArray(roomData.result)) {
+            // 既存の result 形式
             rooms = roomData.result;
+            console.log('[ReactApp] ⚠️ レガシーresult形式を使用');
+          } else if (Array.isArray(roomData)) {
+            // 直接配列形式
+            rooms = roomData;
+            console.log('[ReactApp] ⚠️ 直接配列形式を使用');
           } else if (roomData.rooms && Array.isArray(roomData.rooms)) {
+            // rooms プロパティ形式
             rooms = roomData.rooms;
+            console.log('[ReactApp] ⚠️ roomsプロパティ形式を使用');
           } else {
             console.error('[ReactApp] Unexpected room data format:', roomData);
-            throw new Error('部屋データの形式が予期されたものと異なります。');
+            console.error('[ReactApp] Response keys:', Object.keys(roomData || {}));
+            console.error('[ReactApp] Response content:', roomData);
+            throw new Error('部屋データの形式が正しくありません。APIレスポンスを確認してください。');
           }
           
           console.log('[ReactApp] Processed rooms:', rooms);

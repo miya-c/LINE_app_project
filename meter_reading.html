@@ -308,7 +308,15 @@
           console.log('[meter_reading] Received responseObject from server:', responseObject);
           
           let actualDataPayload;
-          if (typeof responseObject === 'object' && responseObject !== null && 'readings' in responseObject) {
+          // 🔥 統一レスポンス形式に対応した処理
+          if (responseObject.success === true && Array.isArray(responseObject.data)) {
+            // 新しい統一形式: {success: true, data: [], count: 0}
+            console.log('[meter_reading] ✅ 統一形式のデータを使用');
+            actualDataPayload = { 
+              readings: responseObject.data,
+              debugInfo: responseObject.debugInfo || {}
+            };
+          } else if (typeof responseObject === 'object' && responseObject !== null && 'readings' in responseObject) {
             console.log('[meter_reading] Server response has expected structure with readings property.');
             actualDataPayload = responseObject;
           } else if (Array.isArray(responseObject)) {
@@ -505,12 +513,18 @@
             const result = await response.json();
             console.log('[meter_reading] 部屋一覧レスポンス:', result);
             
-            // 🆕 レスポンスが直接配列の場合とオブジェクトの場合を両方処理
+            // 🔥 統一レスポンス形式に対応した処理
             let roomsArray;
-            if (Array.isArray(result)) {
+            if (result.success === true && Array.isArray(result.data)) {
+              // 新しい統一形式: {success: true, data: [], count: 0}
+              roomsArray = result.data;
+              console.log('[meter_reading] ✅ 統一形式のデータを使用');
+            } else if (Array.isArray(result)) {
               roomsArray = result;
+              console.log('[meter_reading] ⚠️ 直接配列形式を使用');
             } else if (result && Array.isArray(result.rooms)) {
               roomsArray = result.rooms;
+              console.log('[meter_reading] ⚠️ rooms配列形式を使用');
             } else {
               console.warn('[meter_reading] 予期しないレスポンス形式:', result);
               return;
