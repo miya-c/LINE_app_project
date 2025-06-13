@@ -270,8 +270,8 @@
             </div>
             <div class="col-md-6">
               <div class="d-flex align-items-center">
-                <span class="status-indicator ${appInfo.hasPushNotifications ? 'status-online' : 'status-unknown'}"></span>
-                <strong>プッシュ通知:</strong> ${appInfo.hasPushNotifications ? '対応' : '非対応'}
+                <span class="status-indicator status-unknown"></span>
+                <strong>プッシュ通知:</strong> 簡素版では非対応
               </div>
             </div>
           </div>
@@ -310,21 +310,28 @@
     function setupDebugButtons() {
       document.getElementById('show-debug-btn').onclick = () => {
         if (window.pwaUtils) {
-          window.pwaUtils.showDebugInfo();
+          const appInfo = window.pwaUtils.getAppInfo();
+          const debugText = Object.entries(appInfo)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n');
+          alert(`PWA デバッグ情報:\n\n${debugText}`);
         } else {
           alert('PWA Utilities が利用できません');
         }
       };
       
       document.getElementById('clear-cache-btn').onclick = async () => {
-        if (window.pwaUtils) {
-          const success = await window.pwaUtils.clearCache();
-          alert(success ? 'キャッシュをクリアしました' : 'キャッシュのクリアに失敗しました');
-          if (success) {
+        if ('caches' in window) {
+          try {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
+            alert('キャッシュをクリアしました');
             window.location.reload();
+          } catch (error) {
+            alert('キャッシュのクリアに失敗しました');
           }
         } else {
-          alert('PWA Utilities が利用できません');
+          alert('キャッシュ機能が利用できません');
         }
       };
     }

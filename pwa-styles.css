@@ -38,6 +38,17 @@ body.pwa-installed {
   transform: translateY(0);
 }
 
+/* Additional styling for dynamically created install button */
+.pwa-install-btn {
+  position: fixed !important;
+  bottom: 20px !important;
+  right: 20px !important;
+  z-index: 1000 !important;
+  border-radius: 25px !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+  display: none !important;
+}
+
 /* Network status notification */
 #network-status {
   position: fixed;
