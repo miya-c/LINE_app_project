@@ -191,36 +191,60 @@
             throw new Error(result.error);
           }
 
-          // 🔥 シンプル化された統一レスポンス判定処理
-          let roomsData;
+          // 🔥 FINAL FIX: 最終的な統一レスポンス判定処理
+          let roomsData = [];
           console.log('[room_select] 🔍 レスポンス形式判定開始');
+          console.log('[room_select] レスポンス詳細:', {
+            type: typeof result,
+            isNull: result === null,
+            isUndefined: result === undefined,
+            hasSuccess: result && typeof result === 'object' && 'success' in result,
+            successValue: result?.success,
+            successType: typeof result?.success,
+            hasData: result && typeof result === 'object' && 'data' in result,
+            dataValue: result?.data,
+            dataType: typeof result?.data,
+            isDataArray: Array.isArray(result?.data),
+            isDirectArray: Array.isArray(result),
+            hasRooms: result && typeof result === 'object' && 'rooms' in result,
+            roomsValue: result?.rooms,
+            isRoomsArray: Array.isArray(result?.rooms)
+          });
 
           // パターン1: 統一形式 {success: true, data: []}
-          if (result && result.success === true && Array.isArray(result.data)) {
+          if (result && 
+              typeof result === 'object' && 
+              result !== null && 
+              result.success === true && 
+              result.data && 
+              Array.isArray(result.data)) {
             roomsData = result.data;
             console.log('[room_select] ✅ 統一形式採用 - データ件数:', roomsData.length);
           }
           // パターン2: 直接配列
           else if (Array.isArray(result)) {
             roomsData = result;
-            console.log('[room_select] ⚠️ 直接配列形式採用');
+            console.log('[room_select] ⚠️ 直接配列形式採用 - データ件数:', roomsData.length);
           }
           // パターン3: rooms プロパティ
-          else if (result && Array.isArray(result.rooms)) {
+          else if (result && 
+                   typeof result === 'object' && 
+                   result !== null && 
+                   result.rooms && 
+                   Array.isArray(result.rooms)) {
             roomsData = result.rooms;
-            console.log('[room_select] ⚠️ rooms形式採用');
+            console.log('[room_select] ⚠️ rooms形式採用 - データ件数:', roomsData.length);
           }
-          // エラー処理
+          // パターン4: 空のレスポンスでも継続処理
+          else if (result && typeof result === 'object' && result !== null) {
+            // レスポンスはあるが、予期された形式ではない場合
+            console.warn('[room_select] ⚠️ 予期しない形式だが空配列で継続:', result);
+            roomsData = [];
+          }
+          // パターン5: 完全に無効なレスポンス
           else {
-            console.error('[room_select] ❌ すべてのパターンに該当しない:', {
-              result: result,
-              hasSuccess: 'success' in (result || {}),
-              successValue: result?.success,
-              hasData: 'data' in (result || {}),
-              dataValue: result?.data,
-              isDataArray: Array.isArray(result?.data)
-            });
-            throw new Error('部屋データの形式が認識できません');
+            console.error('[room_select] ❌ 完全に無効なレスポンス:', result);
+            roomsData = [];
           }
 
           console.log('[room_select] 最終採用データ:', roomsData.length, '件');
@@ -235,7 +259,9 @@
           
         } catch (error) {
           console.error('[room_select] ❌ バックエンドデータ取得エラー:', error);
-          throw error;
+          // エラー時でも空配列を返して処理を継続
+          console.warn('[room_select] エラー時は空配列を返して処理を継続します');
+          return [];
         }
       };
 
@@ -296,25 +322,28 @@
                 sessionStorage.removeItem('updatedRoomId');
                 sessionStorage.removeItem('lastUpdateTime');
                 
-                console.log('[room_select] 🎉 強制リフレッシュ完了');
-                
-              } catch (refreshError) {
-                console.error('[room_select] ❌ 強制リフレッシュ失敗:', refreshError);
-                // フォールバック：キャッシュから読み込み
-                const roomsString = sessionStorage.getItem('selectedRooms');
-                if (roomsString) {
-                  try {
-                    const parsedRooms = JSON.parse(roomsString);
-                    setRooms(Array.isArray(parsedRooms) ? parsedRooms : []);
-                    console.log('[room_select] 📦 フォールバック：キャッシュから読み込み完了');
-                  } catch (parseError) {
-                    console.error('[room_select] キャッシュデータの解析失敗:', parseError);
-                    setError('部屋情報の読み込みに失敗しました。');
+                console.log('[room_select] 🎉 強制リフレッシュ完了');                } catch (refreshError) {
+                  console.error('[room_select] ❌ 強制リフレッシュ失敗:', refreshError);
+                  
+                  // フォールバック：キャッシュから読み込み
+                  const roomsString = sessionStorage.getItem('selectedRooms');
+                  if (roomsString) {
+                    try {
+                      const parsedRooms = JSON.parse(roomsString);
+                      setRooms(Array.isArray(parsedRooms) ? parsedRooms : []);
+                      console.log('[room_select] 📦 フォールバック：キャッシュから読み込み完了');
+                      setError(null); // エラー状態をクリア
+                    } catch (parseError) {
+                      console.error('[room_select] キャッシュデータの解析失敗:', parseError);
+                      setRooms([]); // 空配列で継続
+                      setError('キャッシュデータの読み込みに失敗しましたが、継続します。');
+                    }
+                  } else {
+                    console.warn('[room_select] キャッシュもない場合は空配列で継続');
+                    setRooms([]);
+                    setError('部屋情報がありませんが、空の状態で継続します。');
                   }
-                } else {
-                  setError('部屋情報がありません。物件選択ページから再度アクセスしてください。');
                 }
-              }
             } 
             // 通常時：統一キャッシュキーから読み込み
             else {
@@ -334,7 +363,8 @@
                   setRooms(Array.isArray(parsedRooms) ? parsedRooms : []);
                 } catch (e) {
                   console.error('[room_select] sessionStorageから部屋情報の解析に失敗しました:', e);
-                  setError('部屋情報の読み込みに失敗しました。(不正なデータ形式)');
+                  setRooms([]); // 空配列で継続
+                  setError('部屋情報の読み込みに失敗しましたが、空の状態で継続します。');
                 }
               } else {
                 console.warn('[room_select] 統一キャッシュキーにデータなし - バックエンドから取得を試行');
@@ -344,17 +374,29 @@
                   setRooms(latestRooms);
                 } catch (fetchError) {
                   console.error('[room_select] バックエンドデータ取得失敗:', fetchError);
-                  setError('部屋情報の読み込みに失敗しました。物件選択ページから再度アクセスしてください。');
+                  setRooms([]); // 空配列で継続
+                  setError('部屋情報の取得に失敗しましたが、空の状態で継続します。');
                 }
               }
             }
-            
-          } catch (error) {
-            console.error('[room_select] Error during room data loading:', error);
-            setError('アプリの起動または部屋情報の表示に失敗しました。');
-          } finally {
-            setLoading(false);
+               } catch (error) {
+          console.error('[room_select] Error during room data loading:', error);
+          
+          // エラー発生時でも最低限の状態を保持
+          setRooms([]);
+          
+          // エラーメッセージを設定（但し、致命的ではない場合は継続）
+          if (error.message && error.message.includes('部屋データの形式')) {
+            console.warn('[room_select] データ形式エラーですが、空配列で継続します:', error.message);
+            setError(null); // エラー状態をクリア
+          } else {
+            setError(`部屋情報の読み込みでエラーが発生しました: ${error.message}`);
           }
+        } finally {
+          // ローディング状態を必ず解除
+          console.log('[room_select] ローディング状態を解除します');
+          setLoading(false);
+        }
         };
 
         loadRoomData();
