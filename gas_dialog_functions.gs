@@ -298,15 +298,19 @@ function doGet(e) {
     // 部屋選択ページ
     else if (page === 'room_select') {
       console.log('[doGet] 🏠 部屋選択ページ処理開始');
+      console.log('[doGet] 📥 全パラメータ:', JSON.stringify(e.parameter, null, 2));
+      
       const propertyId = e.parameter.propertyId;
       const propertyName = e.parameter.propertyName;
       
-      console.log('[doGet] 📝 受信パラメータ:');
-      console.log('- propertyId:', `"${propertyId}"`);
-      console.log('- propertyName:', `"${propertyName}"`);
+      console.log('[doGet] 📝 受信パラメータ詳細:');
+      console.log('- propertyId:', `"${propertyId}"`, 'type:', typeof propertyId);
+      console.log('- propertyName:', `"${propertyName}"`, 'type:', typeof propertyName);
+      console.log('- propertyId length:', propertyId ? propertyId.length : 'null');
+      console.log('- propertyName length:', propertyName ? propertyName.length : 'null');
       
       if (!propertyId || !propertyName) {
-        const errorMsg = '部屋選択ページには propertyId と propertyName パラメータが必要です';
+        const errorMsg = `部屋選択ページには propertyId と propertyName パラメータが必要です。受信値: propertyId="${propertyId}", propertyName="${propertyName}"`;
         console.error('[doGet] ❌', errorMsg);
         
         const errorHtml = HtmlService.createHtmlOutput(`
@@ -314,70 +318,164 @@ function doGet(e) {
             <head>
               <title>パラメータエラー</title>
               <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <style>
-                body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
-                .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; }
-                .back-button a { display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; margin: 10px; }
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 20px; 
+                  text-align: center; 
+                  background-color: #f5f5f5;
+                }
+                .error { 
+                  color: #d32f2f; 
+                  background: #ffebee; 
+                  padding: 20px; 
+                  border-radius: 8px; 
+                  max-width: 600px;
+                  margin: 20px auto;
+                  border: 1px solid #d32f2f;
+                }
+                .back-button a { 
+                  display: inline-block; 
+                  padding: 12px 24px; 
+                  background: #2196F3; 
+                  color: white; 
+                  text-decoration: none; 
+                  border-radius: 4px; 
+                  margin: 10px; 
+                  font-weight: bold;
+                }
+                .debug-info {
+                  background: #f0f0f0;
+                  padding: 10px;
+                  border-radius: 4px;
+                  margin: 10px 0;
+                  font-family: monospace;
+                  font-size: 12px;
+                  text-align: left;
+                }
               </style>
             </head>
             <body>
               <div class="error">
-                <h2>🚨 パラメータエラー</h2>
-                <p>${errorMsg}</p>
-                <p>propertyId: ${propertyId || '(なし)'}<br>propertyName: ${propertyName || '(なし)'}</p>
+                <h2>🚨 URLパラメータエラー</h2>
+                <p><strong>部屋選択画面にアクセスできませんでした</strong></p>
+                <div class="debug-info">
+                  <strong>エラー詳細:</strong><br>
+                  ${errorMsg}<br><br>
+                  <strong>現在のURL:</strong><br>
+                  ${ScriptApp.getService().getUrl()}?page=room_select&propertyId=${propertyId || '(なし)'}&propertyName=${propertyName || '(なし)'}<br><br>
+                  <strong>受信したパラメータ:</strong><br>
+                  ${JSON.stringify(e.parameter, null, 2)}
+                </div>
                 <div class="back-button">
                   <a href="${ScriptApp.getService().getUrl()}">物件選択に戻る</a>
                 </div>
+                <p><small>物件選択画面から再度お試しください</small></p>
               </div>
             </body>
           </html>
         `);
         
-        return errorHtml.setTitle('パラメータエラー');
+        return errorHtml
+          .setTitle('パラメータエラー - 部屋選択')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       }
       
       try {
         console.log('[doGet] 📊 部屋データ取得開始...');
         const rooms = getRooms(propertyId);
         console.log('[doGet] ✅ 部屋データ取得完了 - 件数:', rooms.length);
+        console.log('[doGet] 🔍 部屋データサンプル:', rooms.slice(0, 2));
         
         const htmlOutput = HtmlService.createTemplateFromFile('room_select_gas');
-        htmlOutput.propertyId = String(propertyId);
-        htmlOutput.propertyName = String(propertyName);
+        
+        // 🔥 テンプレート変数の確実な設定
+        htmlOutput.propertyId = String(propertyId).trim();
+        htmlOutput.propertyName = String(propertyName).trim();
         htmlOutput.rooms = JSON.stringify(rooms);
         
-        return htmlOutput.evaluate()
+        console.log('[doGet] 📤 テンプレートに設定した値:');
+        console.log('- propertyId:', htmlOutput.propertyId);
+        console.log('- propertyName:', htmlOutput.propertyName);
+        console.log('- rooms JSON length:', htmlOutput.rooms.length);
+        
+        const evaluatedHtml = htmlOutput.evaluate()
           .setTitle(`部屋選択 - ${propertyName}`)
           .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
           .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-          
+        
+        console.log('[doGet] 🎉 部屋選択ページの生成完了');
+        return evaluatedHtml;
+        
       } catch (roomError) {
         console.error('[doGet] 💥 部屋データ取得エラー:', roomError);
+        console.error('[doGet] 💥 エラースタック:', roomError.stack);
         
         const errorHtml = HtmlService.createHtmlOutput(`
           <html>
             <head>
               <title>部屋データエラー</title>
               <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <style>
-                body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
-                .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; }
-                .back-button a { display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; margin: 10px; }
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 20px; 
+                  text-align: center; 
+                  background-color: #f5f5f5;
+                }
+                .error { 
+                  color: #d32f2f; 
+                  background: #ffebee; 
+                  padding: 20px; 
+                  border-radius: 8px; 
+                  max-width: 600px;
+                  margin: 20px auto;
+                  border: 1px solid #d32f2f;
+                }
+                .back-button a { 
+                  display: inline-block; 
+                  padding: 12px 24px; 
+                  background: #2196F3; 
+                  color: white; 
+                  text-decoration: none; 
+                  border-radius: 4px; 
+                  margin: 10px; 
+                }
+                .debug-info {
+                  background: #f0f0f0;
+                  padding: 10px;
+                  border-radius: 4px;
+                  margin: 10px 0;
+                  font-family: monospace;
+                  font-size: 12px;
+                  text-align: left;
+                }
               </style>
             </head>
             <body>
               <div class="error">
                 <h2>🚨 部屋データ取得エラー</h2>
-                <p>物件: ${propertyName}<br>エラー: ${roomError.message}</p>
+                <p><strong>物件: ${propertyName}</strong></p>
+                <div class="debug-info">
+                  <strong>エラー詳細:</strong><br>
+                  ${roomError.message}<br><br>
+                  <strong>物件ID:</strong> ${propertyId}<br>
+                  <strong>物件名:</strong> ${propertyName}
+                </div>
                 <div class="back-button">
                   <a href="${ScriptApp.getService().getUrl()}">物件選択に戻る</a>
                 </div>
+                <p><small>管理者に連絡してください</small></p>
               </div>
             </body>
           </html>
         `);
         
-        return errorHtml.setTitle('部屋データエラー');
+        return errorHtml
+          .setTitle('部屋データエラー')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       }
     }
     
@@ -1380,88 +1478,126 @@ function finalDeploymentCheck() {
 }
 
 /**
- * Web App API詳細診断用関数 - 実際のレスポンスを確認
+ * WEBアプリ遷移問題の診断用関数
  */
-function debugWebAppApiDetailed() {
+function debugWebAppTransition() {
   console.log('='.repeat(60));
-  console.log('Web App API 詳細診断');
+  console.log('WEBアプリ遷移問題診断');
   console.log('='.repeat(60));
   
   try {
-    // 1. 基本情報
-    console.log('1. 基本情報');
+    // 1. Web App URL確認
     const webAppUrl = ScriptApp.getService().getUrl();
-    console.log('Web App URL:', webAppUrl);
-    console.log('実行ユーザー:', Session.getActiveUser().getEmail());
-    console.log('現在時刻:', new Date().toISOString());
+    console.log('1. Web App URL:', webAppUrl);
     
-    // 2. 物件データテスト
-    console.log('2. 物件データテスト');
+    // 2. 物件データ確認
     const properties = getProperties();
-    console.log('物件数:', properties.length);
-    console.log('最初の物件:', properties[0] || 'なし');
-    
-    // 3. 部屋データテスト（最初の物件で）
+    console.log('2. 物件数:', properties.length);
     if (properties.length > 0) {
-      console.log('3. 部屋データテスト');
-      const testPropertyId = properties[0].id;
-      console.log('テスト物件ID:', testPropertyId);
+      console.log('   最初の物件:', properties[0]);
       
-      const rooms = getRooms(testPropertyId);
-      console.log('部屋数:', Array.isArray(rooms) ? rooms.length : 'not array');
-      console.log('部屋データ型:', typeof rooms);
-      console.log('最初の部屋:', rooms[0] || 'なし');
-      
-      // 4. API形式テスト（実際のdoGetを呼び出し）
-      console.log('4. API形式テスト');
-      const mockEvent = {
-        parameter: {
-          action: 'getRooms',
-          propertyId: testPropertyId
-        }
+      // 3. テスト用URL生成
+      const testProperty = properties[0];
+      const testUrls = {
+        propertySelect: `${webAppUrl}`,
+        roomSelectDirect: `${webAppUrl}?page=room_select&propertyId=${encodeURIComponent(testProperty.id)}&propertyName=${encodeURIComponent(testProperty.name)}`,
+        apiTest: `${webAppUrl}?action=getRooms&propertyId=${encodeURIComponent(testProperty.id)}`
       };
       
+      console.log('3. テスト用URL:');
+      Object.entries(testUrls).forEach(([key, url]) => {
+        console.log(`   ${key}: ${url}`);
+      });
+      
+      // 4. doGet関数テスト
+      console.log('4. doGet関数テスト:');
       try {
-        const apiResponse = doGet(mockEvent);
-        const responseText = apiResponse.getContent();
-        console.log('API レスポンステキスト長:', responseText.length);
-        console.log('API レスポンス（最初の500文字）:', responseText.substring(0, 500));
-        
-        try {
-          const parsedResponse = JSON.parse(responseText);
-          console.log('API レスポンス解析成功');
-          console.log('- success:', parsedResponse.success);
-          console.log('- data type:', typeof parsedResponse.data);
-          console.log('- data is array:', Array.isArray(parsedResponse.data));
-          console.log('- count:', parsedResponse.count);
-        } catch (parseError) {
-          console.error('API レスポンス解析エラー:', parseError.message);
-        }
-      } catch (apiError) {
-        console.error('API呼び出しエラー:', apiError.message);
+        const mockEvent = {
+          parameter: {
+            page: 'room_select',
+            propertyId: testProperty.id,
+            propertyName: testProperty.name
+          }
+        };
+        const result = doGet(mockEvent);
+        console.log('   doGet実行成功 - 戻り値型:', typeof result);
+      } catch (doGetError) {
+        console.error('   doGet実行エラー:', doGetError.message);
       }
     }
     
-    // 5. テスト用URL生成
-    console.log('5. テスト用URL');
-    if (properties.length > 0) {
-      const testUrls = [
-        `${webAppUrl}`,
-        `${webAppUrl}?action=getProperties`,
-        `${webAppUrl}?action=getRooms&propertyId=${encodeURIComponent(properties[0].id)}`,
-        `${webAppUrl}?page=room_select&propertyId=${encodeURIComponent(properties[0].id)}&propertyName=${encodeURIComponent(properties[0].name)}`
-      ];
-      
-      testUrls.forEach((url, index) => {
-        console.log(`${index + 1}. ${url}`);
-      });
-    }
-    
     console.log('='.repeat(60));
-    return 'API詳細診断完了 - ログを確認してください';
+    return 'WEBアプリ遷移診断完了';
     
   } catch (error) {
-    console.error('API詳細診断エラー:', error);
+    console.error('診断エラー:', error);
     return `診断エラー: ${error.message}`;
+  }
+}
+
+/**
+ * WEBアプリの詳細診断（APIエンドポイント含む）
+ */
+function debugWebAppApiDetailed() {
+  console.log('='.repeat(80));
+  console.log('WEBアプリ API 詳細診断');
+  console.log('='.repeat(80));
+  
+  try {
+    const webAppUrl = ScriptApp.getService().getUrl();
+    console.log('Web App URL:', webAppUrl);
+    
+    // API エンドポイントテスト
+    console.log('\n【APIエンドポイントテスト】');
+    
+    // 1. getProperties API テスト
+    console.log('1. getProperties API:');
+    try {
+      const mockGetPropertiesEvent = { parameter: { action: 'getProperties' } };
+      const propertiesResult = doGet(mockGetPropertiesEvent);
+      console.log('   getProperties実行成功');
+      console.log('   Content-Type:', propertiesResult.getMimeType());
+    } catch (error) {
+      console.error('   getProperties実行エラー:', error.message);
+    }
+    
+    // 2. getRooms API テスト
+    console.log('2. getRooms API:');
+    try {
+      const properties = getProperties();
+      if (properties.length > 0) {
+        const testPropertyId = properties[0].id;
+        const mockGetRoomsEvent = { 
+          parameter: { 
+            action: 'getRooms',
+            propertyId: testPropertyId
+          }
+        };
+        const roomsResult = doGet(mockGetRoomsEvent);
+        console.log('   getRooms実行成功');
+        console.log('   Test Property ID:', testPropertyId);
+        console.log('   Content-Type:', roomsResult.getMimeType());
+      }
+    } catch (error) {
+      console.error('   getRooms実行エラー:', error.message);
+    }
+    
+    // 3. ページ表示テスト
+    console.log('3. ページ表示テスト:');
+    try {
+      const mockPageEvent = { parameter: { page: 'property_select' } };
+      const pageResult = doGet(mockPageEvent);
+      console.log('   property_select実行成功');
+      console.log('   Content-Type:', pageResult.getMimeType());
+    } catch (error) {
+      console.error('   property_select実行エラー:', error.message);
+    }
+    
+    console.log('='.repeat(80));
+    return 'WEBアプリ API 詳細診断完了';
+    
+  } catch (error) {
+    console.error('API診断エラー:', error);
+    return `API診断エラー: ${error.message}`;
   }
 }

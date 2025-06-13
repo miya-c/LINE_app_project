@@ -1,9 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <title>検針情報 (React + Mantine)</title>
+  <title>検針情報 - 水道メーター読み取りアプリ</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- PWA メタタグ -->
+  <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
+  <meta name="theme-color" content="#007bff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="メーター読み取り">
+  <meta name="msapplication-TileColor" content="#007bff">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Favicon and Icons -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
+  
     <!-- WOFF SDK -->  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>  <script>
     // GETリクエストのみ使用版：APIキー不要・CORS完全解決  </script>
   
@@ -12,6 +28,9 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- PWA Utilities -->
+  <script src="/pwa-utils.js"></script>
   
   <!-- 外部CSSファイルの読み込み -->
   <link rel="stylesheet" href="meter_reading.css">
@@ -995,6 +1014,43 @@
     };
 
     ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
+  </script>
+  
+  <!-- PWA初期化スクリプト -->
+  <script>
+    // PWA機能の初期化
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[PWA] Meter Reading page loaded with PWA support');
+      
+      // Service Worker登録
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('[PWA] Service Worker registered from meter reading page');
+            })
+            .catch(error => {
+              console.error('[PWA] Service Worker registration failed:', error);
+            });
+        });
+      }
+      
+      // PWAインストール状態の確認
+      if (window.pwaUtils) {
+        const appInfo = window.pwaUtils.getAppInfo();
+        console.log('[PWA] App info:', appInfo);
+        
+        // インストール済みの場合、UI調整
+        if (appInfo.isInstalled) {
+          document.body.classList.add('pwa-installed');
+        }
+        
+        // オフライン状態の場合、警告表示
+        if (!appInfo.isOnline) {
+          window.pwaUtils.showNetworkStatus('オフライン', 'warning');
+        }
+      }
+    });
   </script>
 </body>
 </html>

@@ -1,15 +1,126 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <title>物件選択 (GAS版)</title>
+  <title>物件選択 - 水道メーター読み取りアプリ (GAS版)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- PWA メタタグ -->
+  <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
+  <meta name="theme-color" content="#007bff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="メーター読み取り">
+  <meta name="msapplication-TileColor" content="#007bff">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Favicon and Icons -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
   
   <!-- ReactとReactDOMのCDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- PWA Utilities (inlined for GAS) -->
+  <script>
+    // PWA Utilities - Simplified version for GAS
+    class PWAUtils {
+      constructor() {
+        this.deferredPrompt = null;
+        this.isOnline = navigator.onLine;
+        this.init();
+      }
+      
+      init() {
+        this.registerServiceWorker();
+        this.setupOnlineOfflineHandlers();
+        this.setupBeforeInstallPrompt();
+      }
+      
+      async registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.register('/service-worker.js');
+            console.log('[PWA] Service Worker registered:', registration.scope);
+          } catch (error) {
+            console.error('[PWA] Service Worker registration failed:', error);
+          }
+        }
+      }
+      
+      setupBeforeInstallPrompt() {
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          this.deferredPrompt = e;
+          this.showInstallButton();
+        });
+      }
+      
+      showInstallButton() {
+        const button = document.createElement('button');
+        button.id = 'pwa-install-button';
+        button.textContent = '📱 アプリをインストール';
+        button.style.cssText = `
+          position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+          background: #007bff; color: white; border: none; padding: 12px 20px;
+          border-radius: 25px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          cursor: pointer; font-size: 14px;
+        `;
+        button.addEventListener('click', () => this.promptInstall());
+        document.body.appendChild(button);
+      }
+      
+      async promptInstall() {
+        if (this.deferredPrompt) {
+          this.deferredPrompt.prompt();
+          const { outcome } = await this.deferredPrompt.userChoice;
+          console.log('[PWA] User response:', outcome);
+          this.deferredPrompt = null;
+          document.getElementById('pwa-install-button')?.remove();
+        }
+      }
+      
+      setupOnlineOfflineHandlers() {
+        window.addEventListener('online', () => {
+          this.isOnline = true;
+          this.showNetworkStatus('オンライン', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+          this.isOnline = false;
+          this.showNetworkStatus('オフライン', 'warning');
+        });
+      }
+      
+      showNetworkStatus(status, type) {
+        const existing = document.getElementById('network-status');
+        if (existing) existing.remove();
+        
+        const notification = document.createElement('div');
+        notification.id = 'network-status';
+        notification.textContent = `🌐 ${status}`;
+        notification.style.cssText = `
+          position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+          z-index: 1002; padding: 10px 20px; border-radius: 8px;
+          background: ${type === 'success' ? '#28a745' : '#ffc107'};
+          color: ${type === 'success' ? 'white' : 'black'};
+          font-weight: bold; text-align: center;
+        `;
+        document.body.appendChild(notification);
+        
+        if (type !== 'warning') {
+          setTimeout(() => notification.remove(), 2000);
+        }
+      }
+    }
+    
+    window.pwaUtils = new PWAUtils();
+  </script>
   
   <!-- CSSをインライン化 -->
   <style>
@@ -369,33 +480,64 @@
       const handlePropertySelect = async (property) => {
         console.log('[ReactApp] handlePropertySelect called with:', property);
         
-        if (!property?.id || !property?.name) {
-          alert('選択された物件情報が無効です。');
+        if (!property) {
+          console.error('[ReactApp] Property is null or undefined');
+          alert('選択された物件情報が無効です。(property is null)');
+          return;
+        }
+        
+        if (typeof property.id === 'undefined') {
+          console.error('[ReactApp] Property.id is undefined:', property);
+          alert('選択された物件のIDが無効です。(property.id is undefined)');
+          return;
+        }
+        
+        if (typeof property.name === 'undefined') {
+          console.error('[ReactApp] Property.name is undefined:', property);
+          alert('選択された物件の名前が無効です。(property.name is undefined)');
           return;
         }
         
         console.log('[ReactApp] Property selected:', property);
         
+        // ✅ 画面遷移前にページの最上部にスクロール
         window.scrollTo(0, 0);
+        
         setIsNavigating(true);
         setNavigationMessage('部屋情報を読み込んでいます...');
         
         try {
           if (isWebApp()) {
-            // ✅ Web App環境: 部屋選択ページへ遷移
+            // 🔥 Web App環境: 部屋選択ページへ遷移（修正版）
             console.log('[ReactApp] Web App 遷移処理開始');
-            const baseUrl = window.location.origin + window.location.pathname;
-            const roomSelectUrl = `${baseUrl}?page=room_select&propertyId=${encodeURIComponent(property.id)}&propertyName=${encodeURIComponent(property.name)}`;
             
-            console.log('[ReactApp] 遷移URL:', roomSelectUrl);
-            console.log('[ReactApp] パラメータ詳細:');
-            console.log('- propertyId:', property.id);
-            console.log('- propertyName:', property.name);
-            console.log('- エンコード後propertyId:', encodeURIComponent(property.id));
-            console.log('- エンコード後propertyName:', encodeURIComponent(property.name));
+            // URLエンコーディングの強化
+            const propertyIdEncoded = encodeURIComponent(String(property.id).trim());
+            const propertyNameEncoded = encodeURIComponent(String(property.name).trim());
+            
+            const baseUrl = window.location.origin + window.location.pathname;
+            const roomSelectUrl = `${baseUrl}?page=room_select&propertyId=${propertyIdEncoded}&propertyName=${propertyNameEncoded}`;
+            
+            console.log('[ReactApp] 遷移URL詳細:');
+            console.log('- baseUrl:', baseUrl);
+            console.log('- propertyId (original):', property.id);
+            console.log('- propertyName (original):', property.name);
+            console.log('- propertyId (encoded):', propertyIdEncoded);
+            console.log('- propertyName (encoded):', propertyNameEncoded);
+            console.log('- 最終URL:', roomSelectUrl);
+            
+            // 🔥 遷移前の検証
+            const urlTest = new URL(roomSelectUrl);
+            const testParams = new URLSearchParams(urlTest.search);
+            console.log('[ReactApp] URL検証:');
+            console.log('- page:', testParams.get('page'));
+            console.log('- propertyId:', testParams.get('propertyId'));
+            console.log('- propertyName:', testParams.get('propertyName'));
             
             // 遷移実行
+            console.log('[ReactApp] 遷移を実行します...');
             window.location.href = roomSelectUrl;
+            
           } else {
             // GAS環境: ダイアログを開く
             console.log('[ReactApp] GAS ダイアログ処理開始');
