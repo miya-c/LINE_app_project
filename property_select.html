@@ -103,54 +103,70 @@
             console.log('[ReactApp] Response type:', typeof data);
             console.log('[ReactApp] Response keys:', data ? Object.keys(data) : 'No keys');
             
-            // エラーレスポンスの場合
-            if (data && data.error) {
-              console.error('[ReactApp] GAS Error Response:', data);
-              throw new Error(`GASエラー: ${data.error}`);
-            }
-            
             // データが null または undefined の場合
             if (!data) {
               console.error('[ReactApp] Response data is null or undefined');
               throw new Error('サーバーからのレスポンスが空です。');
             }
             
-            // 配列でない場合の対応
-            if (Array.isArray(data)) {
-              console.log('[ReactApp] Data is array, setting properties');
-              console.log('[ReactApp] First property sample:', data[0]);
-              // 検針完了日フィールドの確認ログ
-              if (data.length > 0 && data[0]) {
-                console.log('[ReactApp] completionDate field check:', {
-                  hasCompletionDate: 'completionDate' in data[0],
-                  completionDateValue: data[0].completionDate,
-                  completionDateType: typeof data[0].completionDate
-                });
-              }
-              setProperties(data);
+            // 新しい統一レスポンス形式への対応
+            if (data.success === false) {
+              console.error('[ReactApp] GAS Error Response:', data);
+              throw new Error(`GASエラー: ${data.error || 'Unknown error'}`);
+            }
+            
+            // 統一レスポンス形式の処理
+            let actualData = null;
+            if (data.success === true && data.data) {
+              // 新しい統一レスポンス形式: {success: true, data: [...], count: number, timestamp: string}
+              console.log('[ReactApp] New unified response format detected');
+              console.log('[ReactApp] Response metadata:', {
+                success: data.success,
+                count: data.count,
+                timestamp: data.timestamp,
+                debugInfo: data.debugInfo
+              });
+              actualData = data.data;
+            } else if (Array.isArray(data)) {
+              // 従来の直接配列形式への下位互換性
+              console.log('[ReactApp] Legacy direct array format detected');
+              actualData = data;
             } else if (data.properties && Array.isArray(data.properties)) {
-              // propertiesプロパティに配列が含まれている場合
-              console.log('[ReactApp] Data has properties array, setting properties');
-              console.log('[ReactApp] First property sample:', data.properties[0]);
-              // 検針完了日フィールドの確認ログ
-              if (data.properties.length > 0 && data.properties[0]) {
-                console.log('[ReactApp] completionDate field check:', {
-                  hasCompletionDate: 'completionDate' in data.properties[0],
-                  completionDateValue: data.properties[0].completionDate,
-                  completionDateType: typeof data.properties[0].completionDate
-                });
-              }
-              setProperties(data.properties);
+              // 古いpropertiesプロパティ形式への下位互換性
+              console.log('[ReactApp] Legacy properties wrapper format detected');
+              actualData = data.properties;
             } else if (data.availableSheets) {
               // シートが見つからない場合の特別処理
               console.error('[ReactApp] Spreadsheet sheets not found:', data.availableSheets);
               throw new Error('Google Spreadsheetの「物件マスタ」シートが見つかりません。管理者に連絡してください。');
             } else {
-              console.error('[ReactApp] Data from GAS is not an array:', data);
+              console.error('[ReactApp] Unknown response format:', data);
               console.error('[ReactApp] Data type:', typeof data);
               console.error('[ReactApp] Data keys:', Object.keys(data));
               throw new Error('物件データの形式が正しくありません。管理者に連絡してください。');
             }
+            
+            // actualDataの検証と設定
+            if (!Array.isArray(actualData)) {
+              console.error('[ReactApp] Final data is not an array:', actualData);
+              throw new Error('物件データが配列形式ではありません。管理者に連絡してください。');
+            }
+            
+            console.log('[ReactApp] Setting properties data:', {
+              length: actualData.length,
+              firstItem: actualData[0]
+            });
+            
+            // 検針完了日フィールドの確認ログ
+            if (actualData.length > 0 && actualData[0]) {
+              console.log('[ReactApp] completionDate field check:', {
+                hasCompletionDate: 'completionDate' in actualData[0],
+                completionDateValue: actualData[0].completionDate,
+                completionDateType: typeof actualData[0].completionDate
+              });
+            }
+            
+            setProperties(actualData);
           } catch (fetchError) {
             console.error('[ReactApp] Failed to fetch properties:', fetchError);
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
