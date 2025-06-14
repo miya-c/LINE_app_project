@@ -22,22 +22,27 @@
   
   <!-- WOFF SDK removed for general browser compatibility -->
   
-  <!-- ReactとReactDOMのCDN -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- ReactとReactDOMのCDN (Cache Busting Version) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614b" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614b" crossorigin></script>
   <!-- BabelのCDN (JSXをブラウザで変換するため) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js?v=20250614b"></script>
   
   <!-- PWA Utilities -->
-  <script src="/pwa-utils.js"></script>
+  <script src="/pwa-utils.js?v=20250614b"></script>
   
   <!-- 外部CSSファイルの読み込み -->
-  <link rel="stylesheet" href="property_select.css">
+  <link rel="stylesheet" href="property_select.css?v=20250614b">
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel">
+    // 🦁 Brave Browser Cache Busting Version 20250614b
+    // WOFF完全削除済み - 一般ブラウザ専用
+    console.log('🚀 Property Select App v20250614b - Brave Cache Fix');
+    console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
+    
     const App = () => {
       const [properties, setProperties] = React.useState([]);
       const [searchTerm, setSearchTerm] = React.useState('');
@@ -79,13 +84,9 @@
           setLoading(true);
           setError(null);
           try {
-            const requestUrl = `${gasWebAppUrl}?action=getProperties`;
+            // キャッシュバスティング付きAPI呼び出し
+            const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
             console.log('[ReactApp] Fetching properties from:', requestUrl);
-            console.log('[ReactApp] Request URL breakdown:', {
-              baseUrl: gasWebAppUrl,
-              parameter: 'action=getProperties',
-              fullUrl: requestUrl
-            });
             
             const response = await fetch(requestUrl);
             console.log('[ReactApp] Response status:', response.status);
@@ -188,7 +189,7 @@
         setNavigationMessage('部屋情報を読み込んでいます...');
         
         try {
-          const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}`;
+          const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
           console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id}`);
           console.log('[ReactApp] Room request URL breakdown:', {
             baseUrl: gasWebAppUrl,

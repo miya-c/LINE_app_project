@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>Braveブラウザ対応確認 - 水道メーター読み取りアプリ</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .alert {
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 6px;
+      border-left: 4px solid;
+    }
+    .alert.error {
+      background: #fff5f5;
+      border-color: #e53e3e;
+      color: #e53e3e;
+    }
+    .alert.success {
+      background: #f0fff4;
+      border-color: #38a169;
+      color: #38a169;
+    }
+    .alert.warning {
+      background: #fffbeb;
+      border-color: #d69e2e;
+      color: #d69e2e;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+    .test-link {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin: 5px;
+    }
+    .test-link:hover {
+      background: #0056b3;
+    }
+    .code {
+      background: #f7fafc;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .fix-steps {
+      list-style-type: none;
+      padding: 0;
+    }
+    .fix-steps li {
+      padding: 10px;
+      margin: 5px 0;
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌊 Braveブラウザ対応確認</h1>
+    
+    <div class="alert error">
+      <strong>🚨 検出された問題</strong><br>
+      Braveブラウザで以下のエラーが発生しています：
+      <div class="code">
+        [ReactApp] woff.init with woffId: Mtmj4rddmxBddYCPD0G81A<br>
+        [ReactApp] Unexpected room data format: {success: true, data: Array(12), ...}<br>
+        Error: 部屋データの形式が予期されたものと異なります。
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h3>🔍 問題の原因</h3>
+      <p>エラーログから以下の問題が確認されています：</p>
+      <ul>
+        <li><strong>WOFFコードが実行されている</strong> - 削除されたはずのWOFF SDKが呼び出されている</li>
+        <li><strong>部屋データ処理エラー</strong> - レスポンス形式の処理で例外が発生</li>
+        <li><strong>ブラウザキャッシュ問題</strong> - 古いJavaScriptファイルがキャッシュされている可能性</li>
+      </ul>
+    </div>
+    
+    <div class="test-section">
+      <h3>🛠️ 修正手順</h3>
+      <ol class="fix-steps">
+        <li><strong>Step 1: ブラウザキャッシュクリア</strong><br>
+          Brave → 設定 → プライバシーとセキュリティ → 閲覧履歴データの削除 → キャッシュされた画像とファイル
+        </li>
+        <li><strong>Step 2: ハードリフレッシュ</strong><br>
+          Cmd+Shift+R (Mac) または Ctrl+Shift+R (Windows) でハードリフレッシュ
+        </li>
+        <li><strong>Step 3: シークレットモードテスト</strong><br>
+          Cmd+Shift+N でシークレットウィンドウを開いてテスト
+        </li>
+        <li><strong>Step 4: 開発者ツール確認</strong><br>
+          F12 → Network タブ → Disable cache にチェック
+        </li>
+      </ol>
+    </div>
+    
+    <div class="test-section">
+      <h3>🧪 キャッシュバスティング版テスト</h3>
+      <p>キャッシュを回避するため、タイムスタンプ付きのバージョンでテストしてください：</p>
+      <a href="property_select.html?v=20250614&cache=false" class="test-link" target="_blank">物件選択ページ (キャッシュ回避)</a>
+      <a href="room_select.html?v=20250614&cache=false" class="test-link" target="_blank">部屋選択ページ (キャッシュ回避)</a>
+      <a href="meter_reading.html?v=20250614&cache=false" class="test-link" target="_blank">検針入力ページ (キャッシュ回避)</a>
+    </div>
+    
+    <div class="test-section">
+      <h3>🔧 開発者ツールでの確認方法</h3>
+      <ol>
+        <li>F12で開発者ツールを開く</li>
+        <li>Consoleタブで以下を実行して確認：</li>
+      </ol>
+      <div class="code">
+// WOFFが読み込まれているかチェック
+console.log('WOFF check:', typeof woff !== 'undefined' ? '❌ WOFF残存' : '✅ WOFF削除済み');
+
+// Reactが正常に読み込まれているかチェック
+console.log('React check:', typeof React !== 'undefined' ? '✅ React正常' : '❌ React未読込');
+
+// キャッシュ状況確認
+console.log('Cache check:', performance.navigation.type === 1 ? '✅ ハードリフレッシュ' : '⚠️ 通常読込');
+
+// サービスワーカー状況
+navigator.serviceWorker.getRegistrations().then(registrations => {
+  console.log('SW check:', registrations.length > 0 ? '⚠️ SW有効' : '✅ SW無効');
+});
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h3>📱 ブラウザ別動作確認</h3>
+      <div class="alert warning">
+        <strong>推奨テスト環境：</strong><br>
+        各ブラウザでキャッシュクリア後にテストしてください。
+      </div>
+      <ul>
+        <li><strong>✅ Chrome</strong> - 基準ブラウザ</li>
+        <li><strong>🧪 Brave</strong> - 問題発生中</li>
+        <li><strong>✅ Safari</strong> - テスト推奨</li>
+        <li><strong>✅ Firefox</strong> - テスト推奨</li>
+      </ul>
+    </div>
+    
+    <div class="alert success">
+      <strong>✅ 期待される動作</strong><br>
+      修正後は以下のログが表示されるはずです：
+      <div class="code">
+[PWA] Property Select page loaded with PWA support<br>
+[ReactApp] Fetching properties from: [GAS_URL]<br>
+[ReactApp] Response status: 200<br>
+[ReactApp] GAS Response (properties): Array(38)<br>
+--- WOFFに関するログは一切出力されない ---
+      </div>
+    </div>
+    
+    <footer style="margin-top: 40px; text-align: center; color: #666; font-size: 0.9em;">
+      <p>🔧 Brave Browser Debug Tool - 水道メーター読み取りアプリ</p>
+      <p>最終更新: 2025年6月14日</p>
+    </footer>
+  </div>
+  
+  <script>
+    // 自動診断スクリプト
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🌊 Brave Browser Debug Tool loaded');
+      console.log('User Agent:', navigator.userAgent);
+      console.log('Is Brave:', navigator.userAgent.includes('Brave') || 
+                              navigator.brave !== undefined);
+      
+      // 自動チェック実行
+      setTimeout(() => {
+        console.log('=== 自動診断開始 ===');
+        
+        // WOFF存在チェック
+        const woffExists = typeof woff !== 'undefined';
+        console.log('WOFF SDK:', woffExists ? '❌ 残存している' : '✅ 正常に削除済み');
+        
+        // React存在チェック
+        const reactExists = typeof React !== 'undefined';
+        console.log('React:', reactExists ? '✅ 正常に読み込み済み' : '❌ 読み込み失敗');
+        
+        // キャッシュ状況
+        console.log('読み込みタイプ:', performance.navigation.type === 1 ? 
+                   '✅ ハードリフレッシュ' : '⚠️ 通常読み込み（キャッシュ使用）');
+        
+        // ページ読み込み完了まで待機してService Worker確認
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            console.log('Service Worker:', registrations.length > 0 ? 
+                       `⚠️ ${registrations.length}個のSWが登録済み` : '✅ SW未登録');
+          });
+        }
+        
+        console.log('=== 自動診断完了 ===');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
