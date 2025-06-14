@@ -339,6 +339,50 @@ function doGet(e) {
               .setMimeType(ContentService.MimeType.JSON);
           }
           
+        case 'updateMeterReadings':
+          console.log('[doGet] API: updateMeterReadings');
+          try {
+            const propertyId = e.parameter.propertyId;
+            const roomId = e.parameter.roomId;
+            const readingsParam = e.parameter.readings;
+            
+            if (!propertyId || !roomId || !readingsParam) {
+              throw new Error('propertyId, roomId, および readings パラメータが必要です');
+            }
+            
+            console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
+            console.log('[doGet] readings param:', readingsParam);
+            
+            // JSON文字列をパース
+            const readings = JSON.parse(readingsParam);
+            
+            const result = updateMeterReadings(propertyId, roomId, readings);
+            console.log('[doGet] 検針データ更新完了:', result);
+            
+            return ContentService
+              .createTextOutput(JSON.stringify(result))
+              .setMimeType(ContentService.MimeType.JSON);
+          } catch (apiError) {
+            console.error('[doGet] updateMeterReadings API エラー:', apiError);
+            
+            const errorResponse = {
+              success: false,
+              error: `検針データ更新エラー: ${apiError.message}`,
+              timestamp: new Date().toISOString(),
+              propertyId: e.parameter.propertyId || 'unknown',
+              roomId: e.parameter.roomId || 'unknown',
+              debugInfo: {
+                errorType: apiError.name,
+                errorMessage: apiError.message,
+                errorStack: apiError.stack
+              }
+            };
+            
+            return ContentService
+              .createTextOutput(JSON.stringify(errorResponse))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+          
         default:
           console.log('[doGet] 未対応のAPI要求:', action);
           return ContentService
@@ -877,6 +921,7 @@ function getMeterReadings(propertyId, roomId) {
 function updateMeterReadings(propertyId, roomId, readings) {
   try {
     console.log('[updateMeterReadings] 開始 - propertyId:', propertyId, 'roomId:', roomId, 'データ数:', readings.length);
+    console.log('[updateMeterReadings] 更新データ:', JSON.stringify(readings));
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('inspection_data');
@@ -885,27 +930,155 @@ function updateMeterReadings(propertyId, roomId, readings) {
       throw new Error('inspection_data シートが見つかりません');
     }
     
+    // スプレッドシートのデータを取得
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      throw new Error('スプレッドシートにデータが不足しています');
+    }
+    
+    // ヘッダーから列インデックスを動的に取得
+    const headers = data[0];
+    const columnIndexes = {
+      propertyId: headers.indexOf('物件ID'),
+      roomId: headers.indexOf('部屋ID'),
+      date: headers.indexOf('検針日'),
+      currentReading: headers.indexOf('今回の指示数'),
+      previousReading: headers.indexOf('前回指示数'),
+      usage: headers.indexOf('今回使用量'),
+      warningFlag: headers.indexOf('警告フラグ'),
+      recordId: headers.indexOf('記録ID')
+    };
+    
+    // 必要な列が存在するかチェック
+    const requiredColumns = ['物件ID', '部屋ID', '検針日', '今回の指示数'];
+    for (const colName of requiredColumns) {
+      if (!headers.includes(colName)) {
+        throw new Error(`必要な列が見つかりません: ${colName}`);
+      }
+    }
+    
     let updatedCount = 0;
+    const updatedReadings = [];
     
-    // 実際の更新処理をここに実装
-    readings.forEach(reading => {
-      // 記録IDをキーにして既存データを更新、または新規追加
-      // この部分は具体的な要件に応じて実装
-      updatedCount++;
-    });
+    console.log('[updateMeterReadings] データ処理開始 - 対象件数:', readings.length);
     
-    console.log('[updateMeterReadings] 更新完了 - 更新数:', updatedCount);
+    // 各検針データを処理
+    for (let i = 0; i < readings.length; i++) {
+      const reading = readings[i];
+      console.log(`[updateMeterReadings] 処理中 [${i}]:`, reading);
+      
+      let skip = false;
+      try {
+        // 検針日時の適切な処理
+        let recordDate = '';
+        if (reading.date && reading.date !== '') {
+          if (reading.date instanceof Date) {
+            const year = reading.date.getFullYear();
+            const month = String(reading.date.getMonth() + 1).padStart(2, '0');
+            const day = String(reading.date.getDate()).padStart(2, '0');
+            recordDate = `${year}-${month}-${day}`;
+          } else {
+            recordDate = String(reading.date).trim();
+          }
+        }
+        
+        const currentReadingValue = parseFloat(reading.currentReading) || 0;
+        
+        // 既存データを検索
+        let existingRowIndex = -1;
+        for (let j = 1; j < data.length; j++) {
+          if (data[j][columnIndexes.propertyId] === propertyId && 
+              data[j][columnIndexes.roomId] === roomId) {
+            existingRowIndex = j;
+            break;
+          }
+        }
+        
+        let usage = 0;
+        if (existingRowIndex >= 0) {
+          // 既存データを更新
+          const previousReadingValue = parseFloat(data[existingRowIndex][columnIndexes.previousReading]) || 0;
+          
+          if (previousReadingValue === 0 || data[existingRowIndex][columnIndexes.previousReading] === '' || 
+              data[existingRowIndex][columnIndexes.previousReading] === null) {
+            usage = currentReadingValue;
+            console.log(`[updateMeterReadings] 新規検針データ - 今回指示数をそのまま使用量として設定: ${usage}`);
+          } else {
+            usage = Math.max(0, currentReadingValue - previousReadingValue);
+            console.log(`[updateMeterReadings] 既存データ更新 - 使用量計算: ${currentReadingValue} - ${previousReadingValue} = ${usage}`);
+          }
+          
+          // 既存行を更新
+          if (recordDate) data[existingRowIndex][columnIndexes.date] = recordDate;
+          data[existingRowIndex][columnIndexes.currentReading] = currentReadingValue;
+          if (columnIndexes.usage >= 0) data[existingRowIndex][columnIndexes.usage] = usage;
+          if (columnIndexes.warningFlag >= 0) data[existingRowIndex][columnIndexes.warningFlag] = '正常';
+          
+        } else {
+          // 新規データを追加
+          const previousReading = 0;
+          usage = currentReadingValue;
+          
+          const newRow = new Array(headers.length).fill('');
+          newRow[columnIndexes.propertyId] = propertyId;
+          newRow[columnIndexes.roomId] = roomId;
+          if (recordDate) newRow[columnIndexes.date] = recordDate;
+          newRow[columnIndexes.currentReading] = currentReadingValue;
+          newRow[columnIndexes.previousReading] = previousReading;
+          if (columnIndexes.usage >= 0) newRow[columnIndexes.usage] = usage;
+          if (columnIndexes.warningFlag >= 0) newRow[columnIndexes.warningFlag] = '正常';
+          if (columnIndexes.recordId >= 0) newRow[columnIndexes.recordId] = Utilities.getUuid();
+          
+          data.push(newRow);
+          console.log(`[updateMeterReadings] 新規データ追加: 指示数=${currentReadingValue}, 使用量=${usage}`);
+        }
+        
+        updatedReadings.push({
+          date: recordDate,
+          currentReading: currentReadingValue,
+          usage: usage,
+          updated: true
+        });
+        
+        updatedCount++;
+        console.log(`[updateMeterReadings] 検針データ更新: ${recordDate || '空の日付'} - 指示数: ${currentReadingValue}, 使用量: ${usage}`);
+        
+      } catch (updateError) {
+        console.error(`[updateMeterReadings] 検針データ更新エラー (行${i}):`, updateError.message);
+        updatedReadings.push({
+          date: reading.date,
+          currentReading: reading.currentReading,
+          error: updateError.message,
+          updated: false
+        });
+        skip = true;
+      }
+      if (skip) continue;
+    }
+    
+    console.log('[updateMeterReadings] ===== 検針データ更新処理完了 =====');
+    console.log(`[updateMeterReadings] 総処理件数: ${updatedReadings.length}`);
+    console.log(`[updateMeterReadings] 成功件数: ${updatedCount}`);
+    
+    // スプレッドシートに書き戻し
+    sheet.getDataRange().setValues(data);
+    console.log('[updateMeterReadings] スプレッドシート更新完了');
+    
     return {
       success: true,
       updatedCount: updatedCount,
-      message: `${updatedCount}件のデータを更新しました`
+      message: `${updatedCount}件のデータを更新しました`,
+      updatedReadings: updatedReadings,
+      timestamp: new Date().toISOString()
     };
+    
   } catch (error) {
     console.error('[updateMeterReadings] エラー:', error);
     return {
       success: false,
       error: error.message,
-      message: '検針データの更新に失敗しました'
+      message: '検針データの更新に失敗しました',
+      timestamp: new Date().toISOString()
     };
   }
 }
