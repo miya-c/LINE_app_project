@@ -39,8 +39,11 @@
   <script type="text/babel">
     // ===================================
     // 一般ブラウザ向け水道メーター読み取りアプリ
-    // WOFF SDK依存なし
+    // WOFF SDK依存なし - Debug Mode Enhanced v20250614c
     // ===================================
+    
+    console.log('🚀 Meter Reading App v20250614c - Enhanced Debug Mode');
+    console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
     
     const formatDateForDisplay = (rawDate) => {
       if (!rawDate) return null;
@@ -297,6 +300,8 @@
           }
 
           console.log('[meter_reading] Fetched meter readings:', readings);
+          console.log('[meter_reading] Readings array length:', Array.isArray(readings) ? readings.length : 'Not an array');
+          console.log('[meter_reading] Setting meterReadings state with:', Array.isArray(readings) ? readings : []);
           
           setMeterReadings(Array.isArray(readings) ? readings : []);
           setLoading(false);
@@ -618,10 +623,39 @@
               <div className="property-info-card">
                 <h2 className="property-name">{propertyName}</h2>
                 <p className="room-info">部屋: {roomName}</p>
+                {/* URLパラメータデバッグ情報 */}
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '8px',
+                  marginTop: '8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace'
+                }}>
+                  <strong>URLパラメータ:</strong><br/>
+                  propertyId: {propertyId}<br/>
+                  roomId: {roomId}<br/>
+                  gasWebAppUrl: {gasWebAppUrl ? 'Set' : 'Not Set'}
+                </div>
               </div>
 
               <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
                 <h3 className="mantine-subtitle desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
+                {/* デバッグ情報 */}
+                <div style={{
+                  backgroundColor: '#f0f0f0',
+                  padding: '10px',
+                  margin: '10px 0',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace'
+                }}>
+                  <strong>デバッグ情報:</strong><br/>
+                  meterReadings type: {typeof meterReadings}<br/>
+                  meterReadings isArray: {Array.isArray(meterReadings).toString()}<br/>
+                  meterReadings length: {Array.isArray(meterReadings) ? meterReadings.length : 'N/A'}<br/>
+                  meterReadings content: {JSON.stringify(meterReadings, null, 2)}
+                </div>
                 {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
                   <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
@@ -647,6 +681,19 @@
                         const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;
                         const statusDisplay = formatStatus(reading.status);
                         const previousReadingsInfo = getPreviousReadingsText(reading);
+                        
+                        // デバッグ情報をコンソールに出力
+                        console.log(`[meter_reading] レンダリング情報 [${index}]:`, {
+                          originalReading: reading,
+                          formattedDate,
+                          inspectionStatus,
+                          dateForDataAttribute,
+                          currentReadingDisplay,
+                          usageToDisplay,
+                          usageDisplayString,
+                          statusDisplay,
+                          previousReadingsInfo
+                        });
                         
                         return (
                           <tr key={index}>
