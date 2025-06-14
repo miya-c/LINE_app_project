@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>詳細CSS診断ツール</title>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .diagnostic-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .status {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .loading { background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .css-preview {
+            border: 2px dashed #ccc;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostic-container">
+        <h1>🔍 詳細CSS診断ツール</h1>
+        
+        <div class="test-section">
+            <h2>1. CSSファイル読み込み状況</h2>
+            <div id="css-load-status">
+                <div class="status loading">📋 チェック中...</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. CSS変数定義チェック</h2>
+            <div id="css-variables-status">
+                <div class="status loading">📋 チェック中...</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. スタイル適用テスト</h2>
+            <div id="style-test-status">
+                <div class="status loading">📋 チェック中...</div>
+            </div>
+            
+            <div class="css-preview">
+                <h3>実際のスタイル適用テスト</h3>
+                <div class="mantine-container">
+                    <div class="mantine-stack">
+                        <h4 class="mantine-title">Mantineタイトル</h4>
+                        <p class="mantine-text">Mantineテキスト</p>
+                        <button class="mantine-button variant-filled">Mantineボタン</button>
+                        <div class="mantine-paper">
+                            <p>Mantineペーパー</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. ネットワークエラーチェック</h2>
+            <div id="network-status">
+                <div class="status loading">📋 チェック中...</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. 計算済みスタイル詳細</h2>
+            <div id="computed-styles">
+                <div class="status loading">📋 チェック中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CSS診断を実行
+        async function runDiagnostics() {
+            await checkCSSLoading();
+            checkCSSVariables();
+            checkStyleApplication();
+            await checkNetworkErrors();
+            checkComputedStyles();
+        }
+        
+        // 1. CSSファイル読み込み状況チェック
+        async function checkCSSLoading() {
+            const statusDiv = document.getElementById('css-load-status');
+            const cssFiles = [
+                'css_styles/property_select.css',
+                'css_styles/room_select.css', 
+                'css_styles/meter_reading.css',
+                'css_styles/pwa-styles.css'
+            ];
+            
+            let results = [];
+            
+            for (const file of cssFiles) {
+                try {
+                    const response = await fetch(file);
+                    const success = response.ok;
+                    const size = response.headers.get('content-length');
+                    
+                    results.push(`
+                        <div class="status ${success ? 'success' : 'error'}">
+                            ${success ? '✅' : '❌'} ${file}
+                            ${success ? `(${size} bytes, Status: ${response.status})` : `(Error: ${response.status})`}
+                        </div>
+                    `);
+                } catch (error) {
+                    results.push(`
+                        <div class="status error">
+                            ❌ ${file} (Network Error: ${error.message})
+                        </div>
+                    `);
+                }
+            }
+            
+            statusDiv.innerHTML = results.join('');
+        }
+        
+        // 2. CSS変数チェック
+        function checkCSSVariables() {
+            const statusDiv = document.getElementById('css-variables-status');
+            const rootStyle = getComputedStyle(document.documentElement);
+            
+            const variables = [
+                '--mantine-color-blue-6',
+                '--mantine-color-gray-0',
+                '--mantine-color-gray-7',
+                '--mantine-spacing-md',
+                '--mantine-radius-sm',
+                '--app-bg-color',
+                '--header-bg-color'
+            ];
+            
+            const results = variables.map(varName => {
+                const value = rootStyle.getPropertyValue(varName).trim();
+                return `
+                    <div class="status ${value ? 'success' : 'error'}">
+                        ${value ? '✅' : '❌'} ${varName}: ${value || '未定義'}
+                    </div>
+                `;
+            });
+            
+            statusDiv.innerHTML = results.join('');
+        }
+        
+        // 3. スタイル適用テスト
+        function checkStyleApplication() {
+            const statusDiv = document.getElementById('style-test-status');
+            const results = [];
+            
+            // テスト用要素を作成
+            const testElements = [
+                { className: 'mantine-button', expectedProps: ['display', 'padding', 'borderRadius'] },
+                { className: 'mantine-container', expectedProps: ['maxWidth', 'margin'] },
+                { className: 'mantine-title', expectedProps: ['fontSize', 'fontWeight'] },
+                { className: 'mantine-paper', expectedProps: ['backgroundColor', 'border', 'padding'] }
+            ];
+            
+            testElements.forEach(({ className, expectedProps }) => {
+                const testEl = document.createElement('div');
+                testEl.className = className;
+                document.body.appendChild(testEl);
+                
+                const computed = getComputedStyle(testEl);
+                const appliedProps = expectedProps.filter(prop => {
+                    const value = computed[prop];
+                    return value && value !== 'auto' && value !== 'normal' && value !== '0px';
+                });
+                
+                const success = appliedProps.length > 0;
+                results.push(`
+                    <div class="status ${success ? 'success' : 'error'}">
+                        ${success ? '✅' : '❌'} .${className} 
+                        (適用済み: ${appliedProps.length}/${expectedProps.length} プロパティ)
+                        ${success ? '' : `<br><small>期待値: ${expectedProps.join(', ')}</small>`}
+                    </div>
+                `);
+                
+                document.body.removeChild(testEl);
+            });
+            
+            statusDiv.innerHTML = results.join('');
+        }
+        
+        // 4. ネットワークエラーチェック
+        async function checkNetworkErrors() {
+            const statusDiv = document.getElementById('network-status');
+            
+            // Performance APIでリソース読み込み状況をチェック
+            const resources = performance.getEntriesByType('resource');
+            const cssResources = resources.filter(r => r.name.includes('.css'));
+            
+            let results = [`<div class="status info">📊 読み込み済みCSSリソース: ${cssResources.length}件</div>`];
+            
+            cssResources.forEach(resource => {
+                const loadTime = Math.round(resource.duration);
+                const success = resource.transferSize > 0;
+                
+                results.push(`
+                    <div class="status ${success ? 'success' : 'warning'}">
+                        ${success ? '✅' : '⚠️'} ${resource.name.split('/').pop()}
+                        (${loadTime}ms, ${resource.transferSize} bytes)
+                    </div>
+                `);
+            });
+            
+            statusDiv.innerHTML = results.join('');
+        }
+        
+        // 5. 計算済みスタイル詳細
+        function checkComputedStyles() {
+            const statusDiv = document.getElementById('computed-styles');
+            const body = document.body;
+            const computed = getComputedStyle(body);
+            
+            const importantStyles = {
+                'font-family': computed.fontFamily,
+                'background-color': computed.backgroundColor,
+                'color': computed.color,
+                'font-size': computed.fontSize,
+                'line-height': computed.lineHeight
+            };
+            
+            const styleInfo = Object.entries(importantStyles)
+                .map(([prop, value]) => `${prop}: ${value}`)
+                .join('\n');
+            
+            statusDiv.innerHTML = `
+                <div class="status info">
+                    📋 body要素の計算済みスタイル:
+                    <pre>${styleInfo}</pre>
+                </div>
+            `;
+        }
+        
+        // ページ読み込み完了後に診断実行
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔍 CSS診断開始');
+            runDiagnostics();
+        });
+        
+        // 追加でCSSファイルを動的に読み込む関数
+        function loadCSSFile(href, callback) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.onload = () => callback(true);
+            link.onerror = () => callback(false);
+            document.head.appendChild(link);
+        }
+        
+        // 実際のCSSファイルを読み込んでテスト
+        window.testCSSLoadAfterPageLoad = function() {
+            const cssFiles = [
+                'css_styles/property_select.css',
+                'css_styles/room_select.css',
+                'css_styles/meter_reading.css', 
+                'css_styles/pwa-styles.css'
+            ];
+            
+            console.log('🧪 動的CSS読み込みテスト開始');
+            
+            cssFiles.forEach(file => {
+                loadCSSFile(file, (success) => {
+                    console.log(`${success ? '✅' : '❌'} ${file} - ${success ? '成功' : '失敗'}`);
+                });
+            });
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSSロード確認テスト</title>
+    
+    <!-- CSSファイルの読み込み -->
+    <link rel="stylesheet" href="css_styles/property_select.css">
+    <link rel="stylesheet" href="css_styles/room_select.css">
+    <link rel="stylesheet" href="css_styles/meter_reading.css">
+    <link rel="stylesheet" href="css_styles/pwa-styles.css">
+    
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 CSS読み込み確認テスト</h1>
+        
+        <div class="test-section">
+            <h2>基本CSSクラステスト</h2>
+            <div id="css-test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Mantineスタイルテスト</h2>
+            <div class="mantine-container">
+                <div class="mantine-stack">
+                    <h3 class="mantine-title">タイトルテスト</h3>
+                    <p class="mantine-text">テキストスタイルテスト</p>
+                    <button class="mantine-button variant-filled">ボタンテスト</button>
+                    <div class="mantine-paper">
+                        <p>ペーパースタイルテスト</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>CSS変数テスト</h2>
+            <div id="css-variables-test"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>PWAスタイルテスト</h2>
+            <button id="pwa-install-button" style="display: block;">PWAインストールボタンテスト</button>
+        </div>
+    </div>
+
+    <script>
+        // CSS読み込み確認テスト
+        function testCSSLoad() {
+            const results = document.getElementById('css-test-results');
+            const testResults = [];
+            
+            // 基本的なCSSクラスの存在確認
+            const testElement = document.createElement('div');
+            testElement.className = 'mantine-button';
+            document.body.appendChild(testElement);
+            
+            const computedStyle = window.getComputedStyle(testElement);
+            
+            // mantine-buttonのスタイルが適用されているかチェック
+            const hasDisplay = computedStyle.display !== '';
+            const hasBackground = computedStyle.backgroundColor !== '';
+            const hasPadding = computedStyle.padding !== '';
+            
+            testResults.push({
+                test: 'mantine-button クラス',
+                passed: hasDisplay && hasPadding,
+                details: `display: ${computedStyle.display}, padding: ${computedStyle.padding}`
+            });
+            
+            document.body.removeChild(testElement);
+            
+            // CSS変数の確認
+            const rootStyle = window.getComputedStyle(document.documentElement);
+            const blueColor = rootStyle.getPropertyValue('--mantine-color-blue-6');
+            const grayColor = rootStyle.getPropertyValue('--mantine-color-gray-0');
+            
+            testResults.push({
+                test: 'CSS変数 (--mantine-color-blue-6)',
+                passed: blueColor.trim() !== '',
+                details: `値: ${blueColor.trim() || '未定義'}`
+            });
+            
+            testResults.push({
+                test: 'CSS変数 (--mantine-color-gray-0)',
+                passed: grayColor.trim() !== '',
+                details: `値: ${grayColor.trim() || '未定義'}`
+            });
+            
+            // 結果表示
+            results.innerHTML = testResults.map(result => 
+                `<div class="status ${result.passed ? 'success' : 'error'}">
+                    ${result.passed ? '✅' : '❌'} ${result.test}: ${result.details}
+                </div>`
+            ).join('');
+            
+            // CSS変数テストの詳細表示
+            const variablesTest = document.getElementById('css-variables-test');
+            const cssVariables = [
+                '--mantine-color-blue-6',
+                '--mantine-color-gray-0',
+                '--mantine-spacing-md',
+                '--app-bg-color',
+                '--header-bg-color'
+            ];
+            
+            variablesTest.innerHTML = cssVariables.map(varName => {
+                const value = rootStyle.getPropertyValue(varName).trim();
+                return `<div class="status ${value ? 'success' : 'error'}">
+                    ${value ? '✅' : '❌'} ${varName}: ${value || '未定義'}
+                </div>`;
+            }).join('');
+        }
+        
+        // ページ読み込み後にテスト実行
+        document.addEventListener('DOMContentLoaded', testCSSLoad);
+        
+        // CSSファイルの読み込み状況をチェック
+        function checkCSSFiles() {
+            const links = document.querySelectorAll('link[rel="stylesheet"]');
+            console.log('=== CSS読み込み状況 ===');
+            links.forEach((link, index) => {
+                console.log(`${index + 1}. ${link.href}`);
+                
+                // 実際にファイルが読み込めるかテスト
+                fetch(link.href)
+                    .then(response => {
+                        console.log(`   ✅ ${link.href} - Status: ${response.status}`);
+                    })
+                    .catch(error => {
+                        console.error(`   ❌ ${link.href} - Error:`, error);
+                    });
+            });
+        }
+        
+        checkCSSFiles();
+    </script>
+</body>
+</html>

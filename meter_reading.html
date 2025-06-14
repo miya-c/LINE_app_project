@@ -658,50 +658,11 @@
               <div className="property-info-card">
                 <h2 className="property-name">{propertyName}</h2>
                 <p className="room-info">部屋: {roomName}</p>
-                {/* URLパラメータデバッグ情報 */}
-                <div style={{
-                  backgroundColor: '#f8f9fa',
-                  padding: '8px',
-                  marginTop: '8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontFamily: 'monospace'
-                }}>
-                  <strong>URLパラメータ:</strong><br/>
-                  propertyId: {propertyId}<br/>
-                  roomId: {roomId}<br/>
-                  gasWebAppUrl: {gasWebAppUrl ? 'Set' : 'Not Set'}
-                </div>
               </div>
 
               <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>
                 <h3 className="mantine-subtitle desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
-                {/* デバッグ情報 */}
-                <div style={{
-                  backgroundColor: '#f0f0f0',
-                  padding: '10px',
-                  margin: '10px 0',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontFamily: 'monospace'
-                }}>
-                  <strong>デバッグ情報:</strong><br/>
-                  meterReadings type: {typeof meterReadings}<br/>
-                  meterReadings isArray: {Array.isArray(meterReadings).toString()}<br/>
-                  meterReadings length: {Array.isArray(meterReadings) ? meterReadings.length : 'N/A'}<br/>
-                  条件チェック: {Array.isArray(meterReadings) && meterReadings.length > 0 ? 'TRUE - テーブル表示' : 'FALSE - 初回検針表示'}<br/>
-                  meterReadings content: {JSON.stringify(meterReadings, null, 2)}
-                </div>
-                {(() => {
-                  console.log('[meter_reading] 条件分岐チェック:', {
-                    'typeof meterReadings': typeof meterReadings,
-                    'Array.isArray(meterReadings)': Array.isArray(meterReadings),
-                    'meterReadings.length': Array.isArray(meterReadings) ? meterReadings.length : 'N/A',
-                    '条件結果': Array.isArray(meterReadings) && meterReadings.length > 0,
-                    'meterReadings': meterReadings
-                  });
-                  return null;
-                })()}
+
                 {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
                   <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
@@ -727,29 +688,6 @@
                         const usageDisplayString = `${usageToDisplay}${usageToDisplay !== '-' ? '㎥' : ''}`;
                         const statusDisplay = formatStatus(reading.status);
                         const previousReadingsInfo = getPreviousReadingsText(reading);
-                        
-                        // デバッグ情報をコンソールに出力
-                        console.log(`[meter_reading] レンダリング情報 [${index}]:`, {
-                          originalReading: reading,
-                          formattedDate,
-                          inspectionStatus,
-                          dateForDataAttribute,
-                          currentReadingDisplay,
-                          usageToDisplay,
-                          usageDisplayString,
-                          statusDisplay,
-                          previousReadingsInfo
-                        });
-                        
-                        // さらに詳細なデバッグ情報
-                        console.log(`[meter_reading] 詳細チェック [${index}]:`, {
-                          'reading.date': reading.date,
-                          'reading.currentReading': reading.currentReading,
-                          'reading.previousReading': reading.previousReading,
-                          'reading.status': reading.status,
-                          'typeof reading': typeof reading,
-                          'Object.keys(reading)': Object.keys(reading)
-                        });
                         
                         return (
                           <tr key={index}>
