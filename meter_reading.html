@@ -301,9 +301,43 @@
 
           console.log('[meter_reading] Fetched meter readings:', readings);
           console.log('[meter_reading] Readings array length:', Array.isArray(readings) ? readings.length : 'Not an array');
-          console.log('[meter_reading] Setting meterReadings state with:', Array.isArray(readings) ? readings : []);
           
-          setMeterReadings(Array.isArray(readings) ? readings : []);
+          // データ構造の詳細確認
+          if (Array.isArray(readings) && readings.length > 0) {
+            console.log('[meter_reading] 第1件目のデータ構造:', readings[0]);
+            console.log('[meter_reading] 第1件目のキー一覧:', Object.keys(readings[0]));
+            
+            // データマッピング処理を追加
+            const mappedReadings = readings.map((rawReading, index) => {
+              console.log(`[meter_reading] 生データ [${index}]:`, rawReading);
+              
+              // inspection_dataシートの列名を想定したマッピング
+              const mapped = {
+                // 基本情報
+                date: rawReading['検針日'] || rawReading['date'] || rawReading['記録日'] || '',
+                currentReading: rawReading['今回指示数'] || rawReading['currentReading'] || rawReading['指示数'] || '',
+                previousReading: rawReading['前回指示数'] || rawReading['previousReading'] || rawReading['前回'] || '',
+                previousPreviousReading: rawReading['前々回指示数'] || rawReading['previousPreviousReading'] || rawReading['前々回'] || '',
+                threeTimesPrevious: rawReading['前々々回指示数'] || rawReading['threeTimesPrevious'] || rawReading['前々々回'] || '',
+                status: rawReading['状態'] || rawReading['status'] || '正常',
+                // 追加の可能性のあるフィールド
+                recordId: rawReading['記録ID'] || rawReading['recordId'] || rawReading['ID'] || '',
+                propertyId: rawReading['物件ID'] || rawReading['propertyId'] || '',
+                roomId: rawReading['部屋ID'] || rawReading['roomId'] || '',
+                // 元データも保持
+                _original: rawReading
+              };
+              
+              console.log(`[meter_reading] マッピング後 [${index}]:`, mapped);
+              return mapped;
+            });
+            
+            console.log('[meter_reading] Setting mapped meterReadings state with:', mappedReadings);
+            setMeterReadings(mappedReadings);
+          } else {
+            console.log('[meter_reading] Setting meterReadings state with:', Array.isArray(readings) ? readings : []);
+            setMeterReadings(Array.isArray(readings) ? readings : []);
+          }
           setLoading(false);
         } catch (error) {
           console.error('[meter_reading] fetchMeterReadings error:', error);
@@ -654,8 +688,19 @@
                   meterReadings type: {typeof meterReadings}<br/>
                   meterReadings isArray: {Array.isArray(meterReadings).toString()}<br/>
                   meterReadings length: {Array.isArray(meterReadings) ? meterReadings.length : 'N/A'}<br/>
+                  条件チェック: {Array.isArray(meterReadings) && meterReadings.length > 0 ? 'TRUE - テーブル表示' : 'FALSE - 初回検針表示'}<br/>
                   meterReadings content: {JSON.stringify(meterReadings, null, 2)}
                 </div>
+                {(() => {
+                  console.log('[meter_reading] 条件分岐チェック:', {
+                    'typeof meterReadings': typeof meterReadings,
+                    'Array.isArray(meterReadings)': Array.isArray(meterReadings),
+                    'meterReadings.length': Array.isArray(meterReadings) ? meterReadings.length : 'N/A',
+                    '条件結果': Array.isArray(meterReadings) && meterReadings.length > 0,
+                    'meterReadings': meterReadings
+                  });
+                  return null;
+                })()}
                 {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
                   <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
@@ -693,6 +738,16 @@
                           usageDisplayString,
                           statusDisplay,
                           previousReadingsInfo
+                        });
+                        
+                        // さらに詳細なデバッグ情報
+                        console.log(`[meter_reading] 詳細チェック [${index}]:`, {
+                          'reading.date': reading.date,
+                          'reading.currentReading': reading.currentReading,
+                          'reading.previousReading': reading.previousReading,
+                          'reading.status': reading.status,
+                          'typeof reading': typeof reading,
+                          'Object.keys(reading)': Object.keys(reading)
                         });
                         
                         return (
