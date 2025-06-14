@@ -20,8 +20,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
   <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
   
-  <!-- WOFF SDK -->
-  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6.2/sdk.js"></script>
+  <!-- WOFF SDK removed for general browser compatibility -->
   
   <!-- ReactとReactDOMのCDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -44,11 +43,9 @@
       const [searchTerm, setSearchTerm] = React.useState('');
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState(null);
-      const [woffInitialized, setWoffInitialized] = React.useState(false);
       const [isNavigating, setIsNavigating] = React.useState(false);
       const [navigationMessage, setNavigationMessage] = React.useState('');
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbzc90nBqci0SDVA7BaV55E1li-SVjYTFO6asIFoK6ZaCXx0KOA0ekL4S3YsxslpwKuo3A/exec';
-      const woffIdForWorks = "Mtmj4rddmxBddYCPD0G81A";
 
       // 検針完了日フォーマット関数
       const formatCompletionDate = (dateStr) => {
@@ -74,30 +71,10 @@
       };
 
       React.useEffect(() => {
-        const initializeWoff = async () => {
-          try {
-            console.log('[ReactApp] woff.init with woffId:', woffIdForWorks);
-            await woff.init({ woffId: woffIdForWorks });
-            console.log('[ReactApp] woff.init successful.');
-            setWoffInitialized(true);
-          } catch (initError) {
-            console.error('[ReactApp] WOFF initialization failed:', initError);
-            console.error('[ReactApp] WOFF Initialization Error Details:', JSON.stringify(initError, Object.getOwnPropertyNames(initError)));
-            setError('アプリの起動に失敗しました。WOFF SDKの初期化エラー。');
-            setLoading(false);
-          }
-        };
-        initializeWoff();
-      }, [woffIdForWorks]);
-
-      // コンポーネントマウント時にスクロール位置をリセット
-      React.useEffect(() => {
+        // コンポーネントマウント時にスクロール位置をリセット
         window.scrollTo(0, 0);
-      }, []);
-
-      React.useEffect(() => {
-        if (!woffInitialized) return;
         
+        // 直接プロパティを取得（WOFF初期化なし）
         const fetchProperties = async () => {
           setLoading(true);
           setError(null);
@@ -177,7 +154,7 @@
         };
 
         fetchProperties();
-      }, [woffInitialized, gasWebAppUrl]);
+      }, [gasWebAppUrl]);
 
       const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
@@ -332,19 +309,11 @@
           setNavigationMessage('画面を切り替えています...');
           
           const targetUrl = 'room_select.html';
-          if (woff.isInClient()) {
-            console.log(`[ReactApp] Opening window in client: ${targetUrl}`);
-            woff.openWindow({
-              url: targetUrl,
-              external: false
-            });
-          } else {
-            console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
-            // 短い遅延の後に画面遷移
-            setTimeout(() => {
-              window.location.href = targetUrl;
-            }, 300);
-          }
+          console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
+          // 短い遅延の後に画面遷移
+          setTimeout(() => {
+            window.location.href = targetUrl;
+          }, 300);
         } catch (error) {
           console.error('[ReactApp] Error fetching rooms or navigating:', error);
           
@@ -366,18 +335,10 @@
             setNavigationMessage('空の状態で画面を切り替えています...');
             
             const targetUrl = 'room_select.html';
-            if (woff.isInClient()) {
-              console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
-              woff.openWindow({
-                url: targetUrl,
-                external: false
-              });
-            } else {
-              console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
-              setTimeout(() => {
-                window.location.href = targetUrl;
-              }, 300);
-            }
+            console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
+            setTimeout(() => {
+              window.location.href = targetUrl;
+            }, 300);
           } else {
             setError(`部屋情報の処理中にエラーが発生しました: ${error.message}`);
             setIsNavigating(false);
@@ -434,37 +395,8 @@
                propertyNameString.toLowerCase().includes(searchTerm.toLowerCase());
       });
 
-      // WOFF SDK初期化前、または初期化エラー時
-      if (!woffInitialized && loading) {
-        return (
-          <div className="mantine-center">
-            <div className="mantine-stack">
-              <div className="mantine-center">
-                <div className="mantine-loader"></div>
-              </div>
-              <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
-                アプリを初期化中です...
-              </p>
-            </div>
-          </div>
-        );
-      }
-      
-      if (!woffInitialized && error) {
-        return (
-          <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
-            <div style={{maxWidth: '400px', margin: '0 auto', marginTop: 'var(--mantine-spacing-xl)'}}>
-              <div className="mantine-alert">
-                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
-                <p style={{margin: 0}}>{error}</p>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
       // 物件データ取得中の初期ローディング
-      if (loading && properties.length === 0 && woffInitialized) {
+      if (loading && properties.length === 0) {
         return (
           <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
             <div style={{maxWidth: '400px', margin: '0 auto'}}>
@@ -494,7 +426,7 @@
       }
       
       // 物件データ取得エラー (初期ロード時)
-      if (error && properties.length === 0 && woffInitialized) {
+      if (error && properties.length === 0) {
         return (
           <div className="mantine-container" style={{padding: 'var(--mantine-spacing-md)'}}>
             <div style={{maxWidth: '400px', margin: '0 auto'}}>
@@ -529,7 +461,7 @@
                 placeholder="物件IDまたは物件名で検索..."
                 value={searchTerm}
                 onChange={handleSearchChange}
-                disabled={!woffInitialized || (loading && properties.length === 0)}
+                disabled={loading && properties.length === 0}
               />
             </div>
             
@@ -553,20 +485,20 @@
               </div>
             )}
 
-            {woffInitialized && !loading && properties.length === 0 && !error && (
+            {!loading && properties.length === 0 && !error && (
               <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
                 登録されている物件がありません。
               </p>
             )}
             
-            {woffInitialized && !loading && properties.length > 0 && filteredProperties.length === 0 && (
+            {!loading && properties.length > 0 && filteredProperties.length === 0 && (
               <p style={{textAlign: 'center', color: 'var(--mantine-color-gray-6)'}}>
                 該当する物件が見つかりません。
               </p>
             )}
 
             <div className="mantine-stack">
-              {woffInitialized && filteredProperties.map(property => (
+              {filteredProperties.map(property => (
                 <div 
                   key={property.id} 
                   className={`mantine-paper ${(loading || isNavigating) ? 'disabled' : ''}`}
