@@ -1,6 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
+<html lang="ja  <!-- PWA Utilities -->
+  <script src="/pwa-utils.js"></script>
+  
+  <!-- 外部CSSファイルの読み込み -->
+  <link rel="stylesheet" href="css_styles/property_select.css?v=20250614b">ead>
   <title>物件選択 - 水道メーター読み取りアプリ</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -95,10 +98,7 @@
             
             if (!response.ok) {
               throw new Error(`Network response was not ok. Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('[ReactApp] GAS Response (properties):', data);
+            }            const data = await response.json();            console.log('[ReactApp] GAS Response (properties):', data);
             console.log('[ReactApp] Response type:', typeof data);
             console.log('[ReactApp] Response keys:', data ? Object.keys(data) : 'No keys');
             
@@ -163,9 +163,7 @@
 
       const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
-      };
-
-      const handlePropertySelect = async (property) => {
+      };      const handlePropertySelect = async (property) => {
         console.log('[ReactApp] handlePropertySelect called with:', property);
         
         if (!property) {
@@ -211,9 +209,7 @@
             const errorText = await roomResponse.text();
             console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
             throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
-          }
-          
-          const roomData = await roomResponse.json();
+          }          const roomData = await roomResponse.json();
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
 
@@ -539,8 +535,7 @@
             </div>
           </div>
         </div>
-      );
-    };
+      );    };
 
     // Use React 18 createRoot API instead of ReactDOM.render
     const root = ReactDOM.createRoot(document.getElementById('root'));
