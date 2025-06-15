@@ -552,11 +552,11 @@
           sessionStorage.setItem('updatedRoomId', roomId);
           sessionStorage.setItem('lastUpdateTime', Date.now().toString());
           
-          window.location.href = 'room_select.html';
+          window.location.href = '/room_select';
           
         } catch (error) {
           console.error('[meter_reading] 戻るボタン処理エラー:', error);
-          window.location.href = 'room_select.html';
+          window.location.href = '/room_select';
         }
       };
 

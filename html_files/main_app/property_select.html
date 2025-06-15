@@ -581,7 +581,7 @@
 
           setNavigationMessage('画面を切り替えています...');
           
-          const targetUrl = 'room_select.html';
+          const targetUrl = '/room_select';
           console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
           // 短い遅延の後に画面遷移
           setTimeout(() => {
@@ -607,7 +607,7 @@
             // 空の状態で画面遷移を続行
             setNavigationMessage('空の状態で画面を切り替えています...');
             
-            const targetUrl = 'room_select.html';
+            const targetUrl = '/room_select';
             console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
             setTimeout(() => {
               window.location.href = targetUrl;

@@ -674,7 +674,7 @@
         setNavigationMessage('画面を切り替えています...');
         // スクロール位置をリセットしてから遷移
         window.scrollTo(0, 0);
-        window.location.href = 'property_select.html';
+        window.location.href = '/property_select';
       };
 
       // LoadingOverlayコンポーネント
@@ -722,7 +722,7 @@
         params.append('roomId', room.id);
         params.append('roomName', room.name);
         
-        const targetUrl = `meter_reading.html?${params.toString()}`;
+        const targetUrl = `/meter_reading?${params.toString()}`;
         
         console.log(`[room_select] Redirecting to: ${targetUrl}`);
         window.location.href = targetUrl;
