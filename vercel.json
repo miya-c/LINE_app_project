@@ -7,7 +7,19 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/property_select.html"
+      "destination": "/html_files/main_app/property_select.html"
+    },
+    {
+      "source": "/property_select",
+      "destination": "/html_files/main_app/property_select.html"
+    },
+    {
+      "source": "/room_select",
+      "destination": "/html_files/main_app/room_select.html"
+    },
+    {
+      "source": "/meter_reading",
+      "destination": "/html_files/main_app/meter_reading.html"
     }
   ],
   "headers": [
