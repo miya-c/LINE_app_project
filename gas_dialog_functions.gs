@@ -168,12 +168,16 @@ function openMeterReadingDialog(propertyId, propertyName, roomId, roomName) {
   }
 }
 
+// ===================================
+// 物件.gs統合 - Web App API関数群
+// ===================================
+
 /**
- * Web App用のメイン関数 - property_select_gas.htmlをWebアプリとして提供
- * @param {Object} e - リクエストイベントオブジェクト
- * @returns {HtmlOutput} HTMLページ
+ * Web App用のメイン関数 - API要求とHTML表示を処理 (物件.gsから統合)
+ * @param {Object} e - リクエストイベントオブジェクト  
+ * @returns {HtmlOutput|TextOutput} HTMLページまたはJSONレスポンス
  */
-function doGet(e) {
+function doGetFromBukken(e) {
   try {
     console.log('[doGet] Web App アクセス開始');
     console.log('[doGet] パラメータ:', e?.parameter);
@@ -190,7 +194,6 @@ function doGet(e) {
             const properties = getProperties();
             console.log('[doGet] 物件データ取得完了 - 件数:', Array.isArray(properties) ? properties.length : 'not array');
             
-            // 🔥 統一されたレスポンス形式で返す
             const response = {
               success: true,
               data: Array.isArray(properties) ? properties : [],
@@ -209,7 +212,6 @@ function doGet(e) {
           } catch (apiError) {
             console.error('[doGet] getProperties API エラー:', apiError);
             
-            // エラーレスポンスも統一形式
             const errorResponse = {
               success: false,
               error: `物件データ取得エラー: ${apiError.message}`,
@@ -239,9 +241,7 @@ function doGet(e) {
             console.log('[doGet] 部屋データ取得開始 - propertyId:', propertyId);
             const rooms = getRooms(propertyId);
             console.log('[doGet] 部屋データ取得完了 - 件数:', Array.isArray(rooms) ? rooms.length : 'not array');
-            console.log('[doGet] 部屋データサンプル:', rooms.slice(0, 2));
             
-            // 🔥 統一されたレスポンス形式で返す（これが重要）
             const response = {
               success: true,
               data: Array.isArray(rooms) ? rooms : [],
@@ -255,8 +255,6 @@ function doGet(e) {
               }
             };
             
-            console.log('[doGet] 送信するレスポンス:', JSON.stringify(response).substring(0, 500));
-            
             return ContentService
               .createTextOutput(JSON.stringify(response))
               .setMimeType(ContentService.MimeType.JSON);
@@ -264,7 +262,6 @@ function doGet(e) {
           } catch (apiError) {
             console.error('[doGet] getRooms API エラー:', apiError);
             
-            // エラーレスポンスも統一形式
             const errorResponse = {
               success: false,
               error: `部屋データ取得エラー: ${apiError.message}`,
@@ -289,36 +286,36 @@ function doGet(e) {
           try {
             const propertyId = e.parameter.propertyId;
             const roomId = e.parameter.roomId;
+            
             if (!propertyId || !roomId) {
-              throw new Error('propertyId および roomId パラメータが必要です');
+              throw new Error('propertyId と roomId パラメータが必要です');
             }
             
             console.log('[doGet] 検針データ取得開始 - propertyId:', propertyId, 'roomId:', roomId);
-            const readings = getMeterReadings(propertyId, roomId);
-            console.log('[doGet] 検針データ取得完了 - 件数:', Array.isArray(readings) ? readings.length : 'not array');
+            const meterReadings = getMeterReadings(propertyId, roomId);
+            console.log('[doGet] 検針データ取得完了 - 件数:', Array.isArray(meterReadings) ? meterReadings.length : 'not array');
             
-            // 🔥 統一されたレスポンス形式で返す
             const response = {
               success: true,
-              data: Array.isArray(readings) ? readings : [],
-              count: Array.isArray(readings) ? readings.length : 0,
+              data: Array.isArray(meterReadings) ? meterReadings : [],
+              count: Array.isArray(meterReadings) ? meterReadings.length : 0,
               timestamp: new Date().toISOString(),
               propertyId: propertyId,
               roomId: roomId,
               debugInfo: {
                 functionCalled: 'getMeterReadings',
-                readingsType: typeof readings,
-                isArray: Array.isArray(readings)
+                dataType: typeof meterReadings,
+                isArray: Array.isArray(meterReadings)
               }
             };
             
             return ContentService
               .createTextOutput(JSON.stringify(response))
               .setMimeType(ContentService.MimeType.JSON);
+              
           } catch (apiError) {
             console.error('[doGet] getMeterReadings API エラー:', apiError);
             
-            // エラーレスポンスも統一形式
             const errorResponse = {
               success: false,
               error: `検針データ取得エラー: ${apiError.message}`,
@@ -347,21 +344,24 @@ function doGet(e) {
             const readingsParam = e.parameter.readings;
             
             if (!propertyId || !roomId || !readingsParam) {
-              throw new Error('propertyId, roomId, および readings パラメータが必要です');
+              throw new Error('propertyId, roomId, readings パラメータが必要です');
+            }
+            
+            let readings;
+            try {
+              readings = JSON.parse(readingsParam);
+            } catch (parseError) {
+              throw new Error('readings パラメータが有効なJSONではありません');
             }
             
             console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
-            console.log('[doGet] readings param:', readingsParam);
-            
-            // JSON文字列をパース
-            const readings = JSON.parse(readingsParam);
-            
             const result = updateMeterReadings(propertyId, roomId, readings);
             console.log('[doGet] 検針データ更新完了:', result);
             
             return ContentService
               .createTextOutput(JSON.stringify(result))
               .setMimeType(ContentService.MimeType.JSON);
+              
           } catch (apiError) {
             console.error('[doGet] updateMeterReadings API エラー:', apiError);
             
@@ -369,8 +369,6 @@ function doGet(e) {
               success: false,
               error: `検針データ更新エラー: ${apiError.message}`,
               timestamp: new Date().toISOString(),
-              propertyId: e.parameter.propertyId || 'unknown',
-              roomId: e.parameter.roomId || 'unknown',
               debugInfo: {
                 errorType: apiError.name,
                 errorMessage: apiError.message,
@@ -384,245 +382,19 @@ function doGet(e) {
           }
           
         default:
-          console.log('[doGet] 未対応のAPI要求:', action);
-          return ContentService
-            .createTextOutput(JSON.stringify({ error: `未対応のAPI要求: ${action}` }))
-            .setMimeType(ContentService.MimeType.JSON);
+          throw new Error(`未対応のアクション: ${action}`);
       }
     }
     
-    // HTML表示要求の場合
+    // HTML表示の場合（pageパラメータが存在）
     const page = e?.parameter?.page || 'property_select';
-    console.log('[doGet] HTML表示要求 - ページ:', page);
+    console.log('[doGet] HTML要求 - ページ:', page);
     
-    // 物件選択ページを返す（デフォルト）
-    if (page === 'property_select' || !page) {
-      const htmlOutput = HtmlService.createTemplateFromFile('property_select_gas');
-      
-      return htmlOutput.evaluate()
-        .setTitle('水道検針アプリ - 物件選択')
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-    }
-    
-    // 部屋選択ページ
-    else if (page === 'room_select') {
-      console.log('[doGet] 🏠 部屋選択ページ処理開始');
-      console.log('[doGet] 📥 全パラメータ:', JSON.stringify(e.parameter, null, 2));
-      
-      const propertyId = e.parameter.propertyId;
-      const propertyName = e.parameter.propertyName;
-      
-      console.log('[doGet] 📝 受信パラメータ詳細:');
-      console.log('- propertyId:', `"${propertyId}"`, 'type:', typeof propertyId);
-      console.log('- propertyName:', `"${propertyName}"`, 'type:', typeof propertyName);
-      console.log('- propertyId length:', propertyId ? propertyId.length : 'null');
-      console.log('- propertyName length:', propertyName ? propertyName.length : 'null');
-      
-      if (!propertyId || !propertyName) {
-        const errorMsg = `部屋選択ページには propertyId と propertyName パラメータが必要です。受信値: propertyId="${propertyId}", propertyName="${propertyName}"`;
-        console.error('[doGet] ❌', errorMsg);
-        
-        const errorHtml = HtmlService.createHtmlOutput(`
-          <html>
-            <head>
-              <title>パラメータエラー</title>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body { 
-                  font-family: Arial, sans-serif; 
-                  margin: 20px; 
-                  text-align: center; 
-                  background-color: #f5f5f5;
-                }
-                .error { 
-                  color: #d32f2f; 
-                  background: #ffebee; 
-                  padding: 20px; 
-                  border-radius: 8px; 
-                  max-width: 600px;
-                  margin: 20px auto;
-                  border: 1px solid #d32f2f;
-                }
-                .back-button a { 
-                  display: inline-block; 
-                  padding: 12px 24px; 
-                  background: #2196F3; 
-                  color: white; 
-                  text-decoration: none; 
-                  border-radius: 4px; 
-                  margin: 10px; 
-                  font-weight: bold;
-                }
-                .debug-info {
-                  background: #f0f0f0;
-                  padding: 10px;
-                  border-radius: 4px;
-                  margin: 10px 0;
-                  font-family: monospace;
-                  font-size: 12px;
-                  text-align: left;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="error">
-                <h2>🚨 URLパラメータエラー</h2>
-                <p><strong>部屋選択画面にアクセスできませんでした</strong></p>
-                <div class="debug-info">
-                  <strong>エラー詳細:</strong><br>
-                  ${errorMsg}<br><br>
-                  <strong>現在のURL:</strong><br>
-                  ${ScriptApp.getService().getUrl()}?page=room_select&propertyId=${propertyId || '(なし)'}&propertyName=${propertyName || '(なし)'}<br><br>
-                  <strong>受信したパラメータ:</strong><br>
-                  ${JSON.stringify(e.parameter, null, 2)}
-                </div>
-                <div class="back-button">
-                  <a href="${ScriptApp.getService().getUrl()}">物件選択に戻る</a>
-                </div>
-                <p><small>物件選択画面から再度お試しください</small></p>
-              </div>
-            </body>
-          </html>
-        `);
-        
-        return errorHtml
-          .setTitle('パラメータエラー - 部屋選択')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      }
-      
-      try {
-        console.log('[doGet] 📊 部屋データ取得開始...');
-        const rooms = getRooms(propertyId);
-        console.log('[doGet] ✅ 部屋データ取得完了 - 件数:', rooms.length);
-        console.log('[doGet] 🔍 部屋データサンプル:', rooms.slice(0, 2));
-        
-        const htmlOutput = HtmlService.createTemplateFromFile('room_select_gas');
-        
-        // 🔥 テンプレート変数の確実な設定
-        htmlOutput.propertyId = String(propertyId).trim();
-        htmlOutput.propertyName = String(propertyName).trim();
-        htmlOutput.rooms = JSON.stringify(rooms);
-        
-        console.log('[doGet] 📤 テンプレートに設定した値:');
-        console.log('- propertyId:', htmlOutput.propertyId);
-        console.log('- propertyName:', htmlOutput.propertyName);
-        console.log('- rooms JSON length:', htmlOutput.rooms.length);
-        
-        const evaluatedHtml = htmlOutput.evaluate()
-          .setTitle(`部屋選択 - ${propertyName}`)
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-          .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-        
-        console.log('[doGet] 🎉 部屋選択ページの生成完了');
-        return evaluatedHtml;
-        
-      } catch (roomError) {
-        console.error('[doGet] 💥 部屋データ取得エラー:', roomError);
-        console.error('[doGet] 💥 エラースタック:', roomError.stack);
-        
-        const errorHtml = HtmlService.createHtmlOutput(`
-          <html>
-            <head>
-              <title>部屋データエラー</title>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body { 
-                  font-family: Arial, sans-serif; 
-                  margin: 20px; 
-                  text-align: center; 
-                  background-color: #f5f5f5;
-                }
-                .error { 
-                  color: #d32f2f; 
-                  background: #ffebee; 
-                  padding: 20px; 
-                  border-radius: 8px; 
-                  max-width: 600px;
-                  margin: 20px auto;
-                  border: 1px solid #d32f2f;
-                }
-                .back-button a { 
-                  display: inline-block; 
-                  padding: 12px 24px; 
-                  background: #2196F3; 
-                  color: white; 
-                  text-decoration: none; 
-                  border-radius: 4px; 
-                  margin: 10px; 
-                }
-                .debug-info {
-                  background: #f0f0f0;
-                  padding: 10px;
-                  border-radius: 4px;
-                  margin: 10px 0;
-                  font-family: monospace;
-                  font-size: 12px;
-                  text-align: left;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="error">
-                <h2>🚨 部屋データ取得エラー</h2>
-                <p><strong>物件: ${propertyName}</strong></p>
-                <div class="debug-info">
-                  <strong>エラー詳細:</strong><br>
-                  ${roomError.message}<br><br>
-                  <strong>物件ID:</strong> ${propertyId}<br>
-                  <strong>物件名:</strong> ${propertyName}
-                </div>
-                <div class="back-button">
-                  <a href="${ScriptApp.getService().getUrl()}">物件選択に戻る</a>
-                </div>
-                <p><small>管理者に連絡してください</small></p>
-              </div>
-            </body>
-          </html>
-        `);
-        
-        return errorHtml
-          .setTitle('部屋データエラー')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      }
-    }
-    
-    // 検針入力ページ
-    else if (page === 'meter_reading') {
-      const propertyId = e.parameter.propertyId;
-      const propertyName = e.parameter.propertyName;
-      const roomId = e.parameter.roomId;
-      const roomName = e.parameter.roomName;
-      
-      if (!propertyId || !propertyName || !roomId || !roomName) {
-        throw new Error('検針入力ページには propertyId, propertyName, roomId, roomName パラメータが必要です');
-      }
-      
-      console.log('[doGet] 検針入力ページを表示');
-      
-      const meterReadings = getMeterReadings(propertyId, roomId);
-      const htmlOutput = HtmlService.createTemplateFromFile('meter_reading_gas');
-      htmlOutput.propertyId = propertyId;
-      htmlOutput.propertyName = propertyName;
-      htmlOutput.roomId = roomId;
-      htmlOutput.roomName = roomName;
-      htmlOutput.meterReadings = JSON.stringify(meterReadings);
-      
-      return htmlOutput.evaluate()
-        .setTitle(`検針入力 - ${propertyName} ${roomName}`)
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-    }
-    
-    // 未対応のページ
-    else {
-      throw new Error(`未対応のページが要求されました: ${page}`);
-    }
+    // 各ページの表示処理は既存のdoGet関数に統合済み
+    return doGet(e);
     
   } catch (error) {
-    console.error('[doGet] エラー:', error);
+    console.error('[doGet] 全体エラー:', error);
     
     // API要求でのエラー処理
     if (e?.parameter?.action) {
@@ -641,13 +413,9 @@ function doGet(e) {
         <head>
           <title>エラー - 水道検針アプリ</title>
           <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             body { font-family: Arial, sans-serif; margin: 40px; text-align: center; background: #f5f5f5; }
             .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; }
-            .error h2 { margin-top: 0; }
-            .back-button { margin-top: 20px; }
-            .back-button a { display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; }
           </style>
         </head>
         <body>
@@ -655,264 +423,17 @@ function doGet(e) {
             <h2>🚨 アプリケーションエラー</h2>
             <p>申し訳ございません。アプリケーションの読み込みに失敗しました。</p>
             <p><strong>エラー詳細:</strong> ${error.message}</p>
-            <div class="back-button">
-              <a href="javascript:history.back()">戻る</a>
-              <a href="${ScriptApp.getService().getUrl()}">ホームに戻る</a>
-            </div>
-            <p><small>管理者にお問い合わせください。</small></p>
           </div>
         </body>
       </html>
     `);
     
-    return errorHtml
-      .setTitle('エラー - 水道検針アプリ')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    return errorHtml.setTitle('エラー - 水道検針アプリ');
   }
 }
 
 /**
- * 物件一覧を取得
- * @return {Array} 物件一覧
- */
-function getProperties() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const sheet = ss.getSheetByName('物件マスタ') || ss.getSheetByName('property_master');
-    
-    if (!sheet) {
-      throw new Error('物件マスタ または property_master シートが見つかりません');
-    }
-    
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    // ヘッダー行をスキップ
-    const properties = [];
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      if (row[0] && row[1]) { // 物件IDと物件名が存在する場合のみ
-        properties.push({
-          id: String(row[0]).trim(),
-          name: String(row[1]).trim()
-        });
-      }
-    }
-    
-    console.log('[getProperties] 取得した物件数:', properties.length);
-    return properties;
-  } catch (error) {
-    console.error('[getProperties] エラー:', error);
-    throw new Error('物件データの取得に失敗しました: ' + error.message);
-  }
-}
-
-/**
- * 指定した物件の部屋一覧を取得（検針状況付き）
- * @param {string} propertyId - 物件ID
- * @return {Array} 部屋一覧
- */
-/**
- * 指定した物件の部屋一覧を取得（検針状況付き）
- * @param {string} propertyId - 物件ID
- * @return {Array} 部屋一覧
- */
-function getRooms(propertyId) {
-  try {
-    console.log('[getRooms] 開始 - propertyId:', propertyId);
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const roomSheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
-    const inspectionSheet = ss.getSheetByName('inspection_data');
-    
-    if (!roomSheet) {
-      throw new Error('部屋マスタ または room_master シートが見つかりません');
-    }
-    
-    // 部屋マスタからデータを取得
-    const roomRange = roomSheet.getDataRange();
-    const roomValues = roomRange.getValues();
-    
-    if (roomValues.length <= 1) {
-      console.log('[getRooms] 部屋データが存在しません');
-      return [];
-    }
-    
-    const roomHeaders = roomValues[0];
-    const propertyIdIndex = roomHeaders.indexOf('物件ID');
-    const roomIdIndex = roomHeaders.indexOf('部屋ID');
-    const roomNameIndex = roomHeaders.indexOf('部屋名');
-    
-    if (propertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
-      throw new Error('部屋マスタに必要な列（物件ID、部屋ID、部屋名）が見つかりません');
-    }
-    
-    // 検針データを取得（検針状況確認用）
-    let inspectionData = [];
-    if (inspectionSheet) {
-      const inspectionRange = inspectionSheet.getDataRange();
-      const inspectionValues = inspectionRange.getValues();
-      
-      if (inspectionValues.length > 1) {
-        const inspectionHeaders = inspectionValues[0];
-        const inspPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
-        const inspRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
-        const inspectionDateIndex = inspectionHeaders.indexOf('検針日時') >= 0 ? inspectionHeaders.indexOf('検針日時') : inspectionHeaders.indexOf('検針日');
-        const currentReadingIndex = inspectionHeaders.indexOf('今回指示数（水道）');
-        
-        for (let i = 1; i < inspectionValues.length; i++) {
-          const row = inspectionValues[i];
-          if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim()) {
-            inspectionData.push({
-              propertyId: row[inspPropertyIdIndex],
-              roomId: row[inspRoomIdIndex],
-              inspectionDate: row[inspectionDateIndex],
-              currentReading: row[currentReadingIndex],
-              hasActualReading: row[currentReadingIndex] !== null && 
-                               row[currentReadingIndex] !== undefined && 
-                               String(row[currentReadingIndex]).trim() !== ''
-            });
-          }
-        }
-      }
-    }
-    
-    // 部屋データを処理
-    const rooms = [];
-    for (let i = 1; i < roomValues.length; i++) {
-      const row = roomValues[i];
-      if (String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
-          row[roomIdIndex] && row[roomNameIndex]) {
-        
-        const roomId = String(row[roomIdIndex]).trim();
-        
-        // この部屋の検針データを検索
-        const roomInspection = inspectionData.find(insp => 
-          String(insp.roomId).trim() === roomId
-        );
-        
-        const room = {
-          id: roomId,
-          name: String(row[roomNameIndex]).trim(),
-          propertyId: String(row[propertyIdIndex]).trim(),
-          rawInspectionDate: roomInspection ? roomInspection.inspectionDate : null,
-          hasActualReading: roomInspection ? roomInspection.hasActualReading : false
-        };
-        
-        rooms.push(room);
-      }
-    }
-    
-    console.log('[getRooms] 取得した部屋数:', rooms.length);
-    console.log('[getRooms] 最初の部屋データ:', rooms[0] || 'なし');
-    
-    return rooms;
-    
-  } catch (error) {
-    console.error('[getRooms] エラー:', error);
-    throw new Error('部屋データの取得に失敗しました: ' + error.message);
-  }
-}
-
-/**
- * レガシー部屋一覧取得（フォールバック用）
- * @param {string} propertyId - 物件ID
- * @return {Array} 部屋一覧
- */
-function getRoomsLegacy(propertyId) {
-  try {
-    console.log('[getRoomsLegacy] 開始 - propertyId:', propertyId);
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const sheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
-    
-    if (!sheet) {
-      throw new Error('部屋マスタ または room_master シートが見つかりません');
-    }
-    
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    // ヘッダー行をスキップして、指定した物件IDの部屋のみを抽出
-    const rooms = [];
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      if (String(row[0]).trim() === String(propertyId).trim() && row[1] && row[2]) {
-        rooms.push({
-          id: String(row[1]).trim(),
-          name: String(row[2]).trim(),
-          propertyId: String(row[0]).trim()
-        });
-      }
-    }
-    
-    console.log('[getRoomsLegacy] 取得した部屋数:', rooms.length);
-    return rooms;
-  } catch (error) {
-    console.error('[getRoomsLegacy] エラー:', error);
-    throw new Error('レガシー部屋データの取得に失敗しました: ' + error.message);
-  }
-}
-
-/**
- * 指定した物件・部屋の検針データを取得
- * @param {string} propertyId - 物件ID
- * @param {string} roomId - 部屋ID
- * @return {Array} 検針データ
- */
-function getMeterReadings(propertyId, roomId) {
-  try {
-    console.log('[getMeterReadings] 開始 - propertyId:', propertyId, 'roomId:', roomId);
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('inspection_data');
-    
-    if (!sheet) {
-      throw new Error('inspection_data シートが見つかりません');
-    }
-    
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    if (values.length === 0) {
-      return [];
-    }
-    
-    const headers = values[0];
-    const propertyIdIndex = headers.indexOf('物件ID');
-    const roomIdIndex = headers.indexOf('部屋ID');
-    
-    if (propertyIdIndex === -1 || roomIdIndex === -1) {
-      throw new Error('inspection_data シートに必要な列（物件ID、部屋ID）が見つかりません');
-    }
-    
-    // 指定した物件・部屋の検針データを抽出
-    const meterReadings = [];
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      if (String(row[propertyIdIndex]).trim() === String(propertyId).trim() &&
-          String(row[roomIdIndex]).trim() === String(roomId).trim()) {
-        
-        const reading = {};
-        headers.forEach((header, index) => {
-          reading[header] = row[index];
-        });
-        meterReadings.push(reading);
-      }
-    }
-    
-    console.log('[getMeterReadings] 取得した検針データ数:', meterReadings.length);
-    return meterReadings;
-  } catch (error) {
-    console.error('[getMeterReadings] エラー:', error);
-    throw new Error('検針データの取得に失敗しました: ' + error.message);
-  }
-}
-
-/**
- * 検針データを更新
+ * 検針データを更新 (物件.gsから統合)
  * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
  * @param {Array} readings - 更新する検針データ
@@ -920,7 +441,10 @@ function getMeterReadings(propertyId, roomId) {
  */
 function updateMeterReadings(propertyId, roomId, readings) {
   try {
-    console.log('[updateMeterReadings] 開始 - propertyId:', propertyId, 'roomId:', roomId, 'データ数:', readings.length);
+    console.log('[updateMeterReadings] ========= 関数開始 =========');
+    console.log('[updateMeterReadings] 実行日時:', new Date().toISOString());
+    console.log('[updateMeterReadings] バージョン: v2025-06-15-修正版');
+    console.log('[updateMeterReadings] propertyId:', propertyId, 'roomId:', roomId, 'データ数:', readings.length);
     console.log('[updateMeterReadings] 更新データ:', JSON.stringify(readings));
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -930,6 +454,8 @@ function updateMeterReadings(propertyId, roomId, readings) {
       throw new Error('inspection_data シートが見つかりません');
     }
     
+    console.log('[updateMeterReadings] inspection_data シート取得成功');
+    
     // スプレッドシートのデータを取得
     const data = sheet.getDataRange().getValues();
     if (data.length < 2) {
@@ -938,10 +464,19 @@ function updateMeterReadings(propertyId, roomId, readings) {
     
     // ヘッダーから列インデックスを動的に取得
     const headers = data[0];
+    console.log('[updateMeterReadings] ========= スプレッドシート詳細情報 =========');
+    console.log('[updateMeterReadings] スプレッドシート名:', sheet.getName());
+    console.log('[updateMeterReadings] データ行数:', data.length);
+    console.log('[updateMeterReadings] スプレッドシートのヘッダー:', headers);
+    console.log('[updateMeterReadings] 検針日時列検索:', headers.indexOf('検針日時'));
+    console.log('[updateMeterReadings] 今回の指示数列検索:', headers.indexOf('今回の指示数'));
+    console.log('[updateMeterReadings] 今回指示数（水道）列検索:', headers.indexOf('今回指示数（水道）'));
+    console.log('[updateMeterReadings] ========================================');
+    
     const columnIndexes = {
       propertyId: headers.indexOf('物件ID'),
       roomId: headers.indexOf('部屋ID'),
-      date: headers.indexOf('検針日時') >= 0 ? headers.indexOf('検針日時') : headers.indexOf('検針日'),
+      date: headers.indexOf('検針日時'),
       currentReading: headers.indexOf('今回の指示数') >= 0 ? headers.indexOf('今回の指示数') : headers.indexOf('今回指示数（水道）'),
       previousReading: headers.indexOf('前回指示数'),
       usage: headers.indexOf('今回使用量'),
@@ -949,28 +484,36 @@ function updateMeterReadings(propertyId, roomId, readings) {
       recordId: headers.indexOf('記録ID')
     };
     
+    console.log('[updateMeterReadings] 列インデックス:', columnIndexes);
+    
     // 必要な列が存在するかチェック
     const requiredColumns = ['物件ID', '部屋ID'];
     for (const colName of requiredColumns) {
       if (!headers.includes(colName)) {
+        console.log('[updateMeterReadings] ❌ 必須列が見つかりません:', colName);
+        console.log('[updateMeterReadings] 利用可能な列一覧:', headers);
         throw new Error(`必要な列が見つかりません: ${colName}`);
       }
     }
     
-    // 検針日/検針日時列の存在チェック
+    // 検針日時と今回指示数の列を検索
     if (columnIndexes.date === -1) {
-      throw new Error('必要な列が見つかりません: 検針日時 (または 検針日)');
+      console.log('[updateMeterReadings] ❌ 検針日時列が見つかりません。利用可能な列:', headers);
+      console.log('[updateMeterReadings] 検針日時列存在チェック:', headers.includes('検針日時'));
+      throw new Error('必要な列が見つかりません: 検針日時');
     }
-    
-    // 今回の指示数列の存在チェック
     if (columnIndexes.currentReading === -1) {
+      console.log('[updateMeterReadings] ❌ 今回指示数列が見つかりません。利用可能な列:', headers);
+      console.log('[updateMeterReadings] 今回の指示数列存在チェック:', headers.includes('今回の指示数'));
+      console.log('[updateMeterReadings] 今回指示数（水道）列存在チェック:', headers.includes('今回指示数（水道）'));
       throw new Error('必要な列が見つかりません: 今回の指示数 (または 今回指示数（水道）)');
     }
     
     let updatedCount = 0;
     const updatedReadings = [];
     
-    console.log('[updateMeterReadings] データ処理開始 - 対象件数:', readings.length);
+    console.log('[updateMeterReadings] ===== データ処理開始 =====');
+    console.log('[updateMeterReadings] 対象件数:', readings.length);
     
     // 各検針データを処理
     for (let i = 0; i < readings.length; i++) {
@@ -1093,184 +636,914 @@ function updateMeterReadings(propertyId, roomId, readings) {
   }
 }
 
+// ===================================
+// 総合カスタム処理.gs統合 - データ管理関数群
+// ===================================
+
 /**
- * スプレッドシートにカスタムメニューを追加（統合メニューシステム）
+ * inspection_dataを物件マスタと部屋マスタから自動生成 (総合カスタム処理.gsから統合)
  */
-function onOpen() {
-  // UI利用可能性チェック（実行コンテキストエラー対策）
-  if (!isUiAvailable()) {
-    console.log('[onOpen] UIが利用できません。スプレッドシート環境で実行してください。');
+function populateInspectionDataFromMasters() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
     return;
   }
   
-  try {
-    const ui = SpreadsheetApp.getUi();
-    
-    // 水道検針メニュー
-    ui.createMenu('水道検針')
-      .addItem('アプリを開く', 'showWaterMeterApp')
-      .addSeparator()
-      .addItem('物件選択', 'showPropertySelectDialog')
-      .addToUi();
-    
-    // 総合カスタム処理メニュー
-    ui.createMenu('総合カスタム処理')
-      .addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster')
-      .addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster')
-      .addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms')
-      .addSeparator()
-      .addItem('4. 初期検針データ作成', 'createInitialInspectionData')
-      .addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters')
-      .addSeparator()
-      .addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly')
-      .addSeparator()
-      .addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity')
-      .addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData')
-      .addItem('⚡ データインデックス作成', 'createDataIndexes')
-      .addSeparator()
-      .addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization')
-      .addToUi();
-    
-    console.log('✅ 統合メニューシステムが正常に作成されました');
-  } catch (error) {
-    console.error('[onOpen] メニュー作成エラー:', error);
-  }
-}
+  const propertyMasterSheetName = '物件マスタ';
+  const roomMasterSheetName = '部屋マスタ';
+  const inspectionDataSheetName = 'inspection_data';
 
-/**
- * トリガー設定関数（スクリプトエディタから実行可能）
- */
-function setupOnOpenTrigger() {
+  const propertyMasterSheet = ss.getSheetByName(propertyMasterSheetName);
+  const roomMasterSheet = ss.getSheetByName(roomMasterSheetName);
+  const inspectionDataSheet = ss.getSheetByName(inspectionDataSheetName);
+  
+  if (!propertyMasterSheet) {
+    safeAlert('エラー', `「${propertyMasterSheetName}」シートが見つかりません。`);
+    return;
+  }
+  if (!roomMasterSheet) {
+    safeAlert('エラー', `「${roomMasterSheetName}」シートが見つかりません。`);
+    return;
+  }
+  if (!inspectionDataSheet) {
+    safeAlert('エラー', `「${inspectionDataSheetName}」シートが見つかりません。`);
+    return;
+  }
+
   try {
-    // 既存のonOpenトリガーを削除
-    const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
-      if (trigger.getHandlerFunction() === 'onOpen') {
-        ScriptApp.deleteTrigger(trigger);
+    Logger.log('📊 inspection_dataの自動生成を開始します...');
+
+    // 1. 物件マスタのデータを読み込み、物件IDと物件名のマッピングを作成
+    const propertyMasterData = propertyMasterSheet.getRange(2, 1, propertyMasterSheet.getLastRow() - 1, 2).getValues();
+    const propertyMap = {};
+    propertyMasterData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      const propertyName = String(row[1]).trim();
+      if (propertyId && propertyName) {
+        propertyMap[propertyId] = propertyName;
       }
     });
-    
-    // 新しいonOpenトリガーを作成
-    ScriptApp.newTrigger('onOpen')
-      .onOpen()
-      .create();
-    
-    console.log('✅ onOpenトリガーが正常に設定されました');
-    return 'onOpenトリガーの設定が完了しました。スプレッドシートを再度開いてメニューを確認してください。';
-  } catch (error) {
-    console.error('❌ トリガー設定エラー:', error);
-    return `エラー: ${error.message}`;
-  }
-}
+    Logger.log(`物件マスタ読み込み完了: ${Object.keys(propertyMap).length}件`);
 
-/**
- * 実行コンテキストのテスト関数（スクリプトエディタから安全に実行可能）
- */
-function testExecutionContext() {
-  console.log('='.repeat(80));
-  console.log('【実行コンテキステスト】');
-  console.log('='.repeat(80));
-  
-  try {
-    // UIの利用可能性をテスト
-    const uiAvailable = isUiAvailable();
-    console.log(`UI利用可能性: ${uiAvailable ? '✅ 利用可能' : '❌ 利用不可'}`);
-    
-    // スプレッドシートの情報を取得
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (ss) {
-      console.log(`スプレッドシート名: "${ss.getName()}"`);
-      console.log(`スプレッドシートID: ${ss.getId()}`);
-      console.log(`スプレッドシートURL: ${ss.getUrl()}`);
-    } else {
-      console.log('❌ アクティブなスプレッドシートが見つかりません');
-    }
-    
-    // 実行環境の判定
-    if (uiAvailable && ss) {
-      console.log('✅ 正常な実行環境です（スプレッドシートコンテキスト）');
-      console.log('💡 水道検針アプリを実行するには、スプレッドシートのメニューから「水道検針」→「アプリを開く」をクリックしてください');
-    } else {
-      console.log('⚠️  スクリプトエディタから実行されています');
-      showExecutionGuidance();
-    }
-    
-  } catch (error) {
-    console.error('❌ テスト実行エラー:', error);
-  }
-  
-  console.log('='.repeat(80));
-  return 'コンテキストテスト完了。詳細はコンソールログを確認してください。';
-}
+    // 2. inspection_dataシートのヘッダーと既存データを読み込み
+    const inspectionDataHeaders = inspectionDataSheet.getRange(1, 1, 1, inspectionDataSheet.getLastColumn()).getValues()[0];
+    const inspectionDataRange = inspectionDataSheet.getDataRange();
+    const inspectionData = inspectionDataSheet.getLastRow() > 1 ? inspectionDataRange.getValues().slice(1) : [];
 
-/**
- * 統合システムの健全性診断（スクリプトエディタから安全に実行可能）
- */
-function checkSystemHealth() {
-  console.log('='.repeat(80));
-  console.log('【統合システム健全性診断】');
-  console.log('='.repeat(80));
-  
-  const results = [];
-  
-  try {
-    // 1. 実行コンテキストチェック
-    const uiAvailable = isUiAvailable();
-    results.push(`UI利用可能性: ${uiAvailable ? '✅ 正常' : '❌ スクリプトエディタ実行'}`);
+    const existingInspectionEntries = new Set();
+    const propertyIdColIdxInspection = inspectionDataHeaders.indexOf('物件ID');
+    const roomIdColIdxInspection = inspectionDataHeaders.indexOf('部屋ID');
     
-    // 2. スプレッドシートチェック
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    results.push(`スプレッドシート: ${ss ? '✅ 検出' : '❌ 未検出'}`);
-    
-    // 3. 必要なHTMLファイルの存在チェック
-    const requiredFiles = ['property_select_gas', 'room_select_gas', 'meter_reading_gas'];
-    requiredFiles.forEach(fileName => {
-      try {
-        HtmlService.createTemplateFromFile(fileName);
-        results.push(`${fileName}.html: ✅ 存在`);
-      } catch (error) {
-        results.push(`${fileName}.html: ❌ 見つかりません`);
+    if (propertyIdColIdxInspection === -1 || roomIdColIdxInspection === -1) {
+      safeAlert('エラー', `「${inspectionDataSheetName}」シートに「物件ID」または「部屋ID」列が見つかりません。`);
+      return;
+    }
+
+    inspectionData.forEach(row => {
+      const propertyId = String(row[propertyIdColIdxInspection]).trim();
+      const roomId = String(row[roomIdColIdxInspection]).trim();
+      if (propertyId && roomId) {
+        existingInspectionEntries.add(`${propertyId}_${roomId}`);
       }
     });
-    
-    // 4. シートの存在チェック
-    if (ss) {
-      const sheetNames = ['物件マスタ', 'property_master', '部屋マスタ', 'room_master', 'inspection_data'];
-      sheetNames.forEach(sheetName => {
-        const sheet = ss.getSheetByName(sheetName);
-        results.push(`${sheetName}シート: ${sheet ? '✅ 存在' : '❌ 見つかりません'}`);
-      });
+    Logger.log(`inspection_data既存データ読み込み完了: ${existingInspectionEntries.size}件`);
+
+    // 3. 部屋マスタのデータを処理
+    const roomMasterData = roomMasterSheet.getRange(2, 1, roomMasterSheet.getLastRow() - 1, 3).getValues();
+    const newRowsToInspectionData = [];
+    let addedCount = 0;
+
+    roomMasterData.forEach((row, index) => {
+      const roomPropertyId = String(row[0]).trim();
+      const roomId = String(row[1]).trim();
+      const roomName = String(row[2]).trim();
+
+      if (!roomPropertyId || !roomId) {
+        Logger.log(`部屋マスタの ${index + 2} 行目は物件IDまたは部屋IDが空のためスキップします。`);
+        return;
+      }
+
+      if (!existingInspectionEntries.has(`${roomPropertyId}_${roomId}`)) {
+        const propertyName = propertyMap[roomPropertyId] || `物件名不明(${roomPropertyId})`;
+        const newRowData = [];
+        inspectionDataHeaders.forEach(header => {
+          switch (header) {
+            case '記録ID': newRowData.push(Utilities.getUuid()); break;
+            case '物件名': newRowData.push(propertyName); break;
+            case '物件ID': newRowData.push(roomPropertyId); break;
+            case '部屋ID': newRowData.push(roomId); break;
+            case '部屋名': newRowData.push(roomName); break;
+            default: newRowData.push(''); break;
+          }
+        });
+        newRowsToInspectionData.push(newRowData);
+        addedCount++;
+      }
+    });
+
+    // 4. 新しいデータをinspection_dataシートに追加
+    if (newRowsToInspectionData.length > 0) {
+      const nextRow = inspectionDataSheet.getLastRow() + 1;
+      inspectionDataSheet.getRange(nextRow, 1, newRowsToInspectionData.length, inspectionDataHeaders.length).setValues(newRowsToInspectionData);
     }
-    
-    // 5. トリガーの存在チェック
-    const triggers = ScriptApp.getProjectTriggers();
-    const onOpenTriggers = triggers.filter(t => t.getHandlerFunction() === 'onOpen');
-    results.push(`onOpenトリガー: ${onOpenTriggers.length > 0 ? '✅ 設定済み' : '⚠️  未設定'}`);
-    
-    // 結果表示
-    results.forEach(result => console.log(result));
-    
-    // 推奨アクション
-    console.log('');
-    console.log('【推奨アクション】');
-    if (!uiAvailable) {
-      console.log('1. スプレッドシートを開いてからスクリプトを実行してください');
-    }
-    if (onOpenTriggers.length === 0) {
-      console.log('2. setupOnOpenTrigger()を実行してトリガーを設定してください');
-    }
-    console.log('3. スプレッドシートのメニューから「水道検針」→「アプリを開く」で実行してください');
-    
-  } catch (error) {
-    console.error('❌ 診断エラー:', error);
-    results.push(`診断エラー: ${error.message}`);
+
+    const endTime = new Date();
+    Logger.log(`📊 inspection_data自動生成完了: ${addedCount}件の新しいエントリを追加しました`);
+    safeAlert('完了', `✅ inspection_dataの自動生成が完了しました。\n追加されたエントリ: ${addedCount}件`);
+
+  } catch (e) {
+    Logger.log(`エラー: inspection_data自動生成中にエラーが発生しました: ${e.message}`);
+    safeAlert('エラー', `inspection_data自動生成中にエラーが発生しました:\n${e.message}`);
   }
-  
-  console.log('='.repeat(80));
-  return `健全性診断完了。${results.length}項目をチェックしました。`;
 }
 
-// UI操作を安全に処理するためのグローバルヘルパー関数
+/**
+ * 物件マスタの物件IDフォーマット変更 (総合カスタム処理.gsから統合)
+ */
+function formatPropertyIdsInPropertyMaster() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+  
+  const sheet = ss.getSheetByName('物件マスタ');
+
+  if (!sheet) {
+    safeAlert('エラー', '物件マスタシートが見つかりません。');
+    return;
+  }
+
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues();
+  let updatedCount = 0;
+
+  if (values.length <= 1) {
+    safeAlert('情報', '物件マスタシートにデータがありません。');
+    return;
+  }
+
+  try {
+    for (let i = 1; i < values.length; i++) {
+      const currentId = String(values[i][0]).trim();
+      
+      if (currentId && !currentId.startsWith('P')) {
+        const formattedId = `P${currentId.padStart(6, '0')}`;
+        values[i][0] = formattedId;
+        updatedCount++;
+        Logger.log(`行 ${i + 1}: ${currentId} → ${formattedId}`);
+      }
+    }
+
+    if (updatedCount > 0) {
+      dataRange.setValues(values);
+      Logger.log(`物件マスタのフォーマット変更完了: ${updatedCount}件`);
+      safeAlert('完了', `物件マスタのIDフォーマット変更が完了しました。\n更新件数: ${updatedCount}件`);
+    } else {
+      safeAlert('情報', '更新が必要な物件IDはありませんでした。');
+    }
+  } catch (e) {
+    Logger.log(`エラー: 物件マスタフォーマット変更中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `物件マスタフォーマット変更中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+/**
+ * 部屋マスタの物件IDフォーマット変更 (総合カスタム処理.gsから統合)
+ */
+function formatPropertyIdsInRoomMaster() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+  
+  const sheet = ss.getSheetByName('部屋マスタ');
+
+  if (!sheet) {
+    safeAlert('エラー', '部屋マスタシートが見つかりません。');
+    return;
+  }
+
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues();
+  let updatedCount = 0;
+
+  if (values.length <= 1) {
+    safeAlert('情報', '部屋マスタシートにデータがありません。');
+    return;
+  }
+
+  try {
+    for (let i = 1; i < values.length; i++) {
+      const currentId = String(values[i][0]).trim();
+      
+      if (currentId && !currentId.startsWith('P')) {
+        const formattedId = `P${currentId.padStart(6, '0')}`;
+        values[i][0] = formattedId;
+        updatedCount++;
+        Logger.log(`行 ${i + 1}: ${currentId} → ${formattedId}`);
+      }
+    }
+
+    if (updatedCount > 0) {
+      dataRange.setValues(values);
+      Logger.log(`部屋マスタのフォーマット変更完了: ${updatedCount}件`);
+      safeAlert('完了', `部屋マスタのIDフォーマット変更が完了しました。\n更新件数: ${updatedCount}件`);
+    } else {
+      safeAlert('情報', '更新が必要な物件IDはありませんでした。');
+    }
+  } catch (e) {
+    Logger.log(`エラー: 部屋マスタフォーマット変更中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `部屋マスタフォーマット変更中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+/**
+ * 部屋マスタ整合性チェックと孤立部屋データの削除 (総合カスタム処理.gsから統合)
+ */
+function cleanUpOrphanedRooms() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+  
+  const roomSheet = ss.getSheetByName('部屋マスタ');
+  const propertySheet = ss.getSheetByName('物件マスタ');
+
+  if (!roomSheet) {
+    safeAlert('エラー', '部屋マスタシートが見つかりません。');
+    return;
+  }
+  if (!propertySheet) {
+    safeAlert('エラー', '物件マスタシートが見つかりません。');
+    return;
+  }
+
+  try {
+    // 物件マスタから有効な物件IDを取得
+    const propertyData = propertySheet.getDataRange().getValues().slice(1);
+    const validPropertyIds = new Set();
+    propertyData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      if (propertyId) {
+        validPropertyIds.add(propertyId);
+      }
+    });
+
+    // 部屋マスタのデータを確認
+    const roomData = roomSheet.getDataRange().getValues();
+    const headers = roomData[0];
+    const dataRows = roomData.slice(1);
+    
+    const validRows = [headers];
+    let removedCount = 0;
+
+    dataRows.forEach((row, index) => {
+      const propertyId = String(row[0]).trim();
+      if (propertyId && validPropertyIds.has(propertyId)) {
+        validRows.push(row);
+      } else {
+        removedCount++;
+        Logger.log(`削除対象: 行${index + 2} - 物件ID: ${propertyId}`);
+      }
+    });
+
+    if (removedCount > 0) {
+      // データを更新
+      roomSheet.clear();
+      if (validRows.length > 0) {
+        roomSheet.getRange(1, 1, validRows.length, headers.length).setValues(validRows);
+      }
+      
+      Logger.log(`部屋マスタクリーンアップ完了: ${removedCount}件の孤立データを削除`);
+      safeAlert('完了', `部屋マスタのクリーンアップが完了しました。\n削除された孤立データ: ${removedCount}件`);
+    } else {
+      safeAlert('情報', '削除が必要な孤立データはありませんでした。');
+    }
+  } catch (e) {
+    Logger.log(`エラー: 部屋マスタクリーンアップ中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `部屋マスタクリーンアップ中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+/**
+ * 検針データの月次保存処理 (総合カスタム処理.gsから統合)
+ */
+function processInspectionDataMonthly() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+  
+  const sourceSheetName = "inspection_data";
+  const sourceSheet = ss.getSheetByName(sourceSheetName);
+
+  if (!sourceSheet) {
+    safeAlert('エラー', `${sourceSheetName} シートが見つかりません。`);
+    return;
+  }
+
+  try {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const newSheetName = `検針データ_${currentYear}年${currentMonth}月`;
+
+    // 既存の月次シートがあるかチェック
+    if (ss.getSheetByName(newSheetName)) {
+      safeAlert('情報', `${newSheetName} は既に存在します。`);
+      return;
+    }
+
+    // 新しいシートを作成
+    const newSheet = ss.insertSheet(newSheetName);
+
+    // ソースデータを取得
+    const sourceValues = sourceSheet.getDataRange().getValues();
+    const sourceHeaders = sourceValues[0];
+
+    // 必要な列のインデックスを取得
+    const columnsToCopy = [
+      "記録ID", "物件名", "物件ID", "部屋ID", "部屋名",
+      "検針日時", "今回使用量", "今回の指示数", "前回指示数", "写真URL"
+    ];
+    const columnIndicesToCopy = columnsToCopy.map(header => sourceHeaders.indexOf(header));
+
+    // 必要な列が見つからない場合はエラー
+    if (columnIndicesToCopy.some(index => index === -1)) {
+      const missingColumns = columnsToCopy.filter((_, i) => columnIndicesToCopy[i] === -1);
+      safeAlert('エラー', `必要な列が見つかりません: ${missingColumns.join(", ")}`);
+      if (ss.getSheetByName(newSheetName)) {
+        ss.deleteSheet(ss.getSheetByName(newSheetName));
+      }
+      return;
+    }
+
+    // 新しいシートにデータをコピー
+    const dataToCopyToNewSheet = sourceValues.map(row => {
+      return columnIndicesToCopy.map(index => row[index]);
+    });
+
+    if (dataToCopyToNewSheet.length > 0) {
+      newSheet.getRange(1, 1, dataToCopyToNewSheet.length, columnsToCopy.length).setValues(dataToCopyToNewSheet);
+    }
+
+    Logger.log(`月次検針データ保存完了: ${newSheetName}`);
+    safeAlert('完了', `月次検針データの保存が完了しました。\nシート名: ${newSheetName}`);
+
+  } catch (e) {
+    Logger.log(`エラー: 月次検針データ保存中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `月次検針データ保存中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+/**
+ * inspection_dataの初期データ作成 (総合カスタム処理.gsから統合)
+ */
+function createInitialInspectionData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+  
+  const propertyMasterSheet = ss.getSheetByName('物件マスタ');
+  const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+  let inspectionDataSheet = ss.getSheetByName('inspection_data');
+
+  if (!propertyMasterSheet) {
+    safeAlert('エラー', '物件マスタシートが見つかりません。');
+    return;
+  }
+  if (!roomMasterSheet) {
+    safeAlert('エラー', '部屋マスタシートが見つかりません。');
+    return;
+  }
+
+  try {
+    // inspection_dataシートが存在しない場合は作成
+    if (!inspectionDataSheet) {
+      inspectionDataSheet = ss.insertSheet('inspection_data');
+      const headers = [
+        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
+        '検針日時', '警告フラグ', '標準偏差値', '今回使用量',
+        '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数'
+      ];
+      inspectionDataSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+
+    // 物件マスタから物件情報を取得
+    const propertyData = propertyMasterSheet.getDataRange().getValues().slice(1);
+    const propertyMap = {};
+    propertyData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      const propertyName = String(row[1]).trim();
+      if (propertyId && propertyName) {
+        propertyMap[propertyId] = propertyName;
+      }
+    });
+
+    // 部屋マスタからデータを取得してinspection_dataに追加
+    const roomData = roomMasterSheet.getDataRange().getValues().slice(1);
+    const newRows = [];
+
+    roomData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      const roomId = String(row[1]).trim();
+      const roomName = String(row[2]).trim();
+
+      if (propertyId && roomId) {
+        const propertyName = propertyMap[propertyId] || '';
+        newRows.push([
+          Utilities.getUuid(),  // 記録ID
+          propertyName,         // 物件名
+          propertyId,          // 物件ID
+          roomId,              // 部屋ID
+          roomName,            // 部屋名
+          '',                  // 検針日時
+          '',                  // 警告フラグ
+          '',                  // 標準偏差値
+          '',                  // 今回使用量
+          '',                  // 今回の指示数
+          '',                  // 前回指示数
+          '',                  // 前々回指示数
+          ''                   // 前々々回指示数
+        ]);
+      }
+    });
+
+    if (newRows.length > 0) {
+      const nextRow = inspectionDataSheet.getLastRow() + 1;
+      inspectionDataSheet.getRange(nextRow, 1, newRows.length, 13).setValues(newRows);
+    }
+
+    Logger.log(`初期検針データ作成完了: ${newRows.length}件`);
+    safeAlert('完了', `初期検針データの作成が完了しました。\n作成件数: ${newRows.length}件`);
+
+  } catch (e) {
+    Logger.log(`エラー: 初期検針データ作成中にエラーが発生しました: ${e.message}`);
+    safeAlert('エラー', `初期検針データ作成中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+/**
+ * データ整合性チェック機能 (総合カスタム処理.gsから統合)
+ */
+function validateInspectionDataIntegrity() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+
+  try {
+    Logger.log('🔍 データ整合性チェックを開始します...');
+    const startTime = new Date();
+
+    // 各マスタシートを取得
+    const propertyMasterSheet = ss.getSheetByName('物件マスタ');
+    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+    const inspectionDataSheet = ss.getSheetByName('inspection_data');
+
+    if (!propertyMasterSheet || !roomMasterSheet || !inspectionDataSheet) {
+      safeAlert('エラー', '必要なシート（物件マスタ、部屋マスタ、inspection_data）が見つかりません');
+      return;
+    }
+
+    // 物件マスタから有効な物件IDを取得
+    const propertyMasterData = propertyMasterSheet.getDataRange().getValues();
+    const validPropertyIds = new Set();
+    for (let i = 1; i < propertyMasterData.length; i++) {
+      const propertyId = String(propertyMasterData[i][0]).trim();
+      if (propertyId) {
+        validPropertyIds.add(propertyId);
+      }
+    }
+
+    // 部屋マスタから有効な部屋IDと物件-部屋の組み合わせを取得
+    const roomMasterData = roomMasterSheet.getDataRange().getValues();
+    const validRoomIds = new Set();
+    const validPropertyRoomCombinations = new Set();
+    for (let i = 1; i < roomMasterData.length; i++) {
+      const propertyId = String(roomMasterData[i][0]).trim();
+      const roomId = String(roomMasterData[i][1]).trim();
+      if (propertyId && roomId) {
+        validRoomIds.add(roomId);
+        validPropertyRoomCombinations.add(`${propertyId}_${roomId}`);
+      }
+    }
+
+    // データインデックスを作成
+    const indexes = createDataIndexes();
+    if (!indexes) {
+      return;
+    }
+
+    // 整合性チェック結果
+    const issues = {
+      invalidPropertyIds: [],
+      invalidRoomIds: [],
+      invalidCombinations: [],
+      duplicateRecordIds: Array.from(indexes.duplicateRecordIds),
+      missingRecordIds: [],
+      inconsistentPropertyNames: []
+    };
+
+    // 検針データの各レコードをチェック
+    indexes.byRecordId.forEach((rowData, recordId) => {
+      const { propertyId, roomId, propertyName } = rowData;
+
+      // 記録IDチェック
+      if (!recordId || recordId === '') {
+        issues.missingRecordIds.push(`行 ${rowData.rowIndex + 1}`);
+      }
+
+      // 物件IDチェック
+      if (propertyId && !validPropertyIds.has(propertyId)) {
+        issues.invalidPropertyIds.push(`行 ${rowData.rowIndex + 1}: ${propertyId}`);
+      }
+
+      // 部屋IDチェック
+      if (roomId && !validRoomIds.has(roomId)) {
+        issues.invalidRoomIds.push(`行 ${rowData.rowIndex + 1}: ${roomId}`);
+      }
+
+      // 物件-部屋組み合わせチェック
+      if (propertyId && roomId) {
+        const combination = `${propertyId}_${roomId}`;
+        if (!validPropertyRoomCombinations.has(combination)) {
+          issues.invalidCombinations.push(`行 ${rowData.rowIndex + 1}: ${combination}`);
+        }
+      }
+
+      // 物件名の整合性チェック（物件マスタと比較）
+      if (propertyId && validPropertyIds.has(propertyId)) {
+        const masterPropertyName = propertyMasterData.find(row => 
+          String(row[0]).trim() === propertyId
+        )?.[1];
+        if (masterPropertyName && String(masterPropertyName).trim() !== propertyName) {
+          issues.inconsistentPropertyNames.push(
+            `行 ${rowData.rowIndex + 1}: 検針データ="${propertyName}" vs マスタ="${masterPropertyName}"`
+          );
+        }
+      }
+    });
+
+    const endTime = new Date();
+    const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+
+    // 結果レポート作成
+    let reportMessage = `🔍 データ整合性チェック結果\n処理時間: ${processingTime}秒\n\n`;
+    
+    if (Object.values(issues).every(arr => arr.length === 0)) {
+      reportMessage += '✅ 問題は見つかりませんでした。';
+    } else {
+      if (issues.invalidPropertyIds.length > 0) {
+        reportMessage += `❌ 無効な物件ID (${issues.invalidPropertyIds.length}件):\n${issues.invalidPropertyIds.join('\n')}\n\n`;
+      }
+      if (issues.invalidRoomIds.length > 0) {
+        reportMessage += `❌ 無効な部屋ID (${issues.invalidRoomIds.length}件):\n${issues.invalidRoomIds.join('\n')}\n\n`;
+      }
+      if (issues.invalidCombinations.length > 0) {
+        reportMessage += `❌ 無効な物件-部屋組み合わせ (${issues.invalidCombinations.length}件):\n${issues.invalidCombinations.join('\n')}\n\n`;
+      }
+      if (issues.duplicateRecordIds.length > 0) {
+        reportMessage += `❌ 重複記録ID (${issues.duplicateRecordIds.length}件):\n${issues.duplicateRecordIds.join('\n')}\n\n`;
+      }
+      if (issues.missingRecordIds.length > 0) {
+        reportMessage += `❌ 欠損記録ID (${issues.missingRecordIds.length}件):\n${issues.missingRecordIds.join('\n')}\n\n`;
+      }
+      if (issues.inconsistentPropertyNames.length > 0) {
+        reportMessage += `❌ 物件名不整合 (${issues.inconsistentPropertyNames.length}件):\n${issues.inconsistentPropertyNames.join('\n')}`;
+      }
+    }
+
+    Logger.log(reportMessage);
+    safeAlert('データ整合性チェック完了', reportMessage);
+
+    return issues;
+
+  } catch (e) {
+    Logger.log(`エラー: データ整合性チェック中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `データ整合性チェック中にエラーが発生しました:\n${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * データ高速検索用のインデックスを作成 (総合カスタム処理.gsから統合)
+ */
+function createDataIndexes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return null;
+  }
+
+  try {
+    Logger.log('📊 データインデックス作成を開始します...');
+
+    const inspectionSheet = ss.getSheetByName('inspection_data');
+    if (!inspectionSheet) {
+      safeAlert('エラー', 'inspection_dataシートが見つかりません');
+      return null;
+    }
+
+    const data = inspectionSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      safeAlert('情報', 'inspection_dataシートにデータがありません');
+      return null;
+    }
+
+    const headers = data[0];
+    const recordIdIndex = headers.indexOf('記録ID');
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const roomIdIndex = headers.indexOf('部屋ID');
+    const propertyNameIndex = headers.indexOf('物件名');
+    const roomNameIndex = headers.indexOf('部屋名');
+    const inspectionDateIndex = headers.indexOf('検針日時');
+    const currentReadingIndex = headers.indexOf('今回の指示数');
+    const previousReadingIndex = headers.indexOf('前回指示数');
+    const usageIndex = headers.indexOf('今回使用量');
+
+    if ([recordIdIndex, propertyIdIndex, roomIdIndex].includes(-1)) {
+      safeAlert('エラー', '必要な列（記録ID、物件ID、部屋ID）が見つかりません');
+      return null;
+    }
+
+    // インデックス構造を作成
+    const indexes = {
+      byRecordId: new Map(),
+      byPropertyId: new Map(),
+      byRoomId: new Map(),
+      byPropertyRoom: new Map(),
+      duplicateRecordIds: new Set(),
+      totalRecords: data.length - 1
+    };
+
+    const recordIdCounts = new Map();
+
+    // データを処理してインデックスを作成
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const recordId = String(row[recordIdIndex] || '').trim();
+      const propertyId = String(row[propertyIdIndex] || '').trim();
+      const roomId = String(row[roomIdIndex] || '').trim();
+      const propertyName = String(row[propertyNameIndex] || '').trim();
+      const roomName = String(row[roomNameIndex] || '').trim();
+
+      const rowData = {
+        rowIndex: i,
+        recordId,
+        propertyId,
+        roomId,
+        propertyName,
+        roomName,
+        inspectionDate: row[inspectionDateIndex],
+        currentReading: row[currentReadingIndex],
+        previousReading: row[previousReadingIndex],
+        usage: row[usageIndex]
+      };
+
+      // 記録IDインデックス（重複チェック含む）
+      if (recordId) {
+        recordIdCounts.set(recordId, (recordIdCounts.get(recordId) || 0) + 1);
+        if (recordIdCounts.get(recordId) > 1) {
+          indexes.duplicateRecordIds.add(recordId);
+        }
+        indexes.byRecordId.set(recordId, rowData);
+      }
+
+      // 物件IDインデックス
+      if (propertyId) {
+        if (!indexes.byPropertyId.has(propertyId)) {
+          indexes.byPropertyId.set(propertyId, []);
+        }
+        indexes.byPropertyId.get(propertyId).push(rowData);
+      }
+
+      // 部屋IDインデックス
+      if (roomId) {
+        if (!indexes.byRoomId.has(roomId)) {
+          indexes.byRoomId.set(roomId, []);
+        }
+        indexes.byRoomId.get(roomId).push(rowData);
+      }
+
+      // 物件-部屋組み合わせインデックス
+      if (propertyId && roomId) {
+        const key = `${propertyId}_${roomId}`;
+        if (!indexes.byPropertyRoom.has(key)) {
+          indexes.byPropertyRoom.set(key, []);
+        }
+        indexes.byPropertyRoom.get(key).push(rowData);
+      }
+    }
+
+    Logger.log(`📊 データインデックス作成完了: ${indexes.totalRecords}件のレコードを処理`);
+    Logger.log(`- 物件数: ${indexes.byPropertyId.size}`);
+    Logger.log(`- 部屋数: ${indexes.byRoomId.size}`);
+    Logger.log(`- 物件-部屋組み合わせ数: ${indexes.byPropertyRoom.size}`);
+    Logger.log(`- 重複記録ID数: ${indexes.duplicateRecordIds.size}`);
+
+    return indexes;
+
+  } catch (e) {
+    Logger.log(`エラー: データインデックス作成中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `データインデックス作成中にエラーが発生しました:\n${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * 重複データクリーンアップ機能 (総合カスタム処理.gsから統合)
+ */
+function optimizedCleanupDuplicateInspectionData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+
+  try {
+    Logger.log('🧹 重複データクリーンアップを開始します...');
+    const startTime = new Date();
+
+    const inspectionSheet = ss.getSheetByName('inspection_data');
+    if (!inspectionSheet) {
+      safeAlert('エラー', 'inspection_dataシートが見つかりません');
+      return;
+    }
+
+    const data = inspectionSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      safeAlert('情報', 'inspection_dataシートにデータがありません');
+      return;
+    }
+
+    const headers = data[0];
+    const recordIdIndex = headers.indexOf('記録ID');
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const roomIdIndex = headers.indexOf('部屋ID');
+
+    if ([recordIdIndex, propertyIdIndex, roomIdIndex].includes(-1)) {
+      safeAlert('エラー', '必要な列（記録ID、物件ID、部屋ID）が見つかりません');
+      return;
+    }
+
+    // 重複チェック用のマップ
+    const recordIdMap = new Map();
+    const propertyRoomMap = new Map();
+    const duplicateRows = new Set();
+
+    // 重複を特定
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const recordId = String(row[recordIdIndex] || '').trim();
+      const propertyId = String(row[propertyIdIndex] || '').trim();
+      const roomId = String(row[roomIdIndex] || '').trim();
+
+      // 記録IDの重複チェック
+      if (recordId) {
+        if (recordIdMap.has(recordId)) {
+          duplicateRows.add(i);
+          Logger.log(`重複記録ID発見: ${recordId} (行 ${i + 1})`);
+        } else {
+          recordIdMap.set(recordId, i);
+        }
+      }
+
+      // 物件-部屋組み合わせの重複チェック
+      if (propertyId && roomId) {
+        const key = `${propertyId}_${roomId}`;
+        if (propertyRoomMap.has(key)) {
+          // より新しいデータを保持（行番号が大きいものを優先）
+          const existingRowIndex = propertyRoomMap.get(key);
+          duplicateRows.add(existingRowIndex);
+          propertyRoomMap.set(key, i);
+          Logger.log(`重複物件-部屋組み合わせ発見: ${key} (古い行 ${existingRowIndex + 1} を削除対象に)`);
+        } else {
+          propertyRoomMap.set(key, i);
+        }
+      }
+    }
+
+    if (duplicateRows.size === 0) {
+      safeAlert('情報', '重複データは見つかりませんでした。');
+      return;
+    }
+
+    // 重複行を除いた新しいデータを作成
+    const cleanedData = [headers];
+    for (let i = 1; i < data.length; i++) {
+      if (!duplicateRows.has(i)) {
+        cleanedData.push(data[i]);
+      }
+    }
+
+    // シートを更新
+    inspectionSheet.clear();
+    if (cleanedData.length > 0) {
+      inspectionSheet.getRange(1, 1, cleanedData.length, headers.length).setValues(cleanedData);
+    }
+
+    const endTime = new Date();
+    const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+
+    Logger.log(`🧹 重複データクリーンアップ完了: ${duplicateRows.size}件の重複データを削除 (処理時間: ${processingTime}秒)`);
+    safeAlert('完了', `重複データクリーンアップが完了しました。\n削除件数: ${duplicateRows.size}件\n処理時間: ${processingTime}秒`);
+
+  } catch (e) {
+    Logger.log(`エラー: 重複データクリーンアップ中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `重複データクリーンアップ中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+/**
+ * 全体最適化バッチ処理 (総合カスタム処理.gsから統合)
+ */
+function runComprehensiveDataOptimization() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
+    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    return;
+  }
+
+  try {
+    Logger.log('🚀 全体最適化バッチ処理を開始します...');
+    const overallStartTime = new Date();
+
+    // 1. IDフォーマット統一
+    Logger.log('📋 ステップ1: IDフォーマット統一');
+    formatPropertyIdsInPropertyMaster();
+    formatPropertyIdsInRoomMaster();
+
+    // 2. 孤立データクリーンアップ
+    Logger.log('🧹 ステップ2: 孤立データクリーンアップ');
+    cleanUpOrphanedRooms();
+
+    // 3. inspection_data自動生成
+    Logger.log('📊 ステップ3: inspection_data自動生成');
+    populateInspectionDataFromMasters();
+
+    // 4. 重複データクリーンアップ
+    Logger.log('🔧 ステップ4: 重複データクリーンアップ');
+    optimizedCleanupDuplicateInspectionData();
+
+    // 5. データ整合性チェック
+    Logger.log('🔍 ステップ5: データ整合性チェック');
+    const integrityResults = validateInspectionDataIntegrity();
+
+    const overallEndTime = new Date();
+    const totalProcessingTime = ((overallEndTime - overallStartTime) / 1000).toFixed(2);
+
+    Logger.log(`🚀 全体最適化バッチ処理完了 (総処理時間: ${totalProcessingTime}秒)`);
+    
+    let summary = `✅ 全体最適化バッチ処理が完了しました！\n総処理時間: ${totalProcessingTime}秒\n\n`;
+    summary += '実行された処理:\n';
+    summary += '1. ✅ IDフォーマット統一\n';
+    summary += '2. ✅ 孤立データクリーンアップ\n';
+    summary += '3. ✅ inspection_data自動生成\n';
+    summary += '4. ✅ 重複データクリーンアップ\n';
+    summary += '5. ✅ データ整合性チェック\n';
+    
+    if (integrityResults && Object.values(integrityResults).some(arr => arr.length > 0)) {
+      summary += '\n⚠️ 一部データに問題が検出されました。詳細は整合性チェック結果をご確認ください。';
+    } else {
+      summary += '\n🎉 すべてのデータが正常です！';
+    }
+    
+    safeAlert('全体最適化完了', summary);
+
+  } catch (e) {
+    Logger.log(`エラー: 全体最適化バッチ処理中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `全体最適化バッチ処理中にエラーが発生しました:\n${e.message}`);
+  }
+}
+
+// ===================================
+// ユーティリティ関数
+// ===================================
+
+/**
+ * UI操作を安全に処理するためのヘルパー関数 (総合カスタム処理.gsから統合)
+ * @param {string} title - アラートのタイトル
+ * @param {string} message - アラートのメッセージ
+ */
 function safeAlert(title, message) {
   try {
     const ui = SpreadsheetApp.getUi();
@@ -1281,572 +1554,184 @@ function safeAlert(title, message) {
   }
 }
 
-// --- 総合カスタム処理.gs の統合された関数群 ---
+// ===================================
 
 /**
- * マスタシートから検針データシートへ新しい部屋を反映
+ * スプレッドシート開始時に呼び出されるメニュー作成関数
  */
-function populateInspectionDataFromMasters() {
+function onOpen() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const propertyMasterSheet = ss.getSheetByName('物件マスタ') || ss.getSheetByName('property_master');
-    const roomMasterSheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
-    let inspectionDataSheet = ss.getSheetByName('inspection_data');
+    Logger.log('📋 onOpen関数が実行されました - 統合版メニュー作成中');
+    
+    const ui = SpreadsheetApp.getUi();
+    
+    // 水道検針アプリメニュー
+    const waterMeterMenu = ui.createMenu('水道検針');
+    waterMeterMenu.addItem('アプリを開く', 'showWaterMeterApp');
+    waterMeterMenu.addToUi();
+    
+    // データ管理メニュー
+    const dataManagementMenu = ui.createMenu('データ管理');
+    dataManagementMenu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    dataManagementMenu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    dataManagementMenu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
+    dataManagementMenu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity');
+    dataManagementMenu.addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
+    dataManagementMenu.addItem('⚡ データインデックス作成', 'createDataIndexes');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization');
+    dataManagementMenu.addToUi();
+    
+    Logger.log('✅ 統合版メニューが正常に作成されました');
+    
+  } catch (e) {
+    Logger.log(`❌ onOpen関数内でメニュー作成エラー: ${e.message}`);
+    Logger.log(`📋 詳細: ${e.stack}`);
+  }
+}
 
-    if (!propertyMasterSheet) {
-      safeAlert('エラー', '物件マスタ または property_master シートが見つかりません。');
-      return;
-    }
-
-    if (!roomMasterSheet) {
-      safeAlert('エラー', '部屋マスタ または room_master シートが見つかりません。');
-      return;
-    }
-
-    if (!inspectionDataSheet) {
-      inspectionDataSheet = ss.insertSheet('inspection_data');
-      const headers = [
-        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名', '検針日時', '今回指示数（水道）', 
-        '前回指示数（水道）', '使用量（水道）', '今回指示数（ガス）', '前回指示数（ガス）', 
-        '使用量（ガス）', '今回指示数（電気）', '前回指示数（電気）', '使用量（電気）', 
-        '備考', '作成日時', '更新日時'
-      ];
-      inspectionDataSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      safeAlert('情報', 'inspection_data シートを新規作成しました。');
-    }
-
-    // 物件マスタのデータを読み込み
-    const propertyMasterData = propertyMasterSheet.getRange(2, 1, propertyMasterSheet.getLastRow() - 1, 2).getValues();
-    const propertyMap = {};
-    propertyMasterData.forEach(row => {
-      const propertyId = row[0];
-      const propertyName = row[1];
-      if (propertyId && propertyName) {
-        propertyMap[propertyId] = propertyName;
-      }
+/**
+ * スクリプトエディタから安全に実行できるメニュー作成トリガー設定関数
+ */
+function setupOnOpenTrigger() {
+  try {
+    Logger.log('📋 onOpenトリガー設定状況の確認');
+    Logger.log('');
+    
+    // 既存のトリガーを確認
+    const triggers = ScriptApp.getProjectTriggers();
+    const onOpenTriggers = triggers.filter(trigger => 
+      trigger.getEventType() === ScriptApp.EventType.ON_OPEN
+    );
+    
+    Logger.log(`✅ 現在のonOpenトリガー数: ${onOpenTriggers.length}`);
+    
+    onOpenTriggers.forEach((trigger, index) => {
+      const handlerFunction = trigger.getHandlerFunction();
+      Logger.log(`${index + 1}. 関数: ${handlerFunction}`);
     });
-
-    // 検針データの既存データを確認
-    const inspectionDataRange = inspectionDataSheet.getDataRange();
-    const inspectionData = inspectionDataRange.getValues();
-    const inspectionHeaders = inspectionData[0];
-    const existingRoomKeys = new Set();
-
-    const propertyIdIndex = inspectionHeaders.indexOf('物件ID');
-    const roomIdIndex = inspectionHeaders.indexOf('部屋ID');
-
-    for (let i = 1; i < inspectionData.length; i++) {
-      const row = inspectionData[i];
-      const key = `${row[propertyIdIndex]}_${row[roomIdIndex]}`;
-      existingRoomKeys.add(key);
-    }
-
-    // 部屋マスタのデータを読み込み、検針データにない新しい部屋情報を追加
-    const roomMasterData = roomMasterSheet.getRange(2, 1, roomMasterSheet.getLastRow() - 1, roomMasterSheet.getLastColumn()).getValues();
-    const roomMasterHeaders = roomMasterSheet.getRange(1, 1, 1, roomMasterSheet.getLastColumn()).getValues()[0];
-    const roomPropertyIdIndex = roomMasterHeaders.indexOf('物件ID');
-    const roomIdIndexInMaster = roomMasterHeaders.indexOf('部屋ID');
-    const roomNameIndex = roomMasterHeaders.indexOf('部屋名');
-
-    if (roomPropertyIdIndex === -1 || roomIdIndexInMaster === -1 || roomNameIndex === -1) {
-      safeAlert('エラー', '部屋マスタに必要な列（物件ID、部屋ID、部屋名）が見つかりません。');
-      return;
-    }
-
-    const newRowsToAdd = [];
-    let addedCount = 0;
-
-    roomMasterData.forEach(roomRow => {
-      const roomPropertyId = roomRow[roomPropertyIdIndex];
-      const roomId = roomRow[roomIdIndexInMaster];
-      const roomName = roomRow[roomNameIndex];
-      const key = `${roomPropertyId}_${roomId}`;
-
-      if (roomPropertyId && roomId && roomName && !existingRoomKeys.has(key)) {
-        const propertyName = propertyMap[roomPropertyId] || '';
-        const recordId = `${roomPropertyId}_${roomId}_${new Date().getTime()}`;
-
-        const newRowData = [];
-        inspectionHeaders.forEach(header => {
-          switch (header) {
-            case '記録ID': newRowData.push(recordId); break;
-            case '物件名': newRowData.push(propertyName); break;
-            case '物件ID': newRowData.push(roomPropertyId); break;
-            case '部屋ID': newRowData.push(roomId); break;
-            case '部屋名': newRowData.push(roomName); break;
-            case '作成日時': newRowData.push(new Date()); break;
-            case '更新日時': newRowData.push(new Date()); break;
-            default: newRowData.push(''); break;
-          }
-        });
-        
-        newRowsToAdd.push(newRowData);
-        addedCount++;
-      }
-    });
-
-    if (newRowsToAdd.length > 0) {
-      inspectionDataSheet.getRange(inspectionDataSheet.getLastRow() + 1, 1, newRowsToAdd.length, newRowsToAdd[0].length).setValues(newRowsToAdd);
-      safeAlert('完了', `${addedCount} 件の新しい部屋情報をinspection_dataシートに追加しました。`);
-    } else {
-      safeAlert('情報', '追加する新しい部屋情報はありませんでした。');
-    }
-
-  } catch (error) {
-    console.error('[populateInspectionDataFromMasters] エラー:', error);
-    safeAlert('エラー', `データ連携処理中にエラーが発生しました: ${error.message}`);
+    
+    Logger.log('');
+    Logger.log('💡 メニューが表示されない場合の対処法:');
+    Logger.log('1. スプレッドシートを再読み込み（F5キー）');
+    Logger.log('2. ブラウザのキャッシュをクリア');
+    Logger.log('3. 別のブラウザで試す');
+    Logger.log('4. forceCreateMenu()関数を実行');
+    
+    return 'トリガー情報確認完了';
+  } catch (e) {
+    Logger.log(`❌ トリガー情報確認エラー: ${e.message}`);
+    return `エラー: ${e.message}`;
   }
 }
 
 /**
- * 物件マスタの物件IDをフォーマット（P + 6桁ゼロパディング）
+ * 強制的にメニューを作成する関数（デバッグ用）
  */
-function formatPropertyIdsInPropertyMaster() {
+function forceCreateMenu() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const sheet = ss.getSheetByName('物件マスタ') || ss.getSheetByName('property_master');
-
-    if (!sheet) {
-      safeAlert('エラー', '物件マスタ または property_master シートが見つかりません。');
-      return;
-    }
-
-    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1);
-    const values = dataRange.getValues();
-    let updatedCount = 0;
-
-    for (let i = 0; i < values.length; i++) {
-      const originalValue = values[i][0];
-      
-      if (originalValue !== null && originalValue !== '') {
-        const valStr = String(originalValue);
-        let numericPart = '';
-        let needsFormatting = false;
-
-        if (valStr.startsWith('P')) {
-          numericPart = valStr.substring(1);
-          if (!isNaN(Number(numericPart))) {
-            needsFormatting = true;
-          }
-        } else if (!isNaN(Number(valStr))) {
-          numericPart = valStr;
-          needsFormatting = true;
-        }
-
-        if (needsFormatting) {
-          const numericValue = Number(numericPart);
-          const formattedId = 'P' + String(numericValue).padStart(6, '0');
-          if (valStr !== formattedId) {
-            values[i][0] = formattedId;
-            updatedCount++;
-          }
-        }
-      }
-    }
-
-    if (updatedCount > 0) {
-      dataRange.setValues(values);
-      safeAlert('完了', `${updatedCount} 件の物件IDをフォーマットしました。`);
-    } else {
-      safeAlert('情報', '更新対象の物件IDはありませんでした。');
-    }
-
-  } catch (error) {
-    console.error('[formatPropertyIdsInPropertyMaster] エラー:', error);
-    safeAlert('エラー', `物件IDフォーマット処理中にエラーが発生しました: ${error.message}`);
-  }
-}
-
-/**
- * 部屋マスタの物件IDをフォーマット（P + 6桁ゼロパディング）
- */
-function formatPropertyIdsInRoomMaster() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const sheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
-
-    if (!sheet) {
-      safeAlert('エラー', '部屋マスタ または room_master シートが見つかりません。');
-      return;
-    }
-
-    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1);
-    const values = dataRange.getValues();
-    let updatedCount = 0;
-
-    for (let i = 0; i < values.length; i++) {
-      const originalValue = values[i][0];
-      
-      if (originalValue !== null && originalValue !== '') {
-        const valStr = String(originalValue);
-        let numericPart = '';
-        let needsFormatting = false;
-
-        if (valStr.startsWith('P')) {
-          numericPart = valStr.substring(1);
-          if (!isNaN(Number(numericPart))) {
-            needsFormatting = true;
-          }
-        } else if (!isNaN(Number(valStr))) {
-          numericPart = valStr;
-          needsFormatting = true;
-        }
-
-        if (needsFormatting) {
-          const numericValue = Number(numericPart);
-          const formattedId = 'P' + String(numericValue).padStart(6, '0');
-          if (valStr !== formattedId) {
-            values[i][0] = formattedId;
-            updatedCount++;
-          }
-        }
-      }
-    }
-
-    if (updatedCount > 0) {
-      dataRange.setValues(values);
-      safeAlert('完了', `${updatedCount} 件の物件IDをフォーマットしました。`);
-    } else {
-      safeAlert('情報', '更新対象の物件IDはありませんでした。');
-    }
-
-  } catch (error) {
-    console.error('[formatPropertyIdsInRoomMaster] エラー:', error);
-    safeAlert('エラー', `物件IDフォーマット処理中にエラーが発生しました: ${error.message}`);
-  }
-}
-
-/**
- * 部屋マスタの孤立データを削除
- */
-function cleanUpOrphanedRooms() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const propertyMasterSheet = ss.getSheetByName('物件マスタ') || ss.getSheetByName('property_master');
-    const roomMasterSheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
-
-    if (!propertyMasterSheet) {
-      safeAlert('エラー', '物件マスタ または property_master シートが見つかりません。');
-      return;
-    }
-
-    if (!roomMasterSheet) {
-      safeAlert('エラー', '部屋マスタ または room_master シートが見つかりません。');
-      return;
-    }
-
-    // 物件マスタから有効な物件IDを取得
-    const propertyData = propertyMasterSheet.getDataRange().getValues();
-    const validPropertyIds = new Set();
-    for (let i = 1; i < propertyData.length; i++) {
-      const propertyId = propertyData[i][0];
-      if (propertyId) {
-        validPropertyIds.add(String(propertyId).trim());
-      }
-    }
-
-    // 部屋マスタから孤立したデータを特定
-    const roomData = roomMasterSheet.getDataRange().getValues();
-    const rowsToDelete = [];
-
-    for (let i = roomData.length - 1; i >= 1; i--) {
-      const roomPropertyId = roomData[i][0];
-      if (roomPropertyId && !validPropertyIds.has(String(roomPropertyId).trim())) {
-        rowsToDelete.push(i + 1); // 1ベースのインデックスに変換
-      }
-    }
-
-    if (rowsToDelete.length > 0) {
-      // 行を削除（逆順で削除）
-      rowsToDelete.forEach(rowNumber => {
-        roomMasterSheet.deleteRow(rowNumber);
-      });
-      
-      safeAlert('完了', `${rowsToDelete.length} 件の孤立した部屋データを削除しました。`);
-    } else {
-      safeAlert('情報', '削除対象の孤立データはありませんでした。');
-    }
-
-  } catch (error) {
-    console.error('[cleanUpOrphanedRooms] エラー:', error);
-    safeAlert('エラー', `孤立データ削除処理中にエラーが発生しました: ${error.message}`);
-  }
-}
-
-/**
- * 初期検針データシートを作成
- */
-function createInitialInspectionData() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // 日本語名を優先、なければ英語名を試行
-    const propertyMasterSheet = ss.getSheetByName('物件マスタ') || ss.getSheetByName('property_master');
-    const roomMasterSheet = ss.getSheetByName('部屋マスタ') || ss.getSheetByName('room_master');
-    let inspectionDataSheet = ss.getSheetByName('inspection_data');
-
-    if (!propertyMasterSheet) {
-      safeAlert('エラー', '物件マスタ または property_master シートが見つかりません。');
-      return;
-    }
-
-    if (!roomMasterSheet) {
-      safeAlert('エラー', '部屋マスタ または room_master シートが見つかりません。');
-      return;
-    }
-
-    if (!inspectionDataSheet) {
-      inspectionDataSheet = ss.insertSheet('inspection_data');
-      const headers = [
-        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名', '検針日時', '今回指示数（水道）', 
-        '前回指示数（水道）', '使用量（水道）', '今回指示数（ガス）', '前回指示数（ガス）', 
-        '使用量（ガス）', '今回指示数（電気）', '前回指示数（電気）', '使用量（電気）', 
-        '備考', '作成日時', '更新日時'
-      ];
-      inspectionDataSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      safeAlert('完了', 'inspection_data シートを作成し、初期ヘッダーを設定しました。');
-    } else {
-      safeAlert('情報', 'inspection_data シートは既に存在します。');
-    }
-
-  } catch (error) {
-    console.error('[createInitialInspectionData] エラー:', error);
-    safeAlert('エラー', `初期検針データ作成中にエラーが発生しました: ${error.message}`);
-  }
-}
-
-// その他の総合カスタム処理関数のスタブ
-function processInspectionDataMonthly() {
-  safeAlert('情報', '月次検針データ保存機能は実装中です。');
-}
-
-function validateInspectionDataIntegrity() {
-  safeAlert('情報', 'データ整合性チェック機能は実装中です。');
-}
-
-function optimizedCleanupDuplicateInspectionData() {
-  safeAlert('情報', '重複データクリーンアップ機能は実装中です。');
-}
-
-function createDataIndexes() {
-  safeAlert('情報', 'データインデックス作成機能は実装中です。');
-}
-
-/**
- * 部屋選択の問題を診断するテスト関数
- */
-function debugRoomSelection() {
-  console.log('='.repeat(50));
-  console.log('部屋選択問題診断テスト');
-  console.log('='.repeat(50));
-  
-  try {
-    // 1. 物件データテスト
-    console.log('1. 物件データテスト');
-    const properties = getProperties();
-    console.log('物件数:', properties.length);
-    if (properties.length > 0) {
-      const testPropertyId = properties[0].id;
-      console.log('テスト用物件ID:', testPropertyId);
-      
-      // 2. 部屋データテスト
-      console.log('2. 部屋データテスト');
-      const rooms = getRooms(testPropertyId);
-      console.log('部屋数:', rooms.length);
-      console.log('部屋データサンプル:', rooms.slice(0, 2));
-      
-      // 3. Web AppURLテスト
-      console.log('3. Web App URLテスト');
-      const webAppUrl = ScriptApp.getService().getUrl();
-      console.log('Web App URL:', webAppUrl);
-      
-      const testUrls = [
-        `${webAppUrl}`,
-        `${webAppUrl}?action=getProperties`,
-        `${webAppUrl}?action=getRooms&propertyId=${encodeURIComponent(testPropertyId)}`,
-        `${webAppUrl}?page=room_select&propertyId=${encodeURIComponent(testPropertyId)}&propertyName=${encodeURIComponent(properties[0].name)}`
-      ];
-      
-      console.log('テスト用URL一覧:');
-      testUrls.forEach((url, index) => {
-        console.log(`${index + 1}. ${url}`);
-      });
-      
-      return {
-        success: true,
-        propertyCount: properties.length,
-        roomCount: rooms.length,
-        testUrls: testUrls
-      };
-    } else {
-      console.log('❌ 物件データが見つかりません');
-      return { success: false, error: '物件データが見つかりません' };
-    }
+    Logger.log('🔄 強制メニュー作成を開始します...');
     
-  } catch (error) {
-    console.error('❌ 診断テストエラー:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * デプロイ用最終確認関数
- */
-function finalDeploymentCheck() {
-  console.log('='.repeat(80));
-  console.log('【デプロイ最終確認】');
-  console.log('='.repeat(80));
-  
-  try {
-    // 統合システム診断を実行
-    const healthCheck = checkSystemHealth();
-    console.log('健全性診断結果:', healthCheck);
+    const ui = SpreadsheetApp.getUi();
     
-    // 実行コンテキストテスト
-    const contextTest = testExecutionContext();
-    console.log('コンテキストテスト結果:', contextTest);
+    // 水道検針アプリメニュー
+    const waterMeterMenu = ui.createMenu('水道検針');
+    waterMeterMenu.addItem('アプリを開く', 'showWaterMeterApp');
+    waterMeterMenu.addToUi();
     
-    console.log('');
-    console.log('【デプロイ手順】');
-    console.log('1. setupOnOpenTrigger()を実行してトリガーを設定');
-    console.log('2. スプレッドシートを再読み込み（F5キー）');
-    console.log('3. メニューバーに「水道検針」と「総合カスタム処理」が表示されることを確認');
-    console.log('4. 「水道検針」→「アプリを開く」で実行テスト');
-    console.log('');
-    console.log('✅ 統合システムの準備が完了しました！');
+    // データ管理メニュー
+    const dataManagementMenu = ui.createMenu('データ管理');
+    dataManagementMenu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
+    dataManagementMenu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
+    dataManagementMenu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
+    dataManagementMenu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('🔍 データ整合性チェック', 'validateInspectionDataIntegrity');
+    dataManagementMenu.addItem('🧹 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
+    dataManagementMenu.addItem('⚡ データインデックス作成', 'createDataIndexes');
+    dataManagementMenu.addSeparator();
+    dataManagementMenu.addItem('🚀 総合データ最適化（全実行）', 'runComprehensiveDataOptimization');
+    dataManagementMenu.addToUi();
     
-  } catch (error) {
-    console.error('❌ 最終確認エラー:', error);
-  }
-  
-  console.log('='.repeat(80));
-  return 'デプロイ最終確認完了';
-}
-
-/**
- * WEBアプリ遷移問題の診断用関数
- */
-function debugWebAppTransition() {
-  console.log('='.repeat(60));
-  console.log('WEBアプリ遷移問題診断');
-  console.log('='.repeat(60));
-  
-  try {
-    // 1. Web App URL確認
-    const webAppUrl = ScriptApp.getService().getUrl();
-    console.log('1. Web App URL:', webAppUrl);
+    Logger.log('✅ 強制メニュー作成が完了しました！');
+    Logger.log('📋 スプレッドシートのメニューバーを確認してください');
     
-    // 2. 物件データ確認
-    const properties = getProperties();
-    console.log('2. 物件数:', properties.length);
-    if (properties.length > 0) {
-      console.log('   最初の物件:', properties[0]);
-      
-      // 3. テスト用URL生成
-      const testProperty = properties[0];
-      const testUrls = {
-        propertySelect: `${webAppUrl}`,
-        roomSelectDirect: `${webAppUrl}?page=room_select&propertyId=${encodeURIComponent(testProperty.id)}&propertyName=${encodeURIComponent(testProperty.name)}`,
-        apiTest: `${webAppUrl}?action=getRooms&propertyId=${encodeURIComponent(testProperty.id)}`
-      };
-      
-      console.log('3. テスト用URL:');
-      Object.entries(testUrls).forEach(([key, url]) => {
-        console.log(`   ${key}: ${url}`);
-      });
-      
-      // 4. doGet関数テスト
-      console.log('4. doGet関数テスト:');
-      try {
-        const mockEvent = {
-          parameter: {
-            page: 'room_select',
-            propertyId: testProperty.id,
-            propertyName: testProperty.name
-          }
-        };
-        const result = doGet(mockEvent);
-        console.log('   doGet実行成功 - 戻り値型:', typeof result);
-      } catch (doGetError) {
-        console.error('   doGet実行エラー:', doGetError.message);
-      }
-    }
-    
-    console.log('='.repeat(60));
-    return 'WEBアプリ遷移診断完了';
-    
-  } catch (error) {
-    console.error('診断エラー:', error);
-    return `診断エラー: ${error.message}`;
-  }
-}
-
-/**
- * WEBアプリの詳細診断（APIエンドポイント含む）
- */
-function debugWebAppApiDetailed() {
-  console.log('='.repeat(80));
-  console.log('WEBアプリ API 詳細診断');
-  console.log('='.repeat(80));
-  
-  try {
-    const webAppUrl = ScriptApp.getService().getUrl();
-    console.log('Web App URL:', webAppUrl);
-    
-    // API エンドポイントテスト
-    console.log('\n【APIエンドポイントテスト】');
-    
-    // 1. getProperties API テスト
-    console.log('1. getProperties API:');
+    // Toastメッセージでユーザーに通知
     try {
-      const mockGetPropertiesEvent = { parameter: { action: 'getProperties' } };
-      const propertiesResult = doGet(mockGetPropertiesEvent);
-      console.log('   getProperties実行成功');
-      console.log('   Content-Type:', propertiesResult.getMimeType());
-    } catch (error) {
-      console.error('   getProperties実行エラー:', error.message);
-    }
-    
-    // 2. getRooms API テスト
-    console.log('2. getRooms API:');
-    try {
-      const properties = getProperties();
-      if (properties.length > 0) {
-        const testPropertyId = properties[0].id;
-        const mockGetRoomsEvent = { 
-          parameter: { 
-            action: 'getRooms',
-            propertyId: testPropertyId
-          }
-        };
-        const roomsResult = doGet(mockGetRoomsEvent);
-        console.log('   getRooms実行成功');
-        console.log('   Test Property ID:', testPropertyId);
-        console.log('   Content-Type:', roomsResult.getMimeType());
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (activeSpreadsheet) {
+        activeSpreadsheet.toast(
+          '統合メニューが作成されました！メニューバーを確認してください。', 
+          '成功', 
+          5
+        );
       }
-    } catch (error) {
-      console.error('   getRooms実行エラー:', error.message);
+    } catch (toastError) {
+      Logger.log(`Toast通知エラー: ${toastError.message}`);
     }
     
-    // 3. ページ表示テスト
-    console.log('3. ページ表示テスト:');
+    return '成功: 統合メニュー作成完了';
+  } catch (e) {
+    Logger.log(`❌ 強制メニュー作成エラー: ${e.message}`);
+    Logger.log(`📋 詳細: ${e.stack}`);
+    
+    // エラーの場合もToastで通知
     try {
-      const mockPageEvent = { parameter: { page: 'property_select' } };
-      const pageResult = doGet(mockPageEvent);
-      console.log('   property_select実行成功');
-      console.log('   Content-Type:', pageResult.getMimeType());
-    } catch (error) {
-      console.error('   property_select実行エラー:', error.message);
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (activeSpreadsheet) {
+        activeSpreadsheet.toast(
+          `メニュー作成エラー: ${e.message}`, 
+          'エラー', 
+          5
+        );
+      }
+    } catch (toastError) {
+      Logger.log(`Toast通知エラー: ${toastError.message}`);
     }
     
-    console.log('='.repeat(80));
-    return 'WEBアプリ API 詳細診断完了';
-    
-  } catch (error) {
-    console.error('API診断エラー:', error);
-    return `API診断エラー: ${error.message}`;
+    return `エラー: ${e.message}`;
   }
+}
+
+/**
+ * 統合作業完了後の情報表示関数
+ */
+function showIntegrationSummary() {
+  Logger.log('');
+  Logger.log('='.repeat(80));
+  Logger.log('🎉 統合作業完了サマリー');
+  Logger.log('='.repeat(80));
+  Logger.log('');
+  Logger.log('📁 統合されたファイル:');
+  Logger.log('   ✅ 物件.gs → gas_dialog_functions.gs');
+  Logger.log('   ✅ 総合カスタム処理.gs → gas_dialog_functions.gs');
+  Logger.log('');
+  Logger.log('🔧 統合された機能:');
+  Logger.log('   ✅ Web App API関数群 (物件.gsより)');
+  Logger.log('   ✅ 検針データ更新機能 (物件.gsより)');
+  Logger.log('   ✅ データ管理・最適化機能 (総合カスタム処理.gsより)');
+  Logger.log('   ✅ 統合メニューシステム');
+  Logger.log('');
+  Logger.log('📋 利用可能なメニュー:');
+  Logger.log('   🌊 水道検針 - メインアプリケーション');
+  Logger.log('   🗂️ データ管理 - バックエンド管理機能');
+  Logger.log('');
+  Logger.log('🚀 実行方法:');
+  Logger.log('   1. Googleスプレッドシートを開く');
+  Logger.log('   2. メニューバーの「水道検針」→「アプリを開く」をクリック');
+  Logger.log('   3. データ管理は「データ管理」メニューから選択');
+  Logger.log('');
+  Logger.log('='.repeat(80));
+  
+  return '統合作業完了 - コンソールでサマリーを確認してください';
 }
