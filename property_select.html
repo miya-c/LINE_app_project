@@ -22,6 +22,49 @@
   
   <!-- WOFF SDK removed for general browser compatibility -->
   
+  <!-- クリティカルCSS (インライン) - 初回表示の改善 -->
+  <style>
+    /* Critical CSS for immediate styling */
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      line-height: 1.6; background-color: #f5f5f5;
+    }
+    #root { min-height: 100vh; }
+    .loading-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .loading-spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .mantine-container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .mantine-stack { display: flex; flex-direction: column; gap: 16px; }
+    .mantine-button { background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 12px 24px; cursor: pointer; font-size: 16px; transition: background-color 0.2s; }
+    .mantine-button:hover { background-color: #0056b3; }
+    .mantine-card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e9ecef; }
+    .mantine-title { font-size: 32px; font-weight: 700; margin: 0 0 24px 0; color: #212529; }
+    .mantine-text-input { margin-bottom: 16px; }
+    .mantine-text-input input { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 4px; font-size: 16px; }
+    .mantine-group { display: flex; gap: 16px; align-items: center; }
+    .mantine-simple-grid { display: grid; gap: 16px; }
+    /* テーブルスタイル */
+    .mantine-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .mantine-table th, .mantine-table td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+    .mantine-table th { background-color: #f8f9fa; font-weight: 600; }
+    /* フォームスタイル */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+    @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } .mantine-container { padding: 12px; } }
+    /* スタイル読み込み状態の管理 */
+    .styles-loading { opacity: 0; transition: opacity 0.3s ease-in-out; }
+    .styles-loaded { opacity: 1; }
+  </style>
+  
+  <!-- 重要: CSS ファイルを最初に読み込む (レンダリングブロッキング) -->
+  <link rel="stylesheet" href="css_styles/meter_reading.css?v=20250614c">
+  <link rel="stylesheet" href="css_styles/pwa-styles.css?v=20250614c">
+  
+  <!-- CSS プリロード (パフォーマンス向上) -->
+  <link rel="preload" href="css_styles/meter_reading.css?v=20250614c" as="style">
+  <link rel="preload" href="css_styles/pwa-styles.css?v=20250614c" as="style">
+  
   <!-- ReactとReactDOMのCDN (Cache Busting Version) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614c" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614c" crossorigin></script>
@@ -32,15 +75,55 @@
   <script src="/pwa-utils.js?v=20250614c"></script>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root" class="styles-loading"></div>
 
   <script type="text/babel">
     // 🦁 Brave Browser Cache Busting Version 20250614c
     // WOFF完全削除済み - 一般ブラウザ専用
     // CSS読み込み完了待機機能追加
-  console.log('🚀 Property Select App v20250614c - Debug Mode Enabled');
-  console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
-  console.log('🔧 Enhanced Debug Mode Active for data flow tracking');
+    
+    console.log('🚀 Property Select App v20250614c - Debug Mode Enabled');
+    console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
+    console.log('🔧 Enhanced Debug Mode Active for data flow tracking');
+    
+    // CSS読み込み完了を待機する関数（改良版）
+    function waitForStylesLoaded() {
+      return new Promise((resolve) => {
+        const checkStyles = () => {
+          try {
+            // CSSカスタムプロパティをチェックして読み込み完了を確認
+            const rootStyles = getComputedStyle(document.documentElement);
+            const stylesLoaded = rootStyles.getPropertyValue('--meter-reading-styles-loaded').trim();
+            
+            if (stylesLoaded === "'true'" || stylesLoaded === '"true"') {
+              console.log('✅ CSS読み込み完了確認');
+              
+              // スタイル読み込み完了の視覚的フィードバック
+              const root = document.getElementById('root');
+              if (root) {
+                root.classList.remove('styles-loading');
+                root.classList.add('styles-loaded');
+              }
+              
+              resolve();
+            } else {
+              console.log('⏳ CSS読み込み待機中...', stylesLoaded);
+              setTimeout(checkStyles, 50);
+            }
+          } catch (error) {
+            console.warn('⚠️ CSS読み込みチェックエラー:', error);
+            setTimeout(checkStyles, 100);
+          }
+        };
+        
+        // 初回チェック
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', checkStyles);
+        } else {
+          checkStyles();
+        }
+      });
+    }
     
     const App = () => {
       const [properties, setProperties] = React.useState([]);
@@ -556,10 +639,14 @@
       );
     };
 
-    // Use React 18 createRoot API instead of ReactDOM.render
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-    console.log('🎨 アプリ起動');
+    // CSS読み込み完了後にアプリを起動
+    waitForStylesLoaded().then(() => {
+      console.log('🎨 物件選択アプリ起動: CSS読み込み完了後に実行');
+      
+      // Use React 18 createRoot API instead of ReactDOM.render
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    });
   </script>
   
   <!-- PWA初期化スクリプト -->
