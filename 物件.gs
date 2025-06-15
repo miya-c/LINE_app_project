@@ -311,7 +311,7 @@ function getRooms(propertyId) {
         const inspectionHeaders = inspectionValues[0];
         const inspPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
         const inspRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
-        const inspectionDateIndex = inspectionHeaders.indexOf('検針日');
+        const inspectionDateIndex = inspectionHeaders.indexOf('検針日時') >= 0 ? inspectionHeaders.indexOf('検針日時') : inspectionHeaders.indexOf('検針日');
         const currentReadingIndex = inspectionHeaders.indexOf('今回指示数（水道）');
         
         for (let i = 1; i < inspectionValues.length; i++) {
@@ -529,6 +529,10 @@ function updateMeterReadings(propertyId, roomId, readings) {
     // ヘッダーから列インデックスを動的に取得
     const headers = data[0];
     console.log('[updateMeterReadings] スプレッドシートのヘッダー:', headers);
+    console.log('[updateMeterReadings] 検針日時列検索:', headers.indexOf('検針日時'));
+    console.log('[updateMeterReadings] 検針日列検索:', headers.indexOf('検針日'));
+    console.log('[updateMeterReadings] 今回の指示数列検索:', headers.indexOf('今回の指示数'));
+    console.log('[updateMeterReadings] 今回指示数（水道）列検索:', headers.indexOf('今回指示数（水道）'));
     
     const columnIndexes = {
       propertyId: headers.indexOf('物件ID'),
@@ -553,10 +557,12 @@ function updateMeterReadings(propertyId, roomId, readings) {
     
     // 検針日と今回指示数の列を柔軟に検索
     if (columnIndexes.date === -1) {
-      console.log('[updateMeterReadings] ⚠️ 検針日列が見つかりません。利用可能な列:', headers);
+      console.log('[updateMeterReadings] ⚠️ 検針日/検針日時列が見つかりません。利用可能な列:', headers);
+      throw new Error('必要な列が見つかりません: 検針日時 (または 検針日)');
     }
     if (columnIndexes.currentReading === -1) {
       console.log('[updateMeterReadings] ⚠️ 今回指示数列が見つかりません。利用可能な列:', headers);
+      throw new Error('必要な列が見つかりません: 今回の指示数 (または 今回指示数（水道）)');
     }
     
     let updatedCount = 0;

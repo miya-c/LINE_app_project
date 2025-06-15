@@ -758,7 +758,7 @@ function getRooms(propertyId) {
         const inspectionHeaders = inspectionValues[0];
         const inspPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
         const inspRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
-        const inspectionDateIndex = inspectionHeaders.indexOf('検針日');
+        const inspectionDateIndex = inspectionHeaders.indexOf('検針日時') >= 0 ? inspectionHeaders.indexOf('検針日時') : inspectionHeaders.indexOf('検針日');
         const currentReadingIndex = inspectionHeaders.indexOf('今回指示数（水道）');
         
         for (let i = 1; i < inspectionValues.length; i++) {
@@ -941,8 +941,8 @@ function updateMeterReadings(propertyId, roomId, readings) {
     const columnIndexes = {
       propertyId: headers.indexOf('物件ID'),
       roomId: headers.indexOf('部屋ID'),
-      date: headers.indexOf('検針日'),
-      currentReading: headers.indexOf('今回の指示数'),
+      date: headers.indexOf('検針日時') >= 0 ? headers.indexOf('検針日時') : headers.indexOf('検針日'),
+      currentReading: headers.indexOf('今回の指示数') >= 0 ? headers.indexOf('今回の指示数') : headers.indexOf('今回指示数（水道）'),
       previousReading: headers.indexOf('前回指示数'),
       usage: headers.indexOf('今回使用量'),
       warningFlag: headers.indexOf('警告フラグ'),
@@ -950,11 +950,21 @@ function updateMeterReadings(propertyId, roomId, readings) {
     };
     
     // 必要な列が存在するかチェック
-    const requiredColumns = ['物件ID', '部屋ID', '検針日', '今回の指示数'];
+    const requiredColumns = ['物件ID', '部屋ID'];
     for (const colName of requiredColumns) {
       if (!headers.includes(colName)) {
         throw new Error(`必要な列が見つかりません: ${colName}`);
       }
+    }
+    
+    // 検針日/検針日時列の存在チェック
+    if (columnIndexes.date === -1) {
+      throw new Error('必要な列が見つかりません: 検針日時 (または 検針日)');
+    }
+    
+    // 今回の指示数列の存在チェック
+    if (columnIndexes.currentReading === -1) {
+      throw new Error('必要な列が見つかりません: 今回の指示数 (または 今回指示数（水道）)');
     }
     
     let updatedCount = 0;
@@ -1297,7 +1307,7 @@ function populateInspectionDataFromMasters() {
     if (!inspectionDataSheet) {
       inspectionDataSheet = ss.insertSheet('inspection_data');
       const headers = [
-        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名', '検針日', '今回指示数（水道）', 
+        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名', '検針日時', '今回指示数（水道）', 
         '前回指示数（水道）', '使用量（水道）', '今回指示数（ガス）', '前回指示数（ガス）', 
         '使用量（ガス）', '今回指示数（電気）', '前回指示数（電気）', '使用量（電気）', 
         '備考', '作成日時', '更新日時'
@@ -1591,7 +1601,7 @@ function createInitialInspectionData() {
     if (!inspectionDataSheet) {
       inspectionDataSheet = ss.insertSheet('inspection_data');
       const headers = [
-        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名', '検針日', '今回指示数（水道）', 
+        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名', '検針日時', '今回指示数（水道）', 
         '前回指示数（水道）', '使用量（水道）', '今回指示数（ガス）', '前回指示数（ガス）', 
         '使用量（ガス）', '今回指示数（電気）', '前回指示数（電気）', '使用量（電気）', 
         '備考', '作成日時', '更新日時'
