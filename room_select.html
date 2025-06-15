@@ -22,18 +22,253 @@
   
   <!-- WOFF SDK removed for general browser compatibility -->
   
-  <!-- ReactとReactDOMのCDN -->
+  <!-- クリティカルCSS (インライン) - 初回表示の改善 -->
+  <style>
+    /* Critical CSS for immediate styling */
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      line-height: 1.6; 
+      background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%);
+      min-height: 100vh;
+    }
+    #root { 
+      min-height: 100vh; 
+      background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%); 
+    }
+    .loading-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f4f8; }
+    .loading-spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .mantine-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .mantine-stack { display: flex; flex-direction: column; gap: 16px; }
+    .mantine-title { 
+      font-size: 32px; font-weight: 700; margin: 0 0 32px 0; 
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center; 
+      position: relative;
+    }
+    .mantine-title::after {
+      content: '';
+      position: absolute;
+      bottom: -8px; left: 50%; transform: translateX(-50%);
+      width: 60px; height: 3px;
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      border-radius: 2px;
+    }
+    .mantine-subtitle { 
+      font-size: 18px; font-weight: 600; color: #495057; text-align: center; margin-bottom: 24px; 
+    }
+    .mantine-text-input { margin-bottom: 20px; }
+    .mantine-text-input input { 
+      width: 100%; padding: 18px 20px; border: 2px solid #e9ecef; border-radius: 16px; 
+      font-size: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+      box-shadow: 
+        0 2px 8px rgba(0,0,0,0.04),
+        inset 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .mantine-text-input input:focus { 
+      outline: none; 
+      border-color: #007bff; 
+      box-shadow: 
+        0 0 0 4px rgba(0,123,255,0.15),
+        0 4px 12px rgba(0,123,255,0.1); 
+      background: #ffffff;
+      transform: translateY(-1px);
+    }
+    .mantine-alert { 
+      background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%); 
+      border: 1px solid #fecaca; border-radius: 16px; 
+      padding: 20px; color: #b91c1c; 
+      box-shadow: 0 4px 12px rgba(185, 28, 28, 0.1);
+    }
+    .mantine-center { display: flex; justify-content: center; align-items: center; }
+    .mantine-loader { 
+      width: 24px; height: 24px; border: 2px solid #e9ecef; 
+      border-top: 2px solid #007bff; border-radius: 50%; 
+      animation: spin 1s linear infinite; 
+    }
+    .mantine-text { color: #495057; text-align: center; }
+    .weight-600 { font-weight: 600; }
+    /* Button Styles */
+    .mantine-button {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 14px 24px; border: none; border-radius: 12px; 
+      font-size: 16px; font-weight: 600; line-height: 1;
+      text-decoration: none; cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none; min-height: 48px;
+    }
+    .mantine-button.variant-filled {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .mantine-button.variant-filled:hover {
+      background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 123, 255, 0.35);
+    }
+    .mantine-button.variant-outline {
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+      border: 2px solid #007bff; color: #007bff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .mantine-button.variant-outline:hover {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white; transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 123, 255, 0.25);
+    }
+    .mantine-button:disabled {
+      opacity: 0.6; cursor: not-allowed; transform: none !important;
+    }
+    .inspection-complete-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white; margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .inspection-complete-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(40, 167, 69, 0.35);
+    }
+    /* Room Card Styles */
+    .mantine-paper { 
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%); 
+      border-radius: 16px; padding: 20px; 
+      box-shadow: 
+        0 4px 12px rgba(0,0,0,0.08),
+        0 1px 3px rgba(0,0,0,0.05); 
+      border: 1px solid rgba(255,255,255,0.8); 
+      cursor: pointer; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .mantine-paper::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(145deg, rgba(0,123,255,0.03) 0%, rgba(0,123,255,0.01) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .mantine-paper:hover::before {
+      opacity: 1;
+    }
+    .mantine-paper:hover { 
+      transform: translateY(-4px) scale(1.02); 
+      box-shadow: 
+        0 12px 32px rgba(0,123,255,0.15),
+        0 4px 12px rgba(0,0,0,0.1); 
+      border-color: rgba(0,123,255,0.3); 
+    }
+    .mantine-paper.disabled { 
+      opacity: 0.6; cursor: not-allowed; 
+    }
+    .room-card { 
+      display: flex; justify-content: space-between; align-items: center; 
+      width: 100%; background: none; border: none; font: inherit;
+      text-align: left;
+    }
+    .room-info { flex: 1; }
+    .room-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .room-number { 
+      font-size: 18px; font-weight: 600; color: #212529; 
+      line-height: 1.3; 
+    }
+    .room-arrow { 
+      width: 24px; height: 24px; color: #6c757d; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-left: 16px; 
+    }
+    .mantine-paper:hover .room-arrow { 
+      color: #007bff; 
+      transform: translateX(4px) rotate(5deg);
+    }
+    /* Loading overlay */
+    .loading-overlay { 
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+      background: rgba(0,0,0,0.5); display: flex; 
+      justify-content: center; align-items: center; z-index: 1000; 
+    }
+    .loading-overlay-content { 
+      background: white; padding: 24px; border-radius: 12px; 
+      text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2); 
+    }
+    /* Responsive design */
+    @media (max-width: 768px) { 
+      .mantine-container { padding: 16px; } 
+      .mantine-title { font-size: 28px; margin-bottom: 24px; }
+      .mantine-subtitle { font-size: 16px; }
+      .mantine-paper { padding: 16px; }
+      .room-number { font-size: 16px; }
+      .room-header { flex-direction: column; align-items: flex-start; }
+      .mantine-text-input input { padding: 16px 18px; }
+    }
+    /* Styles loading state management */
+    .styles-loading { 
+      opacity: 0; 
+      transform: translateY(20px);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    .styles-loaded { 
+      opacity: 1; 
+      transform: translateY(0);
+    }
+    
+    /* Fade-in animation for cards */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .mantine-paper {
+      animation: fadeInUp 0.6s ease-out;
+    }
+    
+    .mantine-paper:nth-child(1) { animation-delay: 0.1s; }
+    .mantine-paper:nth-child(2) { animation-delay: 0.2s; }
+    .mantine-paper:nth-child(3) { animation-delay: 0.3s; }
+    .mantine-paper:nth-child(4) { animation-delay: 0.4s; }
+    .mantine-paper:nth-child(5) { animation-delay: 0.5s; }
+  </style>
+  
+  <!-- 重要: CSS ファイルを最初に読み込む (レンダリングブロッキング) -->
+  <link rel="stylesheet" href="css_styles/meter_reading.css?v=20250614c">
+  <link rel="stylesheet" href="css_styles/pwa-styles.css?v=20250614c">
+  
+  <!-- CSS プリロード (パフォーマンス向上) -->
+  <link rel="preload" href="css_styles/meter_reading.css?v=20250614c" as="style">
+  <link rel="preload" href="css_styles/pwa-styles.css?v=20250614c" as="style">
+  
+  <!-- ReactとReactDOMのCDN (Cache Busting Version) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614c" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614c" crossorigin></script>
-    <!-- BabelのCDN (JSXをブラウザで変換するため) -->
+  <!-- BabelのCDN (JSXをブラウザで変換するため) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js?v=20250614c"></script>
   
   <!-- PWA Utilities -->
   <script src="/pwa-utils.js?v=20250614c"></script>
 </head>
 <body>
-  <div id="root"></div>  
+  <div id="root" class="styles-loading"></div>  
   <script type="text/babel">
+    // 🦁 Brave Browser Cache Busting Version 20250614c
+    // WOFF完全削除済み - 一般ブラウザ専用
+    // CSS読み込み完了待機機能追加
     // ===================================
     // 一般ブラウザ向け部屋選択アプリ
     // WOFF SDK依存なし
@@ -42,6 +277,46 @@
     
     console.log('🚀 Room Select App v20250614c - Enhanced Debug Mode');
     console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
+    
+    // CSS読み込み完了を待機する関数（改良版）
+    function waitForStylesLoaded() {
+      return new Promise((resolve) => {
+        const checkStyles = () => {
+          try {
+            // CSSカスタムプロパティをチェックして読み込み完了を確認
+            const rootStyles = getComputedStyle(document.documentElement);
+            const stylesLoaded = rootStyles.getPropertyValue('--meter-reading-styles-loaded').trim();
+            
+            if (stylesLoaded === "'true'" || stylesLoaded === '"true"') {
+              console.log('✅ CSS読み込み完了確認');
+              document.getElementById('root').classList.remove('styles-loading');
+              document.getElementById('root').classList.add('styles-loaded');
+              resolve();
+            } else {
+              // タイムアウト対策：5秒後に強制的に完了とする
+              setTimeout(() => {
+                console.log('⚠️ CSS読み込みタイムアウト - 強制完了');
+                document.getElementById('root').classList.remove('styles-loading');
+                document.getElementById('root').classList.add('styles-loaded');
+                resolve();
+              }, 5000);
+              
+              // 100ms後に再チェック
+              setTimeout(checkStyles, 100);
+            }
+          } catch (error) {
+            console.warn('CSS読み込み状態チェックエラー:', error);
+            // エラー時も継続
+            document.getElementById('root').classList.remove('styles-loading');
+            document.getElementById('root').classList.add('styles-loaded');
+            resolve();
+          }
+        };
+        
+        // 初回チェック
+        checkStyles();
+      });
+    }
     
     const formatDateForDisplay = (rawDate) => {
       if (!rawDate) return null;
@@ -367,43 +642,18 @@
 
       // LoadingOverlayコンポーネント
       const LoadingOverlay = ({ message }) => (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 50000,
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3498db',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }} />
-          <p style={{
-            marginTop: '16px',
-            color: '#666',
-            fontSize: '14px',
-            textAlign: 'center',
-          }}>
-            {message}
-          </p>
-          <style>
-            {`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}
-          </style>
+        <div className="loading-overlay">
+          <div className="loading-overlay-content">
+            <div className="mantine-loader" />
+            <p style={{
+              marginTop: '16px',
+              color: '#666',
+              fontSize: '14px',
+              textAlign: 'center',
+            }}>
+              {message}
+            </p>
+          </div>
         </div>
       );
 
@@ -645,10 +895,20 @@
       );
     };
 
-    // Use React 18 createRoot API instead of ReactDOM.render
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<RoomSelectApp />);
-    console.log('🎨 部屋選択アプリ起動');
+    // CSS読み込み完了後にアプリを起動
+    waitForStylesLoaded().then(() => {
+      console.log('🎨 部屋選択アプリ起動: CSS読み込み完了後に実行');
+      
+      // Use React 18 createRoot API instead of ReactDOM.render
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<RoomSelectApp />);
+      console.log('🎉 部屋選択アプリ起動完了');
+    }).catch(error => {
+      console.error('CSS読み込み待機エラー:', error);
+      // エラー時でもアプリを起動
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<RoomSelectApp />);
+    });
   </script>
   
   <!-- PWA初期化スクリプト -->
