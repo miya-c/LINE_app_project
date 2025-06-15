@@ -1,5 +1,6 @@
 /* Meter Reading Application Styles */
 :root {
+  --meter-reading-styles-loaded: 'true';
   --mantine-color-blue-6: #228be6;
   --mantine-color-blue-7: #1c7ed6;
   --mantine-color-blue-8: #1971c2;

@@ -140,7 +140,7 @@
   function waitForStylesLoaded() {
     return new Promise((resolve) => {
       let attempts = 0;
-      const maxAttempts = 300; // 3秒のタイムアウト
+      const maxAttempts = 100; // 1秒のタイムアウトに短縮
       
       const checkStyles = () => {
         attempts++;
@@ -157,20 +157,10 @@
           }
         }
         
-        // CSSルールの読み込み確認
+        // CSSルールの読み込み確認を簡略化
         let cssLoaded = true;
         try {
-          if (propertyStyles.sheet) {
-            const rules = propertyStyles.sheet.cssRules;
-            if (!rules || rules.length === 0) cssLoaded = false;
-          } else {
-            cssLoaded = false;
-          }
-          
-          if (pwaStyles.sheet) {
-            const rules = pwaStyles.sheet.cssRules;
-            if (!rules || rules.length === 0) cssLoaded = false;
-          } else {
+          if (!propertyStyles.sheet || !pwaStyles.sheet) {
             cssLoaded = false;
           }
         } catch (e) {
@@ -185,7 +175,7 @@
           }
         }
         
-        // 実際のスタイル適用確認
+        // 簡素化されたスタイル適用確認
         const testElement = document.createElement('div');
         testElement.className = 'mantine-container';
         testElement.style.position = 'absolute';
@@ -193,11 +183,11 @@
         document.body.appendChild(testElement);
         
         const styles = window.getComputedStyle(testElement);
+        
+        // 非常にシンプルな条件
         const hasContainerStyles = (
-          styles.maxWidth === '1200px' ||
-          styles.padding !== '0px' ||
-          styles.margin === '0px auto' ||
-          styles.marginLeft === 'auto'
+          styles.maxWidth !== 'none' ||
+          styles.padding !== '0px'
         );
         
         document.body.removeChild(testElement);

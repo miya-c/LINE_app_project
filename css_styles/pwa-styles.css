@@ -1,6 +1,12 @@
 /* PWA Specific Styles */
 /* Progressive Web App support styles for the water meter reading application */
 
+:root {
+  --pwa-styles-loaded: 'true';
+  --pwa-install-bottom: 20px;
+  --pwa-install-right: 20px;
+}
+
 /* PWA installed state styling */
 body.pwa-installed {
   /* Hide browser UI elements when installed as PWA */

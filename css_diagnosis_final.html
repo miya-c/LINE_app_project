@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>CSS読み込み診断 - 最終確認</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f4f8;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h2 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 10px 10px 0;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .iframe-test {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            width: 100%;
+            height: 300px;
+            margin: 15px 0;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        
+        .console-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.green { background: #28a745; }
+        .status-indicator.yellow { background: #ffc107; }
+        .status-indicator.red { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 CSS読み込み診断 - 最終確認ツール</h1>
+        
+        <div class="test-section">
+            <h2>1. 直接的なページテスト</h2>
+            <button class="test-button" onclick="testDirectPageLoad()">Property Select をテスト</button>
+            <button class="test-button" onclick="testDirectPageLoad('room_select.html')">Room Select をテスト</button>
+            <button class="test-button" onclick="testDirectPageLoad('meter_reading.html')">Meter Reading をテスト</button>
+            <div id="direct-test-result" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. CSS ファイル直接確認</h2>
+            <button class="test-button" onclick="testCSSFiles()">CSS ファイル読み込み状況を確認</button>
+            <div id="css-test-result" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. iFrame内でのCSS読み込みテスト</h2>
+            <button class="test-button" onclick="testInIframe('property_select.html')">Property Select (iframe)</button>
+            <button class="test-button" onclick="testInIframe('room_select.html')">Room Select (iframe)</button>
+            <button class="test-button" onclick="testInIframe('meter_reading.html')">Meter Reading (iframe)</button>
+            <iframe id="test-iframe" class="iframe-test" style="display:none;"></iframe>
+            <div id="iframe-test-result" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. リアルタイム監視</h2>
+            <button class="test-button" onclick="startRealTimeMonitoring()">リアルタイム監視開始</button>
+            <button class="test-button" onclick="stopRealTimeMonitoring()">監視停止</button>
+            
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value" id="success-rate">--</div>
+                    <div class="metric-label">成功率</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="avg-load-time">--</div>
+                    <div class="metric-label">平均読み込み時間</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="test-count">0</div>
+                    <div class="metric-label">テスト回数</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="error-count">0</div>
+                    <div class="metric-label">エラー回数</div>
+                </div>
+            </div>
+            
+            <div class="console-output" id="realtime-console"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. ブラウザ キャッシュ クリア後テスト</h2>
+            <button class="test-button" onclick="testWithCacheBusting()">キャッシュバスティングでテスト</button>
+            <div id="cache-test-result" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let monitoringInterval = null;
+        let testStats = {
+            total: 0,
+            successful: 0,
+            errors: 0,
+            loadTimes: []
+        };
+
+        function log(message, type = 'info') {
+            const consoleOutput = document.getElementById('realtime-console');
+            const timestamp = new Date().toLocaleTimeString();
+            const statusDot = type === 'success' ? '🟢' : type === 'error' ? '🔴' : type === 'warning' ? '🟡' : '🔵';
+            consoleOutput.innerHTML += `[${timestamp}] ${statusDot} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function updateMetrics() {
+            document.getElementById('test-count').textContent = testStats.total;
+            document.getElementById('error-count').textContent = testStats.errors;
+            
+            if (testStats.total > 0) {
+                const successRate = ((testStats.successful / testStats.total) * 100).toFixed(1);
+                document.getElementById('success-rate').textContent = successRate + '%';
+            }
+            
+            if (testStats.loadTimes.length > 0) {
+                const avgTime = (testStats.loadTimes.reduce((a, b) => a + b, 0) / testStats.loadTimes.length).toFixed(0);
+                document.getElementById('avg-load-time').textContent = avgTime + 'ms';
+            }
+        }
+
+        async function testDirectPageLoad(page = 'property_select.html') {
+            const resultDiv = document.getElementById('direct-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = `${page} をテスト中...`;
+
+            try {
+                const startTime = performance.now();
+                const url = `${page}?test=${Date.now()}`;
+                
+                // 新しいウィンドウでテスト
+                const testWindow = window.open(url, '_blank', 'width=800,height=600');
+                
+                // ウィンドウの読み込み完了を待機
+                await new Promise((resolve) => {
+                    const checkLoaded = () => {
+                        try {
+                            if (testWindow.document.readyState === 'complete') {
+                                const loadTime = performance.now() - startTime;
+                                
+                                // CSS読み込み状況を確認
+                                const rootElement = testWindow.document.getElementById('root');
+                                const hasStylesLoaded = rootElement && rootElement.classList.contains('styles-loaded');
+                                const hasStylesLoading = rootElement && rootElement.classList.contains('styles-loading');
+                                
+                                // CSS ファイル読み込み確認
+                                const cssLinks = testWindow.document.querySelectorAll('link[rel="stylesheet"]');
+                                const cssLoaded = Array.from(cssLinks).every(link => link.sheet !== null);
+                                
+                                // テスト結果表示
+                                resultDiv.className = hasStylesLoaded ? 'result success' : 'result error';
+                                resultDiv.textContent = `
+テスト結果 - ${page}:
+読み込み時間: ${loadTime.toFixed(2)}ms
+CSS読み込み: ${cssLoaded ? '✅' : '❌'}
+スタイル完了: ${hasStylesLoaded ? '✅' : '❌'}
+ローディング中: ${hasStylesLoading ? '⚠️' : '✅'}
+CSS ファイル数: ${cssLinks.length}
+
+${hasStylesLoaded ? '✅ 正常に動作しています！' : '❌ CSS読み込みに問題があります'}
+                                `;
+                                
+                                testWindow.close();
+                                resolve();
+                            } else {
+                                setTimeout(checkLoaded, 100);
+                            }
+                        } catch (error) {
+                            resultDiv.className = 'result error';
+                            resultDiv.textContent = `エラー: ${error.message}`;
+                            testWindow.close();
+                            resolve();
+                        }
+                    };
+                    
+                    setTimeout(checkLoaded, 500);
+                });
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `テストエラー: ${error.message}`;
+            }
+        }
+
+        async function testCSSFiles() {
+            const resultDiv = document.getElementById('css-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'CSS ファイルを確認中...';
+
+            try {
+                const cssFiles = [
+                    'css_styles/property_select.css',
+                    'css_styles/room_select.css',
+                    'css_styles/meter_reading.css',
+                    'css_styles/pwa-styles.css'
+                ];
+
+                let results = '';
+                let allGood = true;
+
+                for (const file of cssFiles) {
+                    try {
+                        const response = await fetch(file + '?v=' + Date.now());
+                        const content = await response.text();
+                        const size = content.length;
+                        const status = response.ok ? '✅' : '❌';
+                        
+                        results += `${status} ${file}\n`;
+                        results += `   サイズ: ${size} バイト\n`;
+                        results += `   ステータス: ${response.status}\n`;
+                        
+                        if (!response.ok) allGood = false;
+                        
+                    } catch (error) {
+                        results += `❌ ${file}\n`;
+                        results += `   エラー: ${error.message}\n`;
+                        allGood = false;
+                    }
+                    results += '\n';
+                }
+
+                resultDiv.className = allGood ? 'result success' : 'result error';
+                resultDiv.textContent = results;
+
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `CSS ファイルテストエラー: ${error.message}`;
+            }
+        }
+
+        async function testInIframe(page) {
+            const iframe = document.getElementById('test-iframe');
+            const resultDiv = document.getElementById('iframe-test-result');
+            
+            iframe.style.display = 'block';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = `${page} を iframe でテスト中...`;
+
+            const startTime = performance.now();
+            
+            iframe.src = `${page}?iframe=${Date.now()}`;
+            
+            iframe.onload = () => {
+                const loadTime = performance.now() - startTime;
+                
+                try {
+                    const iframeDoc = iframe.contentDocument;
+                    const rootElement = iframeDoc.getElementById('root');
+                    
+                    const hasStylesLoaded = rootElement && rootElement.classList.contains('styles-loaded');
+                    const hasStylesLoading = rootElement && rootElement.classList.contains('styles-loading');
+                    
+                    const cssLinks = iframeDoc.querySelectorAll('link[rel="stylesheet"]');
+                    const cssLoaded = Array.from(cssLinks).every(link => {
+                        try {
+                            return link.sheet !== null && link.sheet.cssRules.length > 0;
+                        } catch (e) {
+                            return false;
+                        }
+                    });
+
+                    resultDiv.className = hasStylesLoaded && cssLoaded ? 'result success' : 'result error';
+                    resultDiv.textContent = `
+iframe テスト結果 - ${page}:
+読み込み時間: ${loadTime.toFixed(2)}ms
+CSS読み込み: ${cssLoaded ? '✅' : '❌'}
+スタイル完了: ${hasStylesLoaded ? '✅' : '❌'}
+ローディング中: ${hasStylesLoading ? '⚠️' : '✅'}
+
+${hasStylesLoaded && cssLoaded ? '✅ iframe内で正常動作' : '❌ iframe内でCSS問題あり'}
+                    `;
+
+                } catch (error) {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `iframe テストエラー: ${error.message}`;
+                }
+            };
+        }
+
+        async function testWithCacheBusting() {
+            const resultDiv = document.getElementById('cache-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'キャッシュバスティングテストを実行中...';
+
+            const timestamp = Date.now();
+            const pages = ['property_select.html', 'room_select.html', 'meter_reading.html'];
+            let results = '';
+
+            for (const page of pages) {
+                try {
+                    const startTime = performance.now();
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = `${page}?cb=${timestamp}&test=cache_bust`;
+                    
+                    document.body.appendChild(iframe);
+                    
+                    await new Promise((resolve) => {
+                        iframe.onload = () => {
+                            const loadTime = performance.now() - startTime;
+                            
+                            try {
+                                const iframeDoc = iframe.contentDocument;
+                                const rootElement = iframeDoc.getElementById('root');
+                                const hasStylesLoaded = rootElement && rootElement.classList.contains('styles-loaded');
+                                
+                                results += `✅ ${page}: ${loadTime.toFixed(2)}ms - ${hasStylesLoaded ? 'CSS OK' : 'CSS NG'}\n`;
+                                
+                            } catch (error) {
+                                results += `❌ ${page}: エラー - ${error.message}\n`;
+                            }
+                            
+                            document.body.removeChild(iframe);
+                            resolve();
+                        };
+                        
+                        iframe.onerror = () => {
+                            results += `❌ ${page}: 読み込みエラー\n`;
+                            document.body.removeChild(iframe);
+                            resolve();
+                        };
+                    });
+                    
+                } catch (error) {
+                    results += `❌ ${page}: ${error.message}\n`;
+                }
+            }
+
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `キャッシュバスティング結果:\n${results}`;
+        }
+
+        function startRealTimeMonitoring() {
+            if (monitoringInterval) return;
+            
+            log('リアルタイム監視を開始しました', 'success');
+            
+            const pages = ['property_select.html', 'room_select.html', 'meter_reading.html'];
+            let pageIndex = 0;
+            
+            monitoringInterval = setInterval(async () => {
+                const page = pages[pageIndex];
+                pageIndex = (pageIndex + 1) % pages.length;
+                
+                try {
+                    testStats.total++;
+                    
+                    const startTime = performance.now();
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = `${page}?monitor=${Date.now()}`;
+                    
+                    document.body.appendChild(iframe);
+                    
+                    const success = await new Promise((resolve) => {
+                        const timeout = setTimeout(() => {
+                            log(`${page} - タイムアウト`, 'error');
+                            testStats.errors++;
+                            document.body.removeChild(iframe);
+                            resolve(false);
+                        }, 5000);
+                        
+                        iframe.onload = () => {
+                            clearTimeout(timeout);
+                            const loadTime = performance.now() - startTime;
+                            testStats.loadTimes.push(loadTime);
+                            
+                            try {
+                                const iframeDoc = iframe.contentDocument;
+                                const rootElement = iframeDoc.getElementById('root');
+                                const hasStylesLoaded = rootElement && rootElement.classList.contains('styles-loaded');
+                                
+                                if (hasStylesLoaded) {
+                                    testStats.successful++;
+                                    log(`${page} - 成功 (${loadTime.toFixed(0)}ms)`, 'success');
+                                    resolve(true);
+                                } else {
+                                    testStats.errors++;
+                                    log(`${page} - CSS読み込み失敗 (${loadTime.toFixed(0)}ms)`, 'error');
+                                    resolve(false);
+                                }
+                                
+                            } catch (error) {
+                                testStats.errors++;
+                                log(`${page} - エラー: ${error.message}`, 'error');
+                                resolve(false);
+                            }
+                            
+                            document.body.removeChild(iframe);
+                        };
+                    });
+                    
+                    updateMetrics();
+                    
+                } catch (error) {
+                    testStats.errors++;
+                    log(`監視エラー: ${error.message}`, 'error');
+                    updateMetrics();
+                }
+                
+            }, 2000);
+        }
+
+        function stopRealTimeMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                log('リアルタイム監視を停止しました', 'warning');
+            }
+        }
+
+        // 初期化
+        window.addEventListener('load', () => {
+            log('CSS読み込み診断ツールが起動しました', 'success');
+        });
+    </script>
+</body>
+</html>
