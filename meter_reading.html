@@ -677,7 +677,17 @@
             
             let inspectionDate;
             if (date && date !== '') {
-              inspectionDate = date;
+              // 🔧 ISO形式の日付をYYYY-MM-DD形式に変換
+              if (date.includes('T')) {
+                const isoDate = new Date(date);
+                const year = isoDate.getFullYear();
+                const month = String(isoDate.getMonth() + 1).padStart(2, '0');
+                const day = String(isoDate.getDate()).padStart(2, '0');
+                inspectionDate = `${year}-${month}-${day}`;
+                console.log(`[meter_reading] ISO日付変換: ${date} → ${inspectionDate}`);
+              } else {
+                inspectionDate = date;
+              }
             } else {
               inspectionDate = currentValue && currentValue.trim() !== '' ? getCurrentJSTDateString() : '';
             }
