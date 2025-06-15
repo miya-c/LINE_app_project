@@ -31,19 +31,15 @@ function debugSpreadsheetHeaders() {
     
     console.log('\n🔍 特定の列の検索結果:');
     console.log('「検針日時」列のインデックス:', headers.indexOf('検針日時'));
-    console.log('「検針日」列のインデックス:', headers.indexOf('検針日'));
     console.log('「今回の指示数」列のインデックス:', headers.indexOf('今回の指示数'));
     console.log('「今回指示数（水道）」列のインデックス:', headers.indexOf('今回指示数（水道）'));
     
     console.log('\n✅ 「検針日時」列が存在する:', headers.includes('検針日時'));
-    console.log('❌ 「検針日」列が存在する:', headers.includes('検針日'));
     
     return {
       headers: headers,
       hasInspectionDateTime: headers.includes('検針日時'),
-      hasInspectionDate: headers.includes('検針日'),
-      inspectionDateTimeIndex: headers.indexOf('検針日時'),
-      inspectionDateIndex: headers.indexOf('検針日')
+      inspectionDateTimeIndex: headers.indexOf('検針日時')
     };
     
   } catch (error) {
