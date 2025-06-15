@@ -318,7 +318,7 @@ function updateMeterReadings(propertyId, roomId, readings) {
     console.log('[updateMeterReadings] 列インデックス:', columnIndexes);
     
     // 必要な列が存在するかチェック
-    const requiredColumns = ['物件ID', '部屋ID'];
+    const requiredColumns = ['物件ID', '部屋ID', '検針日時'];
     for (const colName of requiredColumns) {
       if (!headers.includes(colName)) {
         console.log('[updateMeterReadings] ❌ 必須列が見つかりません:', colName);

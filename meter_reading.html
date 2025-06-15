@@ -222,29 +222,43 @@
     }
     
     const formatDateForDisplay = (rawDate) => {
-      if (!rawDate) return null;
+      console.log('[formatDateForDisplay] デバッグ: 入力値:', rawDate, '型:', typeof rawDate);
+      
+      if (!rawDate) {
+        console.log('[formatDateForDisplay] 空の日付を受信');
+        return null;
+      }
       
       try {
         if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
           const month = rawDate.getMonth() + 1;
           const day = rawDate.getDate();
-          return `${month}月${day}日`;
+          const result = `${month}月${day}日`;
+          console.log('[formatDateForDisplay] Dateオブジェクトから変換:', result);
+          return result;
         }
         
         let dateStr = String(rawDate).trim();
+        console.log('[formatDateForDisplay] 文字列化後:', dateStr);
+        
         const match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
         if (match) {
           const [, year, month, day] = match;
-          return `${parseInt(month)}月${parseInt(day)}日`;
+          const result = `${parseInt(month)}月${parseInt(day)}日`;
+          console.log('[formatDateForDisplay] YYYY-MM-DD形式マッチ:', result);
+          return result;
         }
         
         const dateObj = new Date(dateStr);
         if (!isNaN(dateObj.getTime())) {
           const month = dateObj.getMonth() + 1;
           const day = dateObj.getDate();
-          return `${month}月${day}日`;
+          const result = `${month}月${day}日`;
+          console.log('[formatDateForDisplay] Date()コンストラクタから変換:', result);
+          return result;
         }
         
+        console.log('[formatDateForDisplay] すべての変換方法が失敗');
         return null;
       } catch (error) {
         console.warn('[formatDateForDisplay] 日付フォーマットエラー:', rawDate, error);
