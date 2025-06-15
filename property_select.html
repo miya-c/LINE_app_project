@@ -239,9 +239,10 @@
     // WOFF完全削除済み - 一般ブラウザ専用
     // CSS読み込み完了待機機能追加
     
-    console.log('🚀 Property Select App v20250614c - Debug Mode Enabled');
+    console.log('🚀 Property Select App v20250615a - Debug Mode Enabled (FIXED)');
     console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
     console.log('🔧 Enhanced Debug Mode Active for data flow tracking');
+    console.log('🔧 Cache Busting Active: Forcing latest version');
     
     // CSS読み込み完了を待機する関数（改良版）
     function waitForStylesLoaded() {
@@ -326,6 +327,11 @@
             // キャッシュバスティング付きAPI呼び出し
             const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
             console.log('[ReactApp] Fetching properties from:', requestUrl);
+            console.log('[ReactApp] Request URL breakdown:', {
+              baseUrl: gasWebAppUrl,
+              parameters: `action=getProperties&cache=${Date.now()}`,
+              fullUrl: requestUrl
+            });
             
             const response = await fetch(requestUrl);
             console.log('[ReactApp] Response status:', response.status);
@@ -389,10 +395,8 @@
               throw new Error('物件データが配列形式ではありません。管理者に連絡してください。');
             }
             
-            console.log('[ReactApp] Setting properties data:', {
-              length: actualData.length,
-              firstItem: actualData[0]
-            });
+            console.log('[ReactApp] Data is array, setting properties');
+            console.log('[ReactApp] First property sample:', actualData[0]);
             
             // 検針完了日フィールドの確認ログ
             if (actualData.length > 0 && actualData[0]) {
@@ -471,7 +475,7 @@
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
 
-          // 🔥 FINAL FIX: 最終的な統一レスポンス判定処理 (property_select版)
+          // 🔥 完全修正版: 統一レスポンス判定処理
           let rooms = [];
           console.log('[ReactApp] 🔍 レスポンス形式判定開始');
           console.log('[ReactApp] レスポンス詳細:', {
@@ -480,18 +484,11 @@
             isUndefined: roomData === undefined,
             hasSuccess: roomData && typeof roomData === 'object' && 'success' in roomData,
             successValue: roomData?.success,
-            successType: typeof roomData?.success,
             hasData: roomData && typeof roomData === 'object' && 'data' in roomData,
             dataValue: roomData?.data,
-            dataType: typeof roomData?.data,
             isDataArray: Array.isArray(roomData?.data),
             isDirectArray: Array.isArray(roomData),
-            hasResult: roomData && typeof roomData === 'object' && 'result' in roomData,
-            resultValue: roomData?.result,
-            isResultArray: Array.isArray(roomData?.result),
-            hasRooms: roomData && typeof roomData === 'object' && 'rooms' in roomData,
-            roomsValue: roomData?.rooms,
-            isRoomsArray: Array.isArray(roomData?.rooms)
+            keys: roomData && typeof roomData === 'object' ? Object.keys(roomData) : 'N/A'
           });
 
           // パターン1: 統一形式 {success: true, data: []}
@@ -499,7 +496,6 @@
               typeof roomData === 'object' && 
               roomData !== null && 
               roomData.success === true && 
-              roomData.data && 
               Array.isArray(roomData.data)) {
             rooms = roomData.data;
             console.log('[ReactApp] ✅ 統一形式採用 - データ件数:', rooms.length);
@@ -509,33 +505,14 @@
             rooms = roomData;
             console.log('[ReactApp] ⚠️ 直接配列形式採用 - データ件数:', rooms.length);
           }
-          // パターン3: result プロパティ
-          else if (roomData && 
-                   typeof roomData === 'object' && 
-                   roomData !== null && 
-                   roomData.result && 
-                   Array.isArray(roomData.result)) {
-            rooms = roomData.result;
-            console.log('[ReactApp] ⚠️ result形式採用 - データ件数:', rooms.length);
-          }
-          // パターン4: rooms プロパティ
-          else if (roomData && 
-                   typeof roomData === 'object' && 
-                   roomData !== null && 
-                   roomData.rooms && 
-                   Array.isArray(roomData.rooms)) {
-            rooms = roomData.rooms;
-            console.log('[ReactApp] ⚠️ rooms形式採用 - データ件数:', rooms.length);
-          }
-          // パターン5: 空のレスポンスでも継続処理
-          else if (roomData && typeof roomData === 'object' && roomData !== null) {
-            // レスポンスはあるが、予期された形式ではない場合
-            console.warn('[ReactApp] ⚠️ 予期しない形式だが空配列で継続:', roomData);
+          // パターン3: エラーレスポンス
+          else if (roomData && roomData.success === false) {
+            console.error('[ReactApp] ❌ エラーレスポンス:', roomData.error);
             rooms = [];
           }
-          // パターン6: 完全に無効なレスポンス
+          // パターン4: 予期しない形式
           else {
-            console.error('[ReactApp] ❌ 完全に無効なレスポンス:', roomData);
+            console.warn('[ReactApp] ⚠️ 予期しない形式 - 空配列で継続:', roomData);
             rooms = [];
           }
 
@@ -591,7 +568,7 @@
           }
           
           // エラーメッセージを設定（但し、致命的ではない場合は継続）
-          if (error.message && error.message.includes('部屋データの形式')) {
+          if (error.message && (error.message.includes('部屋データの形式') || error.message.includes('部屋情報の取得に失敗'))) {
             console.warn('[ReactApp] データ形式エラーですが、空配列で継続します:', error.message);
             
             // 空の状態で画面遷移を続行
