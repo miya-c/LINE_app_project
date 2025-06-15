@@ -140,74 +140,49 @@
   function waitForStylesLoaded() {
     return new Promise((resolve) => {
       let attempts = 0;
-      const maxAttempts = 100; // 1秒のタイムアウトに短縮
-      
+      const maxAttempts = 300; // 3秒まで待つ
+
       const checkStyles = () => {
         attempts++;
-        
-        // CSSリンクの存在確認
         const propertyStyles = document.querySelector('link[href*="property_select.css"]');
         const pwaStyles = document.querySelector('link[href*="pwa-styles.css"]');
-        
-        if (!propertyStyles || !pwaStyles) {
-          console.log(`CSSファイル未発見 (${attempts}回目)`);
-          if (attempts < maxAttempts) {
-            setTimeout(checkStyles, 10);
-            return;
-          }
-        }
-        
-        // CSSルールの読み込み確認を簡略化
         let cssLoaded = true;
         try {
-          if (!propertyStyles.sheet || !pwaStyles.sheet) {
-            cssLoaded = false;
-          }
+          // sheetとcssRules両方を確認
+          cssLoaded = propertyStyles && pwaStyles &&
+            propertyStyles.sheet && pwaStyles.sheet &&
+            propertyStyles.sheet.cssRules.length > 0 && pwaStyles.sheet.cssRules.length > 0;
         } catch (e) {
           cssLoaded = false;
         }
-        
-        if (!cssLoaded) {
-          console.log(`CSSルール未読み込み (${attempts}回目)`);
-          if (attempts < maxAttempts) {
-            setTimeout(checkStyles, 10);
-            return;
-          }
+
+        if (!cssLoaded && attempts < maxAttempts) {
+          setTimeout(checkStyles, 10);
+          return;
         }
-        
-        // 簡素化されたスタイル適用確認
+
+        // スタイル適用テスト
         const testElement = document.createElement('div');
         testElement.className = 'mantine-container';
         testElement.style.position = 'absolute';
         testElement.style.visibility = 'hidden';
         document.body.appendChild(testElement);
-        
+
         const styles = window.getComputedStyle(testElement);
-        
-        // 非常にシンプルな条件
         const hasContainerStyles = (
           styles.maxWidth !== 'none' ||
           styles.padding !== '0px'
         );
-        
         document.body.removeChild(testElement);
-        
+
         if (hasContainerStyles || attempts >= maxAttempts) {
-          console.log(`✅ CSS読み込み完了 (${attempts}回目, スタイル適用: ${hasContainerStyles})`);
-          
-          // ルート要素のクラス変更
           const rootElement = document.getElementById('root');
-          if (rootElement) {
-            rootElement.className = 'styles-loaded';
-          }
-          
+          if (rootElement) rootElement.className = 'styles-loaded';
           resolve();
         } else {
-          console.log(`スタイル未適用 (${attempts}回目)`);
           setTimeout(checkStyles, 10);
         }
       };
-      
       checkStyles();
     });
   }

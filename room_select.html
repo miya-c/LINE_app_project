@@ -142,72 +142,48 @@
     function waitForStylesLoaded() {
       return new Promise((resolve) => {
         let attempts = 0;
-        const maxAttempts = 100; // 1秒のタイムアウトに短縮
-        
+        const maxAttempts = 300; // 3秒まで待つ
+
         const checkStyles = () => {
           attempts++;
-          
-          // CSSリンクの存在確認
           const roomStyles = document.querySelector('link[href*="room_select.css"]');
           const pwaStyles = document.querySelector('link[href*="pwa-styles.css"]');
-          
-          if (!roomStyles || !pwaStyles) {
-            console.log(`Room Select: CSSファイル未発見 (${attempts}回目)`);
-            if (attempts < maxAttempts) {
-              setTimeout(checkStyles, 10);
-              return;
-            }
-          }
-          
-          // 簡素化されたCSSルール確認
           let cssLoaded = true;
           try {
-            if (!roomStyles.sheet || !pwaStyles.sheet) {
-              cssLoaded = false;
-            }
+            // sheetとcssRules両方を確認
+            cssLoaded = roomStyles.sheet && pwaStyles.sheet &&
+              roomStyles.sheet.cssRules.length > 0 && pwaStyles.sheet.cssRules.length > 0;
           } catch (e) {
             cssLoaded = false;
           }
-          
-          if (!cssLoaded) {
-            console.log(`Room Select: CSSルール未読み込み (${attempts}回目)`);
-            if (attempts < maxAttempts) {
-              setTimeout(checkStyles, 10);
-              return;
-            }
+
+          if (!cssLoaded && attempts < maxAttempts) {
+            setTimeout(checkStyles, 10);
+            return;
           }
-          // 簡素化されたスタイル適用確認
+
+          // スタイル適用テスト
           const testElement = document.createElement('div');
           testElement.className = 'mantine-container';
           testElement.style.position = 'absolute';
           testElement.style.visibility = 'hidden';
           document.body.appendChild(testElement);
-          
+
           const styles = window.getComputedStyle(testElement);
-          // 非常にシンプルな条件
           const hasContainerStyles = (
             styles.maxWidth !== 'none' ||
             styles.padding !== '0px'
           );
-          
           document.body.removeChild(testElement);
-          
+
           if (hasContainerStyles || attempts >= maxAttempts) {
-            console.log(`✅ Room Select: CSS読み込み完了 (${attempts}回目, スタイル適用: ${hasContainerStyles})`);
-            
-            // ルート要素のクラス変更
             const rootElement = document.getElementById('root');
-            if (rootElement) {
-              rootElement.className = 'styles-loaded';
-            }
-            
+            if (rootElement) rootElement.className = 'styles-loaded';
             resolve();
           } else {
-            console.log(`Room Select: スタイル未適用 (${attempts}回目)`);
             setTimeout(checkStyles, 10);
           }
         };
-        
         checkStyles();
       });
     }
