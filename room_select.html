@@ -5,6 +5,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
+  <!-- キャッシュコントロール メタタグ -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
   <!-- PWA メタタグ -->
   <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
   <meta name="theme-color" content="#007bff">
@@ -249,36 +254,66 @@
   </style>
   
   <!-- 重要: CSS ファイルを最初に読み込む (レンダリングブロッキング) -->
-  <link rel="stylesheet" href="css_styles/meter_reading.css?v=20250614c">
-  <link rel="stylesheet" href="css_styles/pwa-styles.css?v=20250614c">
+  <script>
+    // 動的 CSS キャッシュバスティング
+    const timestamp = Date.now();
+    document.write(`<link rel="stylesheet" href="css_styles/meter_reading.css?t=${timestamp}">`);
+    document.write(`<link rel="stylesheet" href="css_styles/pwa-styles.css?t=${timestamp}">`);
+  </script>
   
   <!-- CSS プリロード (パフォーマンス向上) -->
-  <link rel="preload" href="css_styles/meter_reading.css?v=20250614c" as="style">
-  <link rel="preload" href="css_styles/pwa-styles.css?v=20250614c" as="style">
+  <script>
+    // 動的 CSS プリロード
+    const ts = Date.now();
+    document.write(`<link rel="preload" href="css_styles/meter_reading.css?t=${ts}" as="style">`);
+    document.write(`<link rel="preload" href="css_styles/pwa-styles.css?t=${ts}" as="style">`);
+  </script>
   
   <!-- ReactとReactDOMのCDN (Cache Busting Version) -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614c" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614c" crossorigin></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <!-- BabelのCDN (JSXをブラウザで変換するため) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js?v=20250614c"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <!-- PWA Utilities -->
-  <script src="/pwa-utils.js?v=20250614c"></script>
+  <script src="/pwa-utils.js"></script>
+  
+  <!-- 動的CSS読み込みヘルパー -->
+  <script>
+    // 開発用動的CSS読み込み機能
+    window.reloadCSS = function() {
+      const timestamp = Date.now();
+      const cssLinks = document.querySelectorAll('link[rel="stylesheet"]');
+      cssLinks.forEach(link => {
+        const href = link.href.split('?')[0]; // クエリパラメータを除去
+        link.href = `${href}?t=${timestamp}`;
+      });
+      console.log(`[CSS] スタイルシートをリロードしました: ${timestamp}`);
+    };
+    
+    // 開発用: CSSファイル監視（10秒間隔）
+    if (window.location.search.includes('devmode=true')) {
+      setInterval(window.reloadCSS, 10000);
+      console.log('[CSS] 開発モード: 10秒間隔でCSSを自動リロードします');
+    }
+  </script>
 </head>
 <body>
   <div id="root" class="styles-loading"></div>  
   <script type="text/babel">
-    // 🦁 Brave Browser Cache Busting Version 20250614c
+    // 🦁 Brave Browser Cache Busting Version 20250615a
     // WOFF完全削除済み - 一般ブラウザ専用
     // CSS読み込み完了待機機能追加
     // ===================================
     // 一般ブラウザ向け部屋選択アプリ
     // WOFF SDK依存なし
-    // CSS読み込み完了待機機能追加 v20250614c
+    // CSS読み込み完了待機機能追加 v20250615a
     // ===================================
     
-    console.log('🚀 Room Select App v20250614c - Enhanced Debug Mode');
+    console.log('🚀 Room Select App v20250615a - Enhanced Debug Mode (FIXED)');
     console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
+    console.log('🔧 Enhanced Debug Mode Active for data flow tracking');
+    console.log('🔧 Cache Busting Active: Forcing latest version');
     
     // CSS読み込み完了を待機する関数（改良版）
     function waitForStylesLoaded() {
