@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>CSS読み込み改善テスト - 最終版</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <style>
+    body { 
+      margin: 0; padding: 20px; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background-color: #f5f5f5; line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px; margin: 0 auto;
+      background: white; padding: 20px; border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px; margin: 20px 0;
+    }
+    .test-card {
+      background: #f8f9fa; padding: 20px; border-radius: 8px;
+      border-left: 4px solid #007bff;
+    }
+    .test-card h3 { margin-top: 0; color: #007bff; }
+    .test-result {
+      margin: 10px 0; padding: 10px; border-radius: 4px;
+      background-color: #fff; border-left: 3px solid #28a745;
+      font-family: monospace; font-size: 14px;
+    }
+    .error { border-left-color: #dc3545; background-color: #f8d7da; }
+    .warning { border-left-color: #ffc107; background-color: #fff3cd; }
+    .success { border-left-color: #28a745; background-color: #d4edda; }
+    button {
+      padding: 8px 16px; margin: 5px;
+      border: 1px solid #007bff; border-radius: 4px;
+      background-color: #007bff; color: white;
+      cursor: pointer; transition: all 0.2s;
+    }
+    button:hover { background-color: #0056b3; }
+    .link-button {
+      display: inline-block; padding: 8px 16px; margin: 5px;
+      background-color: #6c757d; color: white; text-decoration: none;
+      border-radius: 4px; transition: all 0.2s;
+    }
+    .link-button:hover { background-color: #545b62; }
+    .metrics {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px; margin: 15px 0;
+    }
+    .metric {
+      background: white; padding: 10px; border-radius: 4px;
+      text-align: center; border: 1px solid #ddd;
+    }
+    .metric-value { font-size: 20px; font-weight: bold; color: #007bff; }
+    .metric-label { font-size: 12px; color: #6c757d; }
+    .timeline {
+      background: #f8f9fa; padding: 15px; border-radius: 4px;
+      margin: 15px 0; max-height: 300px; overflow-y: auto;
+    }
+    .timeline-entry {
+      margin: 5px 0; padding: 5px 10px;
+      background: white; border-left: 3px solid #007bff;
+      border-radius: 3px; font-family: monospace; font-size: 12px;
+    }
+    .timeline-entry.critical { border-left-color: #dc3545; }
+    .timeline-entry.warning { border-left-color: #ffc107; }
+    .timeline-entry.success { border-left-color: #28a745; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 CSS読み込み改善テスト - 最終版 v20250615</h1>
+    <p>初回画面表示のスタイル崩れ問題の修正効果を検証します。</p>
+    
+    <div class="test-grid">
+      <!-- リアルタイム監視 -->
+      <div class="test-card">
+        <h3>📊 リアルタイム監視</h3>
+        <div class="metrics" id="realtime-metrics">
+          <div class="metric">
+            <div class="metric-value" id="total-tests">0</div>
+            <div class="metric-label">実行回数</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="success-rate">0%</div>
+            <div class="metric-label">成功率</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="avg-load-time">-</div>
+            <div class="metric-label">平均読み込み時間</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="fouc-protection">-</div>
+            <div class="metric-label">FOUC対策率</div>
+          </div>
+        </div>
+        <button onclick="startContinuousTest()">連続テスト開始</button>
+        <button onclick="stopContinuousTest()">停止</button>
+        <button onclick="clearMetrics()">リセット</button>
+      </div>
+      
+      <!-- 個別ページテスト -->
+      <div class="test-card">
+        <h3>🔍 個別ページテスト</h3>
+        <div id="individual-results"></div>
+        <button onclick="testPage('property_select.html', '物件選択')">物件選択テスト</button>
+        <button onclick="testPage('room_select.html', '部屋選択')">部屋選択テスト</button>
+        <button onclick="testPage('meter_reading.html', 'メーター読み取り')">メーター読み取りテスト</button>
+        <a href="property_select.html" target="_blank" class="link-button">物件選択ページ</a>
+        <a href="room_select.html" target="_blank" class="link-button">部屋選択ページ</a>
+        <a href="meter_reading.html" target="_blank" class="link-button">メーター読み取りページ</a>
+      </div>
+      
+      <!-- 修正前後比較 -->
+      <div class="test-card">
+        <h3>📈 修正前後比較</h3>
+        <div id="comparison-results"></div>
+        <button onclick="runBeforeAfterComparison()">比較テスト実行</button>
+        <a href="property_select_broken.html" target="_blank" class="link-button">修正前ページ</a>
+        <a href="before_after_comparison.html" target="_blank" class="link-button">詳細比較ページ</a>
+      </div>
+      
+      <!-- パフォーマンス分析 -->
+      <div class="test-card">
+        <h3>🎯 パフォーマンス分析</h3>
+        <div id="performance-results"></div>
+        <button onclick="analyzePerformance()">詳細分析実行</button>
+        <a href="css_performance_audit.html" target="_blank" class="link-button">監査ツール</a>
+      </div>
+    </div>
+    
+    <!-- タイムライン -->
+    <div class="test-card">
+      <h3>📋 テスト実行タイムライン</h3>
+      <div class="timeline" id="test-timeline"></div>
+      <button onclick="clearTimeline()">タイムラインクリア</button>
+    </div>
+  </div>
+
+  <script>
+    let testData = {
+      totalTests: 0,
+      successfulTests: 0,
+      loadTimes: [],
+      foucProtectionCount: 0,
+      continuousTestInterval: null
+    };
+
+    function addToTimeline(message, type = 'info') {
+      const timeline = document.getElementById('test-timeline');
+      const entry = document.createElement('div');
+      entry.className = `timeline-entry ${type}`;
+      entry.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+      timeline.appendChild(entry);
+      timeline.scrollTop = timeline.scrollHeight;
+    }
+
+    function updateMetrics() {
+      document.getElementById('total-tests').textContent = testData.totalTests;
+      
+      const successRate = testData.totalTests > 0 ? 
+        Math.round((testData.successfulTests / testData.totalTests) * 100) : 0;
+      document.getElementById('success-rate').textContent = `${successRate}%`;
+      
+      const avgLoadTime = testData.loadTimes.length > 0 ?
+        (testData.loadTimes.reduce((sum, time) => sum + time, 0) / testData.loadTimes.length).toFixed(1) : '-';
+      document.getElementById('avg-load-time').textContent = avgLoadTime !== '-' ? `${avgLoadTime}ms` : '-';
+      
+      const foucRate = testData.totalTests > 0 ?
+        Math.round((testData.foucProtectionCount / testData.totalTests) * 100) : 0;
+      document.getElementById('fouc-protection').textContent = `${foucRate}%`;
+    }
+
+    function testPage(url, pageName) {
+      addToTimeline(`${pageName}のテストを開始`, 'info');
+      
+      const startTime = performance.now();
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      
+      iframe.onload = () => {
+        const loadTime = performance.now() - startTime;
+        testData.totalTests++;
+        testData.loadTimes.push(loadTime);
+        
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          const iframeWindow = iframe.contentWindow;
+          
+          // CSS読み込み状況
+          const cssLinks = iframeDoc.querySelectorAll('link[rel="stylesheet"]');
+          const cssLoaded = Array.from(cssLinks).every(link => link.sheet !== null);
+          
+          // FOUC対策確認
+          const rootElement = iframeDoc.getElementById('root');
+          const hasFOUCProtection = rootElement && 
+            (rootElement.classList.contains('styles-loading') || rootElement.classList.contains('styles-loaded'));
+          
+          if (hasFOUCProtection) testData.foucProtectionCount++;
+          
+          // スタイル適用確認
+          const testElement = iframeDoc.createElement('div');
+          testElement.className = 'mantine-container';
+          testElement.style.position = 'absolute';
+          testElement.style.visibility = 'hidden';
+          iframeDoc.body.appendChild(testElement);
+          
+          const computedStyle = iframeWindow.getComputedStyle(testElement);
+          const hasStyles = computedStyle.maxWidth === '1200px' || 
+                           computedStyle.marginLeft === 'auto' ||
+                           computedStyle.padding !== '0px';
+          
+          iframeDoc.body.removeChild(testElement);
+          
+          if (cssLoaded && hasFOUCProtection && hasStyles) {
+            testData.successfulTests++;
+            addToTimeline(`✅ ${pageName}: 成功 (${loadTime.toFixed(1)}ms)`, 'success');
+          } else {
+            addToTimeline(`❌ ${pageName}: 失敗 - CSS:${cssLoaded} FOUC:${hasFOUCProtection} スタイル:${hasStyles}`, 'critical');
+          }
+          
+          const resultDiv = document.getElementById('individual-results');
+          resultDiv.innerHTML += `
+            <div class="test-result ${cssLoaded && hasFOUCProtection && hasStyles ? 'success' : 'error'}">
+              <strong>${pageName}</strong>: ${loadTime.toFixed(1)}ms<br>
+              CSS: ${cssLoaded ? '✅' : '❌'} | FOUC: ${hasFOUCProtection ? '✅' : '❌'} | スタイル: ${hasStyles ? '✅' : '❌'}
+            </div>
+          `;
+          
+        } catch (error) {
+          addToTimeline(`❌ ${pageName}: エラー - ${error.message}`, 'critical');
+        }
+        
+        document.body.removeChild(iframe);
+        updateMetrics();
+      };
+      
+      iframe.onerror = () => {
+        addToTimeline(`❌ ${pageName}: 読み込みエラー`, 'critical');
+        document.body.removeChild(iframe);
+      };
+      
+      document.body.appendChild(iframe);
+    }
+
+    function startContinuousTest() {
+      if (testData.continuousTestInterval) return;
+      
+      addToTimeline('連続テストを開始', 'info');
+      
+      testData.continuousTestInterval = setInterval(() => {
+        const pages = [
+          ['property_select.html', '物件選択'],
+          ['room_select.html', '部屋選択'],
+          ['meter_reading.html', 'メーター読み取り']
+        ];
+        
+        const randomPage = pages[Math.floor(Math.random() * pages.length)];
+        testPage(randomPage[0], randomPage[1]);
+      }, 3000);
+    }
+
+    function stopContinuousTest() {
+      if (testData.continuousTestInterval) {
+        clearInterval(testData.continuousTestInterval);
+        testData.continuousTestInterval = null;
+        addToTimeline('連続テストを停止', 'warning');
+      }
+    }
+
+    function clearMetrics() {
+      testData = {
+        totalTests: 0,
+        successfulTests: 0,
+        loadTimes: [],
+        foucProtectionCount: 0,
+        continuousTestInterval: testData.continuousTestInterval
+      };
+      updateMetrics();
+      document.getElementById('individual-results').innerHTML = '';
+      addToTimeline('メトリクスをリセット', 'info');
+    }
+
+    function clearTimeline() {
+      document.getElementById('test-timeline').innerHTML = '';
+    }
+
+    function runBeforeAfterComparison() {
+      addToTimeline('修正前後比較テストを開始', 'info');
+      
+      Promise.all([
+        testPageForComparison('property_select_broken.html', '修正前'),
+        testPageForComparison('property_select.html', '修正後')
+      ]).then(results => {
+        const [before, after] = results;
+        
+        const improvement = before.loadTime - after.loadTime;
+        const improvementPercent = ((improvement / before.loadTime) * 100).toFixed(1);
+        
+        const resultsDiv = document.getElementById('comparison-results');
+        resultsDiv.innerHTML = `
+          <div class="test-result success">
+            <strong>比較結果:</strong><br>
+            修正前: ${before.loadTime.toFixed(1)}ms (FOUC対策: ${before.foucProtection ? '✅' : '❌'})<br>
+            修正後: ${after.loadTime.toFixed(1)}ms (FOUC対策: ${after.foucProtection ? '✅' : '❌'})<br>
+            改善: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}ms (${improvementPercent}%)
+          </div>
+        `;
+        
+        addToTimeline(`比較完了: ${improvementPercent}%の改善`, 'success');
+      });
+    }
+
+    function testPageForComparison(url, name) {
+      return new Promise((resolve) => {
+        const startTime = performance.now();
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        
+        iframe.onload = () => {
+          const loadTime = performance.now() - startTime;
+          
+          try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const rootElement = iframeDoc.getElementById('root');
+            const foucProtection = rootElement && 
+              (rootElement.classList.contains('styles-loading') || rootElement.classList.contains('styles-loaded'));
+            
+            resolve({ loadTime, foucProtection });
+          } catch (error) {
+            resolve({ loadTime, foucProtection: false });
+          }
+          
+          document.body.removeChild(iframe);
+        };
+        
+        iframe.onerror = () => {
+          resolve({ loadTime: 9999, foucProtection: false });
+          document.body.removeChild(iframe);
+        };
+        
+        document.body.appendChild(iframe);
+      });
+    }
+
+    function analyzePerformance() {
+      addToTimeline('パフォーマンス分析を開始', 'info');
+      
+      const performanceData = {
+        averageLoadTime: testData.loadTimes.length > 0 ? 
+          testData.loadTimes.reduce((sum, time) => sum + time, 0) / testData.loadTimes.length : 0,
+        minLoadTime: Math.min(...testData.loadTimes),
+        maxLoadTime: Math.max(...testData.loadTimes),
+        successRate: testData.totalTests > 0 ? (testData.successfulTests / testData.totalTests) * 100 : 0
+      };
+      
+      const resultsDiv = document.getElementById('performance-results');
+      resultsDiv.innerHTML = `
+        <div class="test-result ${performanceData.successRate >= 90 ? 'success' : performanceData.successRate >= 70 ? 'warning' : 'error'}">
+          <strong>パフォーマンス分析結果:</strong><br>
+          平均読み込み時間: ${performanceData.averageLoadTime.toFixed(1)}ms<br>
+          最速: ${performanceData.minLoadTime.toFixed(1)}ms<br>
+          最遅: ${performanceData.maxLoadTime.toFixed(1)}ms<br>
+          成功率: ${performanceData.successRate.toFixed(1)}%<br>
+          評価: ${performanceData.successRate >= 90 ? '優秀' : performanceData.successRate >= 70 ? '良好' : '要改善'}
+        </div>
+      `;
+      
+      addToTimeline(`分析完了: 成功率${performanceData.successRate.toFixed(1)}%`, 
+        performanceData.successRate >= 90 ? 'success' : 'warning');
+    }
+
+    // 初期化
+    addToTimeline('CSS読み込み改善テストツールが起動しました', 'success');
+    updateMetrics();
+  </script>
+</body>
+</html>
