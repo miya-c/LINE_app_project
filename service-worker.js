@@ -1,14 +1,13 @@
 // Service Worker for PWA - Simplified for Vercel + GAS architecture
 const CACHE_NAME = 'meter-reading-app-v1';
 const CACHE_ASSETS = [
-  '/property_select.html',
-  '/room_select.html',
-  '/meter_reading.html',
-  '/property_select_gas.html',
-  '/room_select_gas.html',
-  '/meter_reading_gas.html',
-  '/pwa-styles.css',
-  '/pwa-utils.js'
+  '/html_files/main_app/property_select.html',
+  '/html_files/main_app/room_select.html',
+  '/html_files/main_app/meter_reading.html',
+  '/css_styles/pwa-styles.css',
+  '/css_styles/meter_reading.css',
+  '/pwa-utils.js',
+  '/manifest.json'
 ];
 
 // Install event - cache essential assets
