@@ -479,7 +479,7 @@
                 if (updatedRoomId) {
                   const updatedRoom = latestRooms.find(room => room.roomId === updatedRoomId || room.id === updatedRoomId);
                   if (updatedRoom) {
-                    console.log('[room_select] ✅ 検針完了により更新された部屋:', updatedRoom.roomName || updatedRoom.name, '検針日:', updatedRoom.rawInspectionDate);
+                    console.log('[room_select] ✅ 検針完了により更新された部屋:', updatedRoom.roomName || updatedRoom.name, '検針日時:', updatedRoom.rawInspectionDate);
                   }
                 }
                 
@@ -882,7 +882,7 @@
                         fontSize: '0.9em',
                         marginLeft: '8px'
                       }}>
-                        [検針日：{inspectionStatus.displayDate}]
+                        [検針日時：{inspectionStatus.displayDate}]
                       </span>
                     );
                   } else if (inspectionStatus.status === '検針済み' && !inspectionStatus.displayDate) {

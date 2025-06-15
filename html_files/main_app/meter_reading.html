@@ -898,7 +898,7 @@
                                 color: inspectionStatus.status === '未検針' ? 'var(--mantine-color-red-6)' : 'inherit',
                                 fontWeight: inspectionStatus.status === '未検針' ? 'bold' : 'normal'
                               }}>
-                                最終検針日: {inspectionStatus.status === '未検針' ? '未検針' : inspectionStatus.displayDate}
+                                最終検針日時: {inspectionStatus.status === '未検針' ? '未検針' : inspectionStatus.displayDate}
                               </span>
                             </td>
                             <td data-label="今回指示数(㎥)">
@@ -995,7 +995,7 @@
                       <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
                       <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-lg)'}}>
                         <div>
-                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日:</label>
+                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日時:</label>
                           <input 
                             type="text" 
                             id="initialReadingDate" 

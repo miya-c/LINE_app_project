@@ -172,7 +172,7 @@
                     <div class="column-item">シート名: 'inspection_data'</div>
                     <div class="column-item">物件ID: headers.indexOf('物件ID')</div>
                     <div class="column-item">部屋ID: headers.indexOf('部屋ID')</div>
-                    <div class="column-item">検針日: headers.indexOf('検針日時') || headers.indexOf('検針日')</div>
+                    <div class="column-item">検針日時: headers.indexOf('検針日時')</div>
                     <div class="column-item">今回指示数: headers.indexOf('今回の指示数') || headers.indexOf('今回指示数（水道）')</div>
                     <div class="column-item">前回指示数: headers.indexOf('前回指示数')</div>
                     <div class="column-item">今回使用量: headers.indexOf('今回使用量')</div>
@@ -193,7 +193,7 @@
             <ul>
                 <li><strong>列参照は正常:</strong> 現在の物件.gsの実装は実際のCSVファイル構造と一致しています</li>
                 <li><strong>動的検索採用:</strong> headers.indexOf()を使用しているため、列順序が変更されても対応可能</li>
-                <li><strong>フォールバック機能:</strong> 複数の列名パターンに対応（例: '検針日時' || '検針日'）</li>
+                <li><strong>フォールバック機能:</strong> 複数の列名パターンに対応（例: '検針日時'）</li>
                 <li><strong>エラーハンドリング:</strong> 必要な列が見つからない場合の適切なエラー処理が実装済み</li>
             </ul>
         </div>
