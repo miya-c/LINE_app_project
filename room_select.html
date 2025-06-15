@@ -172,13 +172,14 @@
     }
     .mantine-paper.disabled { 
       opacity: 0.6; cursor: not-allowed; 
+      pointer-events: none;
     }
     .room-card { 
       display: flex; justify-content: space-between; align-items: center; 
       width: 100%; background: none; border: none; font: inherit;
-      text-align: left;
+      text-align: left; cursor: inherit; padding: 0;
     }
-    .room-info { flex: 1; }
+    .room-info { flex: 1; pointer-events: none; }
     .room-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .room-number { 
       font-size: 18px; font-weight: 600; color: #212529; 
@@ -186,7 +187,8 @@
     }
     .room-arrow { 
       width: 24px; height: 24px; color: #6c757d; 
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-left: 16px; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-left: 16px;
+      pointer-events: none;
     }
     .mantine-paper:hover .room-arrow { 
       color: #007bff; 
@@ -658,12 +660,20 @@
       );
 
       const handleRoomSelect = (room) => {
+        console.log('[room_select] handleRoomSelect called:', { room, propertyId, propertyName, loading, isNavigating });
+        
         if (!propertyId || !propertyName || !room) {
           console.error('[room_select] Invalid data for room selection:', { propertyId, propertyName, room });
           alert('選択された部屋情報が無効です。');
           return;
         }
 
+        if (loading || isNavigating) {
+          console.warn('[room_select] Room selection blocked - currently loading or navigating');
+          return;
+        }
+
+        console.log('[room_select] Starting room selection process...');
         setIsNavigating(true);
         setNavigationMessage('検針画面に移動しています...');
         
@@ -866,12 +876,23 @@
                   }
                   
                   return (
-                    <div key={room.id} className="mantine-paper">
-                      <button
-                        onClick={() => handleRoomSelect(room)}
-                        disabled={loading || isNavigating}
-                        className="room-card"
-                      >
+                    <div 
+                      key={room.id} 
+                      className={`mantine-paper ${loading || isNavigating ? 'disabled' : ''}`}
+                      onClick={() => {
+                        if (!loading && !isNavigating) {
+                          console.log('[room_select] Room card clicked:', room);
+                          handleRoomSelect(room);
+                        } else {
+                          console.log('[room_select] Click ignored - loading/navigating state');
+                        }
+                      }}
+                      style={{
+                        cursor: loading || isNavigating ? 'not-allowed' : 'pointer',
+                        pointerEvents: 'auto'
+                      }}
+                    >
+                      <div className="room-card">
                         <div className="room-info">
                           <div className="room-header">
                             <span className="room-number">
@@ -884,7 +905,7 @@
                         <svg className="room-arrow" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                         </svg>
-                      </button>
+                      </div>
                     </div>
                   );
                 })}
