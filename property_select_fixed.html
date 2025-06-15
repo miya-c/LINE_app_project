@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>物件選択 - 水道メーター読み取りアプリ</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- PWA メタタグ -->
+  <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
+  <meta name="theme-color" content="#007bff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="メーター読み取り">
+  <meta name="msapplication-TileColor" content="#007bff">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Favicon and Icons -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
+  
+  <!-- WOFF SDK removed for general browser compatibility -->
+  
+  <!-- ReactとReactDOMのCDN (Cache Busting Version) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614b" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614b" crossorigin></script>
+  <!-- BabelのCDN (JSXをブラウザで変換するため) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js?v=20250614b"></script>
+  
+  <!-- PWA Utilities -->
+  <script src="/pwa-utils.js?v=20250614b"></script>
+  
+  <!-- 外部CSSファイルの読み込み -->
+  <link rel="stylesheet" href="css_styles/property_select.css?v=20250614b">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ===================================
+    // 一般ブラウザ向け物件選択アプリ
+    // WOFF SDK依存なし - Cache Busting v20250614b
+    // ===================================
+    
+    console.log('🚀 Property Select App v20250614c - Debug Mode Enabled');
+    console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
+    
+    // GAS Web AppのURL（設定）
+    const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbzNIgKK01N-eMYcIilA5q6J12X0ZTAiwVvW3gtQ1ruNVhHtdD-zJV9lLM_9iACQBNb9Uw/exec';
+    
+    // アプリケーションの状態管理
+    let appState = {
+      properties: [],
+      loading: true,
+      error: null,
+      filterQuery: ''
+    };
+
+    // ユーティリティ関数
+    const formatDate = (dateString) => {
+      if (!dateString) return '未完了';
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('ja-JP');
+      } catch (error) {
+        return '未完了';
+      }
+    };
+
+    const filterProperties = (properties, query) => {
+      if (!query.trim()) return properties;
+      return properties.filter(property => 
+        property.name && property.name.toLowerCase().includes(query.toLowerCase())
+      );
+    };
+
+    // UIコンポーネント
+    const LoadingSpinner = () => (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>データを読み込んでいます...</p>
+      </div>
+    );
+
+    const ErrorDisplay = ({ error, onRetry }) => (
+      <div className="error-container">
+        <div className="error-message">
+          <h3>エラーが発生しました</h3>
+          <p>{error}</p>
+          <button onClick={onRetry} className="retry-button">
+            再試行
+          </button>
+        </div>
+      </div>
+    );
+
+    const SearchInput = ({ value, onChange }) => (
+      <div className="search-container">
+        <input
+          type="text"
+          placeholder="物件名で検索..."
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="search-input"
+        />
+      </div>
+    );
+
+    const PropertyCard = ({ property, onSelect }) => (
+      <div className="property-card" onClick={() => onSelect(property)}>
+        <div className="property-info">
+          <h3 className="property-name">{property.name}</h3>
+          <p className="property-id">物件ID: {property.id}</p>
+          <div className="property-status">
+            <span className={`status-badge ${property.inspectionDate ? 'completed' : 'pending'}`}>
+              {property.inspectionDate ? '完了' : '未完了'}
+            </span>
+            {property.inspectionDate && (
+              <span className="completion-date">
+                {formatDate(property.inspectionDate)}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="property-arrow">→</div>
+      </div>
+    );
+
+    const EmptyState = ({ hasFilter, onClearFilter }) => (
+      <div className="empty-state">
+        {hasFilter ? (
+          <>
+            <h3>検索結果がありません</h3>
+            <p>検索条件を変更してみてください</p>
+            <button onClick={onClearFilter} className="clear-filter-button">
+              フィルターをクリア
+            </button>
+          </>
+        ) : (
+          <>
+            <h3>物件データがありません</h3>
+            <p>データが読み込まれていないか、物件が登録されていません</p>
+          </>
+        )}
+      </div>
+    );
+
+    // メインアプリケーションコンポーネント
+    const App = () => {
+      const [state, setState] = React.useState(appState);
+
+      // データ取得関数
+      const fetchProperties = async () => {
+        try {
+          setState(prev => ({ ...prev, loading: true, error: null }));
+          
+          const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
+          console.log('[ReactApp] Fetching properties...');
+          console.log('[ReactApp] Request URL:', requestUrl);
+          
+          const response = await fetch(requestUrl);
+          console.log('[ReactApp] Response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`データの取得に失敗しました。ステータス: ${response.status}. 詳細: ${errorText}`);
+          }
+          
+          const data = await response.json();
+          console.log('[ReactApp] Fetched data:', data);
+          
+          // レスポンス形式の統一処理
+          let properties = [];
+          if (data && Array.isArray(data.data)) {
+            properties = data.data;
+            console.log('[ReactApp] ✅ 統一形式採用 - データ件数:', properties.length);
+          } else if (Array.isArray(data)) {
+            properties = data;
+            console.log('[ReactApp] ⚠️ 直接配列形式採用 - データ件数:', properties.length);
+          } else if (data && Array.isArray(data.result)) {
+            properties = data.result;
+            console.log('[ReactApp] ⚠️ result形式採用 - データ件数:', properties.length);
+          } else {
+            console.warn('[ReactApp] ⚠️ 予期しない形式:', data);
+            properties = [];
+          }
+          
+          setState(prev => ({
+            ...prev,
+            properties,
+            loading: false,
+            error: null
+          }));
+          
+        } catch (error) {
+          console.error('[ReactApp] Fetch error:', error);
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: error.message
+          }));
+        }
+      };
+
+      // 物件選択処理
+      const handlePropertySelect = async (property) => {
+        try {
+          const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
+          console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id}`);
+          console.log('[ReactApp] Room request URL breakdown:', {
+            fullUrl: requestUrl,
+            propertyId: property.id,
+            propertyName: property.name
+          });
+          
+          const roomResponse = await fetch(requestUrl);
+          
+          console.log('[ReactApp] Room Response Status:', roomResponse.status);
+          console.log('[ReactApp] Room Response Headers:', [...roomResponse.headers.entries()]);
+          
+          if (!roomResponse.ok) {
+            const errorText = await roomResponse.text();
+            throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
+          }
+          
+          const roomData = await roomResponse.json();
+          console.log('[ReactApp] Fetched room data:', roomData);
+          console.log('[ReactApp] Room data type:', typeof roomData);
+
+          // 🔥 FINAL FIX: 最終的な統一レスポンス判定処理 (property_select版)
+          let rooms = [];
+          console.log('[ReactApp] 🔍 レスポンス形式判定開始');
+          console.log('[ReactApp] レスポンス詳細:', {
+            hasData: !!roomData?.data,
+            isDataArray: Array.isArray(roomData?.data),
+            hasResult: !!roomData?.result,
+            isResultArray: Array.isArray(roomData?.result),
+            hasRooms: !!roomData?.rooms,
+            isRoomsArray: Array.isArray(roomData?.rooms),
+            isDirectArray: Array.isArray(roomData)
+          });
+
+          // パターン1: 統一形式 {success: true, data: []}
+          if (roomData && 
+              typeof roomData === 'object' && 
+              roomData !== null && 
+              roomData.data && 
+              Array.isArray(roomData.data)) {
+            rooms = roomData.data;
+            console.log('[ReactApp] ✅ 統一形式採用 - データ件数:', rooms.length);
+          }
+          // パターン2: 直接配列
+          else if (Array.isArray(roomData)) {
+            rooms = roomData;
+            console.log('[ReactApp] ⚠️ 直接配列形式採用 - データ件数:', rooms.length);
+          }
+          // パターン3: result プロパティ
+          else if (roomData && 
+                   typeof roomData === 'object' && 
+                   roomData !== null && 
+                   roomData.result && 
+                   Array.isArray(roomData.result)) {
+            rooms = roomData.result;
+            console.log('[ReactApp] ⚠️ result形式採用 - データ件数:', rooms.length);
+          }
+          // パターン4: rooms プロパティ
+          else if (roomData && 
+                   typeof roomData === 'object' && 
+                   roomData !== null && 
+                   roomData.rooms && 
+                   Array.isArray(roomData.rooms)) {
+            rooms = roomData.rooms;
+            console.log('[ReactApp] ⚠️ rooms形式採用 - データ件数:', rooms.length);
+          }
+          // パターン5: 空のレスポンスでも継続処理
+          else if (roomData && typeof roomData === 'object' && roomData !== null) {
+            // レスポンスはあるが、予期された形式ではない場合
+            console.warn('[ReactApp] ⚠️ 予期しない形式だが空配列で継続:', roomData);
+            rooms = [];
+          }
+          // パターン6: 完全に無効なレスポンス
+          else {
+            console.error('[ReactApp] ❌ 完全に無効なレスポンス:', roomData);
+            rooms = [];
+          }
+
+          console.log('[ReactApp] 最終採用データ:', rooms.length, '件');
+          
+          console.log('[ReactApp] Processed rooms:', rooms);
+          console.log('[ReactApp] Rooms array check:', Array.isArray(rooms));
+          console.log('[ReactApp] Rooms length:', rooms.length);
+
+          console.log('[ReactApp] Storing to sessionStorage...');
+          console.log('[ReactApp] - propertyId:', property.id, '(type:', typeof property.id, ')');
+          console.log('[ReactApp] - propertyName:', property.name, '(type:', typeof property.name, ')');
+          console.log('[ReactApp] - rooms length:', Array.isArray(rooms) ? rooms.length : 'not array');
+          
+          sessionStorage.setItem('selectedPropertyId', String(property.id));
+          sessionStorage.setItem('selectedPropertyName', String(property.name));
+          sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
+          
+          console.log('[ReactApp] SessionStorage verification:');
+          console.log('- selectedPropertyId:', sessionStorage.getItem('selectedPropertyId'));
+          console.log('- selectedPropertyName:', sessionStorage.getItem('selectedPropertyName'));
+          console.log('- selectedRooms length:', JSON.parse(sessionStorage.getItem('selectedRooms') || '[]').length);
+          
+          // 部屋選択画面に遷移
+          console.log('[ReactApp] Navigating to room_select.html...');
+          setTimeout(() => {
+            window.location.href = 'room_select.html';
+          }, 300);
+          
+        } catch (error) {
+          console.error('[ReactApp] Property select error:', error);
+          alert(`部屋情報の取得に失敗しました: ${error.message}`);
+        }
+      };
+
+      // 検索フィルター処理
+      const handleFilterChange = (query) => {
+        setState(prev => ({ ...prev, filterQuery: query }));
+      };
+
+      const handleClearFilter = () => {
+        setState(prev => ({ ...prev, filterQuery: '' }));
+      };
+
+      // 再試行処理
+      const handleRetry = () => {
+        fetchProperties();
+      };
+
+      // 初期データ取得
+      React.useEffect(() => {
+        console.log('[ReactApp] Component mounted, fetching properties...');
+        fetchProperties();
+      }, []);
+
+      // フィルタリングされた物件リスト
+      const filteredProperties = filterProperties(state.properties, state.filterQuery);
+
+      // ローディング状態
+      if (state.loading) {
+        return <LoadingSpinner />;
+      }
+
+      // エラー状態
+      if (state.error) {
+        return <ErrorDisplay error={state.error} onRetry={handleRetry} />;
+      }
+
+      return (
+        <div className="app-container">
+          <header className="app-header">
+            <h1>物件選択</h1>
+            <p>検針を行う物件を選択してください</p>
+          </header>
+
+          <SearchInput 
+            value={state.filterQuery} 
+            onChange={handleFilterChange} 
+          />
+
+          <main className="properties-container">
+            {filteredProperties.length > 0 ? (
+              <div className="properties-grid">
+                {filteredProperties.map((property) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    onSelect={handlePropertySelect}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState 
+                hasFilter={state.filterQuery.trim().length > 0}
+                onClearFilter={handleClearFilter}
+              />
+            )}
+          </main>
+
+          <footer className="app-footer">
+            <p>水道メーター読み取りアプリ v20250614c</p>
+          </footer>
+        </div>
+      );
+    };
+
+    // React DOM レンダリング
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+
+  <!-- PWA初期化スクリプト -->
+  <script>
+    // PWA機能の初期化
+    document.addEventListener('DOMContentLoaded', () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => console.log('SW registered:', registration))
+          .catch(error => console.log('SW registration failed:', error));
+      }
+    });
+  </script>
+</body>
+</html>

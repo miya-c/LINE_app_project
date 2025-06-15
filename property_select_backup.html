@@ -5,6 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
+  <!-- 外部CSSファイルの読み込み -->
+  <link rel="stylesheet" href="css_styles/property_select.css?v=20250614b">
+  
   <!-- PWA メタタグ -->
   <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
   <meta name="theme-color" content="#007bff">
@@ -23,21 +26,20 @@
   <!-- WOFF SDK removed for general browser compatibility -->
   
   <!-- ReactとReactDOMのCDN (Cache Busting Version) -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614c" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614c" crossorigin></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js?v=20250614b" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js?v=20250614b" crossorigin></script>
   <!-- BabelのCDN (JSXをブラウザで変換するため) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js?v=20250614c"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js?v=20250614b"></script>
   
   <!-- PWA Utilities -->
-  <script src="/pwa-utils.js?v=20250614c"></script>
+  <script src="/pwa-utils.js?v=20250614b"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel">
-    // 🦁 Brave Browser Cache Busting Version 20250614c
+    // 🦁 Brave Browser Cache Busting Version 20250614b
     // WOFF完全削除済み - 一般ブラウザ専用
-    // CSS読み込み完了待機機能追加
   console.log('🚀 Property Select App v20250614c - Debug Mode Enabled');
   console.log('WOFF Status:', typeof woff !== 'undefined' ? '❌ ERROR: WOFF still loaded!' : '✅ WOFF successfully removed');
   console.log('🔧 Enhanced Debug Mode Active for data flow tracking');
@@ -93,12 +95,15 @@
             
             if (!response.ok) {
               throw new Error(`Network response was not ok. Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('[ReactApp] GAS Response (properties):', data);
+            }            const data = await response.json();            console.log('[ReactApp] GAS Response (properties):', data);
             console.log('[ReactApp] Response type:', typeof data);
             console.log('[ReactApp] Response keys:', data ? Object.keys(data) : 'No keys');
+            
+            // エラーレスポンスの場合
+            if (data && data.error) {
+              console.error('[ReactApp] GAS Error Response:', data);
+              throw new Error(`GASエラー: ${data.error}`);
+            }
             
             // データが null または undefined の場合
             if (!data) {
@@ -106,64 +111,42 @@
               throw new Error('サーバーからのレスポンスが空です。');
             }
             
-            // 新しい統一レスポンス形式への対応
-            if (data.success === false) {
-              console.error('[ReactApp] GAS Error Response:', data);
-              throw new Error(`GASエラー: ${data.error || 'Unknown error'}`);
-            }
-            
-            // 統一レスポンス形式の処理
-            let actualData = null;
-            if (data.success === true && data.data) {
-              // 新しい統一レスポンス形式: {success: true, data: [...], count: number, timestamp: string}
-              console.log('[ReactApp] New unified response format detected');
-              console.log('[ReactApp] Response metadata:', {
-                success: data.success,
-                count: data.count,
-                timestamp: data.timestamp,
-                debugInfo: data.debugInfo
-              });
-              actualData = data.data;
-            } else if (Array.isArray(data)) {
-              // 従来の直接配列形式への下位互換性
-              console.log('[ReactApp] Legacy direct array format detected');
-              actualData = data;
+            // 配列でない場合の対応
+            if (Array.isArray(data)) {
+              console.log('[ReactApp] Data is array, setting properties');
+              console.log('[ReactApp] First property sample:', data[0]);
+              // 検針完了日フィールドの確認ログ
+              if (data.length > 0 && data[0]) {
+                console.log('[ReactApp] completionDate field check:', {
+                  hasCompletionDate: 'completionDate' in data[0],
+                  completionDateValue: data[0].completionDate,
+                  completionDateType: typeof data[0].completionDate
+                });
+              }
+              setProperties(data);
             } else if (data.properties && Array.isArray(data.properties)) {
-              // 古いpropertiesプロパティ形式への下位互換性
-              console.log('[ReactApp] Legacy properties wrapper format detected');
-              actualData = data.properties;
+              // propertiesプロパティに配列が含まれている場合
+              console.log('[ReactApp] Data has properties array, setting properties');
+              console.log('[ReactApp] First property sample:', data.properties[0]);
+              // 検針完了日フィールドの確認ログ
+              if (data.properties.length > 0 && data.properties[0]) {
+                console.log('[ReactApp] completionDate field check:', {
+                  hasCompletionDate: 'completionDate' in data.properties[0],
+                  completionDateValue: data.properties[0].completionDate,
+                  completionDateType: typeof data.properties[0].completionDate
+                });
+              }
+              setProperties(data.properties);
             } else if (data.availableSheets) {
               // シートが見つからない場合の特別処理
               console.error('[ReactApp] Spreadsheet sheets not found:', data.availableSheets);
               throw new Error('Google Spreadsheetの「物件マスタ」シートが見つかりません。管理者に連絡してください。');
             } else {
-              console.error('[ReactApp] Unknown response format:', data);
+              console.error('[ReactApp] Data from GAS is not an array:', data);
               console.error('[ReactApp] Data type:', typeof data);
               console.error('[ReactApp] Data keys:', Object.keys(data));
               throw new Error('物件データの形式が正しくありません。管理者に連絡してください。');
             }
-            
-            // actualDataの検証と設定
-            if (!Array.isArray(actualData)) {
-              console.error('[ReactApp] Final data is not an array:', actualData);
-              throw new Error('物件データが配列形式ではありません。管理者に連絡してください。');
-            }
-            
-            console.log('[ReactApp] Setting properties data:', {
-              length: actualData.length,
-              firstItem: actualData[0]
-            });
-            
-            // 検針完了日フィールドの確認ログ
-            if (actualData.length > 0 && actualData[0]) {
-              console.log('[ReactApp] completionDate field check:', {
-                hasCompletionDate: 'completionDate' in actualData[0],
-                completionDateValue: actualData[0].completionDate,
-                completionDateType: typeof actualData[0].completionDate
-              });
-            }
-            
-            setProperties(actualData);
           } catch (fetchError) {
             console.error('[ReactApp] Failed to fetch properties:', fetchError);
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
@@ -177,9 +160,7 @@
 
       const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
-      };
-
-      const handlePropertySelect = async (property) => {
+      };      const handlePropertySelect = async (property) => {
         console.log('[ReactApp] handlePropertySelect called with:', property);
         
         if (!property) {
@@ -225,9 +206,7 @@
             const errorText = await roomResponse.text();
             console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
             throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
-          }
-          
-          const roomData = await roomResponse.json();
+          }          const roomData = await roomResponse.json();
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
 
@@ -553,13 +532,11 @@
             </div>
           </div>
         </div>
-      );
-    };
+      );    };
 
     // Use React 18 createRoot API instead of ReactDOM.render
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
-    console.log('🎨 アプリ起動');
   </script>
   
   <!-- PWA初期化スクリプト -->
