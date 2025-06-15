@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS診断ツール - 水道メーター読み取りアプリ</title>
+    <style>
+        /* 診断ツール専用スタイル */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .diagnosis-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        .test-element {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+    
+    <!-- アプリのCSS読み込み -->
+    <link rel="stylesheet" href="css_styles/property_select.css?v=20250615">
+    <link rel="stylesheet" href="css_styles/pwa-styles.css?v=20250615">
+</head>
+<body>
+    <div class="diagnosis-container">
+        <h1>🔧 CSS動作診断ツール</h1>
+        <p>水道メーター読み取りアプリのCSS設定と動作状況を診断します。</p>
+
+        <!-- 1. CSS読み込み状況 -->
+        <div class="test-section">
+            <div class="test-title">📁 1. CSSファイル読み込み状況</div>
+            <div id="css-load-status">テスト中...</div>
+        </div>
+
+        <!-- 2. CSS変数定義確認 -->
+        <div class="test-section">
+            <div class="test-title">🎨 2. CSS変数定義確認</div>
+            <div id="css-variables-status">テスト中...</div>
+        </div>
+
+        <!-- 3. スタイル適用テスト -->
+        <div class="test-section">
+            <div class="test-title">✨ 3. スタイル適用テスト</div>
+            <div id="style-test-status">テスト中...</div>
+            
+            <!-- テスト用要素 -->
+            <div class="test-element">
+                <h3>テスト用Mantineコンポーネント</h3>
+                <div class="mantine-container">
+                    <div class="mantine-stack">
+                        <h2 class="mantine-title">タイトルテスト</h2>
+                        <div class="mantine-text-input">
+                            <input type="text" placeholder="入力フィールドテスト" />
+                        </div>
+                        <button class="mantine-button variant-filled">ボタンテスト</button>
+                        <div class="mantine-paper">
+                            <div class="property-card">
+                                <div class="property-info">
+                                    <div class="property-id">P000001</div>
+                                    <div class="property-name">テスト物件</div>
+                                </div>
+                                <div class="property-arrow">→</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. FOUC対策確認 -->
+        <div class="test-section">
+            <div class="test-title">⚡ 4. FOUC対策・CSS読み込み待機機能</div>
+            <div id="fouc-test-status">テスト中...</div>
+        </div>
+
+        <!-- 5. レスポンシブ対応確認 -->
+        <div class="test-section">
+            <div class="test-title">📱 5. レスポンシブ対応確認</div>
+            <div id="responsive-test-status">テスト中...</div>
+        </div>
+
+        <!-- 診断結果サマリー -->
+        <div class="test-section">
+            <div class="test-title">📊 診断結果サマリー</div>
+            <div id="summary-status">集計中...</div>
+        </div>
+    </div>
+
+    <script>
+        // 診断実行
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 CSS診断ツール開始');
+            
+            let results = [];
+            
+            // 1. CSS読み込み状況テスト
+            function checkCSSLoad() {
+                const statusDiv = document.getElementById('css-load-status');
+                const results = [];
+                
+                // StyleSheetの確認
+                const stylesheets = Array.from(document.styleSheets);
+                const appStylesheets = stylesheets.filter(sheet => 
+                    sheet.href && (sheet.href.includes('property_select.css') || sheet.href.includes('pwa-styles.css'))
+                );
+                
+                results.push(`
+                    <div class="result ${appStylesheets.length >= 2 ? 'success' : 'error'}">
+                        ${appStylesheets.length >= 2 ? '✅' : '❌'} アプリCSSファイル読み込み: ${appStylesheets.length}/2 ファイル
+                    </div>
+                `);
+                
+                // 各CSSファイルの詳細確認
+                appStylesheets.forEach(sheet => {
+                    try {
+                        const rulesCount = sheet.cssRules ? sheet.cssRules.length : 0;
+                        results.push(`
+                            <div class="result ${rulesCount > 0 ? 'success' : 'warning'}">
+                                📄 ${sheet.href.split('/').pop()}: ${rulesCount} ルール
+                            </div>
+                        `);
+                    } catch (e) {
+                        results.push(`
+                            <div class="result warning">
+                                ⚠️ ${sheet.href.split('/').pop()}: CORS制限によりルール数確認不可
+                            </div>
+                        `);
+                    }
+                });
+                
+                statusDiv.innerHTML = results.join('');
+                return appStylesheets.length >= 2;
+            }
+            
+            // 2. CSS変数確認
+            function checkCSSVariables() {
+                const statusDiv = document.getElementById('css-variables-status');
+                const rootStyle = window.getComputedStyle(document.documentElement);
+                
+                const variables = [
+                    '--mantine-color-blue-6',
+                    '--mantine-color-gray-0',
+                    '--mantine-color-gray-7',
+                    '--mantine-spacing-md',
+                    '--mantine-radius-sm'
+                ];
+                
+                const results = variables.map(varName => {
+                    const value = rootStyle.getPropertyValue(varName).trim();
+                    return `
+                        <div class="result ${value ? 'success' : 'error'}">
+                            ${value ? '✅' : '❌'} ${varName}: ${value || '未定義'}
+                        </div>
+                    `;
+                });
+                
+                statusDiv.innerHTML = results.join('');
+                return variables.every(varName => rootStyle.getPropertyValue(varName).trim());
+            }
+            
+            // 3. スタイル適用テスト
+            function checkStyleApplication() {
+                const statusDiv = document.getElementById('style-test-status');
+                const results = [];
+                
+                // テスト用要素を作成
+                const testElements = [
+                    { className: 'mantine-button', expectedProps: ['display', 'padding', 'borderRadius'] },
+                    { className: 'mantine-container', expectedProps: ['maxWidth', 'margin'] },
+                    { className: 'mantine-title', expectedProps: ['fontSize', 'fontWeight'] },
+                    { className: 'mantine-paper', expectedProps: ['backgroundColor', 'border', 'padding'] }
+                ];
+                
+                testElements.forEach(({ className, expectedProps }) => {
+                    const testEl = document.createElement('div');
+                    testEl.className = className;
+                    document.body.appendChild(testEl);
+                    
+                    const computed = getComputedStyle(testEl);
+                    const appliedProps = expectedProps.filter(prop => {
+                        const value = computed[prop];
+                        return value && value !== 'auto' && value !== 'normal' && value !== '0px';
+                    });
+                    
+                    const success = appliedProps.length > 0;
+                    results.push(`
+                        <div class="result ${success ? 'success' : 'error'}">
+                            ${success ? '✅' : '❌'} .${className} 
+                            (適用済み: ${appliedProps.length}/${expectedProps.length} プロパティ)
+                            ${success ? '' : `<br><small>期待値: ${expectedProps.join(', ')}</small>`}
+                        </div>
+                    `);
+                    
+                    document.body.removeChild(testEl);
+                });
+                
+                statusDiv.innerHTML = results.join('');
+                return testElements.length > 0;
+            }
+            
+            // 4. FOUC対策確認
+            function checkFOUCPrevention() {
+                const statusDiv = document.getElementById('fouc-test-status');
+                const results = [];
+                
+                // styles-loading/styles-loadedクラスの存在確認
+                const hasLoadingClass = document.querySelector('.styles-loading, .styles-loaded');
+                results.push(`
+                    <div class="result ${hasLoadingClass ? 'success' : 'warning'}">
+                        ${hasLoadingClass ? '✅' : '⚠️'} FOUC対策クラス: ${hasLoadingClass ? '実装済み' : '未実装'}
+                    </div>
+                `);
+                
+                // waitForStylesLoaded関数の存在確認
+                const hasWaitFunction = typeof window.waitForStylesLoaded === 'function';
+                results.push(`
+                    <div class="result ${hasWaitFunction ? 'success' : 'info'}">
+                        ${hasWaitFunction ? '✅' : 'ℹ️'} CSS読み込み待機機能: ${hasWaitFunction ? '実装済み' : '確認できません'}
+                    </div>
+                `);
+                
+                statusDiv.innerHTML = results.join('');
+                return true;
+            }
+            
+            // 5. レスポンシブ対応確認
+            function checkResponsiveDesign() {
+                const statusDiv = document.getElementById('responsive-test-status');
+                const results = [];
+                
+                // メディアクエリの確認
+                const mediaQueries = [];
+                try {
+                    Array.from(document.styleSheets).forEach(sheet => {
+                        if (sheet.cssRules) {
+                            Array.from(sheet.cssRules).forEach(rule => {
+                                if (rule.type === CSSRule.MEDIA_RULE && rule.media.mediaText.includes('768px')) {
+                                    mediaQueries.push(rule.media.mediaText);
+                                }
+                            });
+                        }
+                    });
+                } catch (e) {
+                    // CORS制限の場合
+                }
+                
+                results.push(`
+                    <div class="result ${mediaQueries.length > 0 ? 'success' : 'warning'}">
+                        ${mediaQueries.length > 0 ? '✅' : '⚠️'} モバイル対応メディアクエリ: ${mediaQueries.length > 0 ? '実装済み' : '確認できません'}
+                    </div>
+                `);
+                
+                // ビューポート設定確認
+                const viewport = document.querySelector('meta[name="viewport"]');
+                results.push(`
+                    <div class="result ${viewport ? 'success' : 'error'}">
+                        ${viewport ? '✅' : '❌'} ビューポート設定: ${viewport ? '設定済み' : '未設定'}
+                    </div>
+                `);
+                
+                statusDiv.innerHTML = results.join('');
+                return true;
+            }
+            
+            // 全テスト実行
+            const testResults = [
+                checkCSSLoad(),
+                checkCSSVariables(),
+                checkStyleApplication(),
+                checkFOUCPrevention(),
+                checkResponsiveDesign()
+            ];
+            
+            // サマリー表示
+            function showSummary() {
+                const summaryDiv = document.getElementById('summary-status');
+                const passedTests = testResults.filter(Boolean).length;
+                const totalTests = testResults.length;
+                
+                const overallStatus = passedTests === totalTests ? 'success' : 
+                                     passedTests >= totalTests * 0.7 ? 'warning' : 'error';
+                
+                summaryDiv.innerHTML = `
+                    <div class="result ${overallStatus}">
+                        <h3>${passedTests === totalTests ? '🎉' : passedTests >= totalTests * 0.7 ? '⚠️' : '❌'} 
+                        総合結果: ${passedTests}/${totalTests} テストパス</h3>
+                        <p>CSS設定状況: ${
+                            passedTests === totalTests ? '優秀 - すべて正常に動作しています' :
+                            passedTests >= totalTests * 0.7 ? '良好 - 一部改善の余地があります' :
+                            '要改善 - 複数の問題が検出されました'
+                        }</p>
+                    </div>
+                `;
+            }
+            
+            // 少し遅延させてサマリー表示
+            setTimeout(showSummary, 500);
+            
+            console.log('🔧 CSS診断完了');
+        });
+    </script>
+</body>
+</html>
