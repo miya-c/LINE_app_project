@@ -2,6 +2,37 @@
 // 物件データ、部屋データ、検針データの管理
 
 /**
+ * CORSヘッダーを付与したJSONレスポンスを作成する関数
+ * @param {Object} data - レスポンスデータ
+ * @returns {TextOutput} CORSヘッダー付きJSONレスポンス
+ */
+function createCorsJsonResponse(data) {
+  const output = ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+  
+  // CORSヘッダーを設定
+  return output
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    .setHeader('Access-Control-Max-Age', '3600');
+}
+
+/**
+ * CORSプリフライトリクエスト（OPTIONS）に対応するdoPost関数
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} CORSヘッダー付きレスポンス
+ */
+function doPost(e) {
+  console.log('[doPost] リクエスト受信 - メソッド: POST');
+  console.log('[doPost] パラメータ:', e?.parameter);
+  
+  // OPTIONSリクエスト（プリフライト）の場合
+  return createCorsJsonResponse({ message: 'CORS preflight handled' });
+}
+
+/**
  * Web App用のメイン関数 - API要求とHTML表示を処理
  * @param {Object} e - リクエストイベントオブジェクト
  * @returns {HtmlOutput|TextOutput} HTMLページまたはJSONレスポンス
@@ -22,8 +53,7 @@ function doGet(e) {
           try {
             const properties = getProperties();
             console.log('[doGet] 物件データ取得完了 - 件数:', Array.isArray(properties) ? properties.length : 'not array');
-            
-            const response = {
+              const response = {
               success: true,
               data: Array.isArray(properties) ? properties : [],
               count: Array.isArray(properties) ? properties.length : 0,
@@ -35,13 +65,10 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(response))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(response);
           } catch (apiError) {
             console.error('[doGet] getProperties API エラー:', apiError);
-            
-            const errorResponse = {
+              const errorResponse = {
               success: false,
               error: `物件データ取得エラー: ${apiError.message}`,
               data: [],
@@ -54,9 +81,7 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         case 'getRooms':
@@ -70,8 +95,7 @@ function doGet(e) {
             console.log('[doGet] 部屋データ取得開始 - propertyId:', propertyId);
             const rooms = getRooms(propertyId);
             console.log('[doGet] 部屋データ取得完了 - 件数:', Array.isArray(rooms) ? rooms.length : 'not array');
-            
-            const response = {
+              const response = {
               success: true,
               data: Array.isArray(rooms) ? rooms : [],
               count: Array.isArray(rooms) ? rooms.length : 0,
@@ -84,14 +108,11 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(response))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(response);
               
           } catch (apiError) {
             console.error('[doGet] getRooms API エラー:', apiError);
-            
-            const errorResponse = {
+              const errorResponse = {
               success: false,
               error: `部屋データ取得エラー: ${apiError.message}`,
               data: [],
@@ -105,9 +126,7 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         case 'getMeterReadings':
@@ -122,8 +141,7 @@ function doGet(e) {
             console.log('[doGet] 検針データ取得開始 - propertyId:', propertyId, 'roomId:', roomId);
             const readings = getMeterReadings(propertyId, roomId);
             console.log('[doGet] 検針データ取得完了 - 件数:', Array.isArray(readings) ? readings.length : 'not array');
-            
-            // 統一されたレスポンス形式で返す
+              // 統一されたレスポンス形式で返す
             const response = {
               success: true,
               data: Array.isArray(readings) ? readings : [],
@@ -138,13 +156,10 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(response))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(response);
           } catch (apiError) {
             console.error('[doGet] getMeterReadings API エラー:', apiError);
-            
-            const errorResponse = {
+              const errorResponse = {
               success: false,
               error: `検針データ取得エラー: ${apiError.message}`,
               data: [],
@@ -159,9 +174,7 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         case 'updateMeterReadings':
@@ -180,17 +193,13 @@ function doGet(e) {
             
             // JSON文字列をパース
             const readings = JSON.parse(readingsParam);
-            
-            const result = updateMeterReadings(propertyId, roomId, readings);
+              const result = updateMeterReadings(propertyId, roomId, readings);
             console.log('[doGet] 検針データ更新完了:', result);
             
-            return ContentService
-              .createTextOutput(JSON.stringify(result))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(result);
           } catch (apiError) {
             console.error('[doGet] updateMeterReadings API エラー:', apiError);
-            
-            const errorResponse = {
+              const errorResponse = {
               success: false,
               error: `検針データ更新エラー: ${apiError.message}`,
               timestamp: new Date().toISOString(),
@@ -203,29 +212,19 @@ function doGet(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
-          
-        default:
+            default:
           console.log('[doGet] 未対応のAPI要求:', action);
-          return ContentService
-            .createTextOutput(JSON.stringify({ error: `未対応のAPI要求: ${action}` }))
-            .setMimeType(ContentService.MimeType.JSON);
+          return createCorsJsonResponse({ error: `未対応のAPI要求: ${action}` });
       }
     }
-    
-    // HTMLページ要求の場合
-    return ContentService
-      .createTextOutput(JSON.stringify({ error: 'HTML表示はサポートされていません' }))
-      .setMimeType(ContentService.MimeType.JSON);
+      // HTMLページ要求の場合
+    return createCorsJsonResponse({ error: 'HTML表示はサポートされていません' });
       
   } catch (error) {
     console.error('[doGet] 予期しないエラー:', error);
-    return ContentService
-      .createTextOutput(JSON.stringify({ error: `サーバーエラー: ${error.message}` }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createCorsJsonResponse({ error: `サーバーエラー: ${error.message}` });
   }
 }
 

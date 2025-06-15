@@ -4,6 +4,58 @@
  */
 
 /**
+ * CORSヘッダーを付与したJSONレスポンスを作成する関数
+ * @param {Object} data - レスポンスデータ
+ * @returns {TextOutput} CORSヘッダー付きJSONレスポンス
+ */
+function createCorsJsonResponse(data) {
+  const output = ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+  
+  // CORSヘッダーを設定
+  return output
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    .setHeader('Access-Control-Max-Age', '3600');
+}
+
+/**
+ * CORSプリフライトリクエスト（OPTIONS）に対応するdoPost関数
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} CORSヘッダー付きレスポンス
+ */
+function doPost(e) {
+  console.log('[doPost] リクエスト受信 - メソッド: POST');
+  console.log('[doPost] パラメータ:', e?.parameter);
+  console.log('[doPost] ヘッダー:', e?.headers);
+  
+  // OPTIONSリクエスト（CORSプリフライト）に対応
+  if (e?.parameter?.method === 'OPTIONS' || e?.headers?.['Access-Control-Request-Method']) {
+    console.log('[doPost] CORSプリフライトリクエストを処理');
+    return createCorsJsonResponse({ status: 'OK', message: 'CORS preflight successful' });
+  }
+  
+  // 通常のPOSTリクエスト処理
+  try {
+    // POST用のAPI処理をここに追加可能
+    return createCorsJsonResponse({ 
+      success: true, 
+      message: 'POST request received',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[doPost] エラー:', error);
+    return createCorsJsonResponse({ 
+      success: false, 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
  * Web App用のメイン関数 - API要求とHTML表示を処理 (物件.gsから統合)
  * @param {Object} e - リクエストイベントオブジェクト  
  * @returns {HtmlOutput|TextOutput} HTMLページまたはJSONレスポンス
@@ -37,9 +89,7 @@ function doGetFromBukken(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(response))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(response);
           } catch (apiError) {
             console.error('[doGet] getProperties API エラー:', apiError);
             
@@ -48,17 +98,14 @@ function doGetFromBukken(e) {
               error: `物件データ取得エラー: ${apiError.message}`,
               data: [],
               count: 0,
-              timestamp: new Date().toISOString(),
-              debugInfo: {
+              timestamp: new Date().toISOString(),              debugInfo: {
                 errorType: apiError.name,
                 errorMessage: apiError.message,
                 errorStack: apiError.stack
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         case 'getRooms':
@@ -86,9 +133,7 @@ function doGetFromBukken(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(response))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(response);
               
           } catch (apiError) {
             console.error('[doGet] getRooms API エラー:', apiError);
@@ -99,17 +144,14 @@ function doGetFromBukken(e) {
               data: [],
               count: 0,
               timestamp: new Date().toISOString(),
-              propertyId: e.parameter.propertyId || 'unknown',
-              debugInfo: {
+              propertyId: e.parameter.propertyId || 'unknown',              debugInfo: {
                 errorType: apiError.name,
                 errorMessage: apiError.message,
                 errorStack: apiError.stack
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         case 'getMeterReadings':
@@ -137,12 +179,9 @@ function doGetFromBukken(e) {
                 functionCalled: 'getMeterReadings',
                 dataType: typeof meterReadings,
                 isArray: Array.isArray(meterReadings)
-              }
-            };
+              }            };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(response))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(response);
               
           } catch (apiError) {
             console.error('[doGet] getMeterReadings API エラー:', apiError);
@@ -162,9 +201,7 @@ function doGetFromBukken(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         case 'updateMeterReadings':
@@ -184,14 +221,11 @@ function doGetFromBukken(e) {
             } catch (parseError) {
               throw new Error('readings パラメータが有効なJSONではありません');
             }
-            
-            console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
+              console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
             const result = updateMeterReadings(propertyId, roomId, readings);
             console.log('[doGet] 検針データ更新完了:', result);
             
-            return ContentService
-              .createTextOutput(JSON.stringify(result))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(result);
               
           } catch (apiError) {
             console.error('[doGet] updateMeterReadings API エラー:', apiError);
@@ -207,9 +241,7 @@ function doGetFromBukken(e) {
               }
             };
             
-            return ContentService
-              .createTextOutput(JSON.stringify(errorResponse))
-              .setMimeType(ContentService.MimeType.JSON);
+            return createCorsJsonResponse(errorResponse);
           }
           
         default:
@@ -229,13 +261,11 @@ function doGetFromBukken(e) {
     
     // API要求でのエラー処理
     if (e?.parameter?.action) {
-      return ContentService
-        .createTextOutput(JSON.stringify({ 
-          error: `APIエラー: ${error.message}`,
-          action: e.parameter.action,
-          timestamp: new Date().toISOString()
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return createCorsJsonResponse({ 
+        error: `APIエラー: ${error.message}`,
+        action: e.parameter.action,
+        timestamp: new Date().toISOString()
+      });
     }
     
     // HTML表示でのエラー処理
