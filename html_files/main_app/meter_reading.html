@@ -501,19 +501,22 @@
             const mappedReadings = readings.map((rawReading, index) => {
               console.log(`[meter_reading] 生データ [${index}]:`, rawReading);
               
-              // inspection_dataシートの列名を想定したマッピング
+              // inspection_dataシートの列名を想定したマッピング（"今回の指示数"を最優先）
               const mapped = {
                 // 基本情報
                 date: rawReading['検針日時'] || rawReading['date'] || rawReading['記録日'] || '',
-                currentReading: rawReading['今回指示数'] || rawReading['currentReading'] || rawReading['指示数'] || '',
+                currentReading: rawReading['今回の指示数'] || rawReading['今回指示数'] || rawReading['今回指示数（水道）'] || rawReading['currentReading'] || rawReading['指示数'] || '',
                 previousReading: rawReading['前回指示数'] || rawReading['previousReading'] || rawReading['前回'] || '',
                 previousPreviousReading: rawReading['前々回指示数'] || rawReading['previousPreviousReading'] || rawReading['前々回'] || '',
                 threeTimesPrevious: rawReading['前々々回指示数'] || rawReading['threeTimesPrevious'] || rawReading['前々々回'] || '',
-                status: rawReading['状態'] || rawReading['status'] || '正常',
+                usage: rawReading['今回使用量'] || rawReading['usage'] || rawReading['使用量'] || '',
+                status: rawReading['警告フラグ'] || rawReading['status'] || rawReading['状態'] || '正常',
                 // 追加の可能性のあるフィールド
                 recordId: rawReading['記録ID'] || rawReading['recordId'] || rawReading['ID'] || '',
                 propertyId: rawReading['物件ID'] || rawReading['propertyId'] || '',
                 roomId: rawReading['部屋ID'] || rawReading['roomId'] || '',
+                propertyName: rawReading['物件名'] || rawReading['propertyName'] || '',
+                roomName: rawReading['部屋名'] || rawReading['roomName'] || '',
                 // 元データも保持
                 _original: rawReading
               };
