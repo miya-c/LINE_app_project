@@ -133,6 +133,56 @@ function doGet(e) {
             
             return createCorsJsonResponse(errorResponse);
           }
+          
+        case 'getRoomsForProperty':
+          console.log('[doGet] API: getRoomsForProperty');
+          console.log('[doGet] propertyId:', e.parameter.propertyId);
+          
+          if (!e.parameter.propertyId) {
+            return createCorsJsonResponse({ 
+              success: false,
+              error: 'propertyId パラメータが必要です',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          try {
+            const propertyData = getRoomsForProperty(e.parameter.propertyId);
+            console.log('[doGet] 取得された物件データ:', propertyData);
+            
+            const response = {
+              success: true,
+              data: propertyData,
+              timestamp: new Date().toISOString(),
+              debugInfo: {
+                functionCalled: 'getRoomsForProperty',
+                propertyId: e.parameter.propertyId,
+                hasProperty: !!(propertyData && propertyData.property),
+                roomCount: propertyData && propertyData.rooms ? propertyData.rooms.length : 0
+              }
+            };
+            
+            return createCorsJsonResponse(response);
+            
+          } catch (apiError) {
+            console.error('[doGet] getRoomsForProperty API エラー:', apiError);
+            
+            const errorResponse = {
+              success: false,
+              error: `物件部屋データ取得エラー: ${apiError.message}`,
+              data: null,
+              timestamp: new Date().toISOString(),
+              propertyId: e.parameter.propertyId || 'unknown',
+              debugInfo: {
+                errorType: apiError.name,
+                errorMessage: apiError.message,
+                errorStack: apiError.stack
+              }
+            };
+            
+            return createCorsJsonResponse(errorResponse);
+          }
+            
             case 'getRooms':
           console.log('[doGet] API: getRooms');
           console.log('[doGet] propertyId:', e.parameter.propertyId);

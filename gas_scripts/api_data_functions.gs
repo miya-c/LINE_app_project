@@ -658,9 +658,9 @@ function getRoomName(propertyId, roomId) {
  * @param {string} buildingId - 建物ID（物件IDと同じ）
  * @returns {Object} 建物情報と部屋データの配列
  */
-function getRoomsForBuilding(buildingId) {
+function getRoomsForProperty(propertyId) {
   try {
-    console.log('getRoomsForBuilding called with buildingId:', buildingId);
+    console.log('getRoomsForProperty called with propertyId:', propertyId);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const propertySheet = ss.getSheetByName('物件マスタ');
@@ -686,11 +686,11 @@ function getRoomsForBuilding(buildingId) {
     }
     
     const propertyRow = propertyData.slice(1).find(row => 
-      String(row[propertyIdIndex]).trim() === String(buildingId).trim()
+      String(row[propertyIdIndex]).trim() === String(propertyId).trim()
     );
     
     if (!propertyRow) {
-      throw new Error('建物が見つかりません');
+      throw new Error('物件が見つかりません');
     }
     
     // 部屋情報を取得
@@ -705,7 +705,7 @@ function getRoomsForBuilding(buildingId) {
     }
     
     const rooms = roomData.slice(1)
-      .filter(row => String(row[roomPropertyIdIndex]).trim() === String(buildingId).trim())
+      .filter(row => String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim())
       .map(row => {
         const room = {};
         roomHeaders.forEach((header, index) => {
@@ -739,7 +739,7 @@ function getRoomsForBuilding(buildingId) {
             const readingDateStr = Utilities.formatDate(readingDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
             
             if (readingDateStr === todayStr && 
-                String(row[inspPropertyIdIndex]).trim() === String(buildingId).trim()) {
+                String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim()) {
               todayReadings.set(String(row[inspRoomIdIndex]).trim(), row[inspDateIndex]);
             }
           }
@@ -770,7 +770,7 @@ function getRoomsForBuilding(buildingId) {
     console.log('Rooms with status:', rooms);
     
     return {
-      building: {
+      property: {
         id: propertyRow[propertyIdIndex],
         name: propertyRow[propertyNameIndex]
       },
@@ -778,7 +778,7 @@ function getRoomsForBuilding(buildingId) {
     };
     
   } catch (error) {
-    console.error('getRoomsForBuilding error:', error);
+    console.error('getRoomsForProperty error:', error);
     throw error;
   }
 }

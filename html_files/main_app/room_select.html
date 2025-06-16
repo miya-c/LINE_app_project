@@ -176,12 +176,23 @@
 
             async function loadRoomData() {
                 try {
+                    // デバッグ情報をコンソールに出力
+                    console.log('[DEBUG] loadRoomData開始');
+                    console.log('[DEBUG] actualPropertyId:', actualPropertyId);
+                    console.log('[DEBUG] gasWebAppUrl:', gasWebAppUrl);
+                    
                     // sessionStorageから既存のデータをチェック（高速化のため）
                     const cachedRooms = sessionStorage.getItem('selectedRooms');
                     const cachedPropertyId = sessionStorage.getItem('selectedPropertyId');
                     const cachedPropertyName = sessionStorage.getItem('selectedPropertyName');
                     
+                    console.log('[DEBUG] キャッシュ確認:');
+                    console.log('- cachedPropertyId:', cachedPropertyId);
+                    console.log('- cachedPropertyName:', cachedPropertyName);
+                    console.log('- cachedRooms length:', cachedRooms ? cachedRooms.length : 'null');
+                    
                     if (cachedRooms && cachedPropertyId === actualPropertyId && cachedPropertyName) {
+                        console.log('[DEBUG] キャッシュデータを使用');
                         try {
                             const parsedRooms = JSON.parse(cachedRooms);
                             const propertyInfo = {
@@ -192,51 +203,79 @@
                                 rooms: parsedRooms
                             };
                             
+                            console.log('[DEBUG] キャッシュから構築したデータ:', propertyInfo);
                             onDataLoaded(propertyInfo);
                             return; // API呼び出しをスキップ
                         } catch (parseError) {
+                            console.warn('[DEBUG] キャッシュエラー:', parseError);
                             // キャッシュエラー時はAPI呼び出しにフォールバック
                         }
+                    } else {
+                        console.log('[DEBUG] キャッシュ条件不一致、API呼び出しを実行');
                     }
                     
                     // GAS Web AppのAPIエンドポイントを呼び出し
                     const requestUrl = `${gasWebAppUrl}?action=getRoomsForProperty&propertyId=${encodeURIComponent(actualPropertyId)}&cache=${Date.now()}`;
                     
+                    console.log('[DEBUG] API呼び出しURL:', requestUrl);
+                    
                     const response = await fetch(requestUrl);
+                    
+                    console.log('[DEBUG] APIレスポンス status:', response.status);
+                    console.log('[DEBUG] APIレスポンス ok:', response.ok);
                     
                     if (!response.ok) {
                         throw new Error(`API呼び出しに失敗しました: ${response.status} ${response.statusText}`);
                     }
                     
                     const data = await response.json();
+                    console.log('[DEBUG] 受信したデータ:', data);
                     
                     // レスポンス形式の判定
                     let processedData = null;
                     if (data && data.success === true && data.data) {
                         // 統一レスポンス形式
+                        console.log('[DEBUG] 統一レスポンス形式を検出');
                         processedData = data.data;
                     } else if (data && data.property && data.rooms) {
                         // 直接的なレスポンス形式
+                        console.log('[DEBUG] 直接レスポンス形式を検出');
                         processedData = data;
                     } else {
+                        console.error('[DEBUG] 不正なレスポンス形式:', data);
                         throw new Error('APIレスポンスの形式が不正です');
                     }
                     
+                    console.log('[DEBUG] 処理されたデータ:', processedData);
                     onDataLoaded(processedData);
                     
                 } catch (error) {
+                    console.error('[DEBUG] loadRoomDataエラー:', error);
                     onError(error);
                 }
             }
 
             function onDataLoaded(data) {
+                console.log('[DEBUG] onDataLoaded呼び出し:', data);
+                
                 if (!data || !data.property || !data.rooms) {
+                    console.error('[DEBUG] データ検証失敗:', {
+                        hasData: !!data,
+                        hasProperty: !!(data && data.property),
+                        hasRooms: !!(data && data.rooms),
+                        data: data
+                    });
                     showError('データの取得に失敗しました: 不正なデータ形式');
                     return;
                 }
 
                 propertyData = data.property;
                 roomsData = data.rooms;
+
+                console.log('[DEBUG] 設定されたデータ:');
+                console.log('- propertyData:', propertyData);
+                console.log('- roomsData:', roomsData);
+                console.log('- roomsData.length:', roomsData.length);
 
                 document.getElementById('buildingName').textContent = propertyData.name;
                 displayRooms();
@@ -246,19 +285,28 @@
             }
 
             function displayRooms() {
+                console.log('[DEBUG] displayRooms呼び出し');
+                console.log('[DEBUG] roomsData:', roomsData);
+                
                 const roomGrid = document.getElementById('roomGrid');
                 roomGrid.innerHTML = '';
 
                 if (!roomsData || roomsData.length === 0) {
+                    console.warn('[DEBUG] 部屋データが空またはなし');
                     roomGrid.innerHTML = '<p>部屋データがありません</p>';
                     return;
                 }
 
-                roomsData.forEach(room => {
+                console.log('[DEBUG] 部屋データあり、件数:', roomsData.length);
+
+                roomsData.forEach((room, index) => {
+                    console.log(`[DEBUG] 部屋 ${index}:`, room);
+                    
                     const roomButton = document.createElement('div');
                     roomButton.className = 'room-button';
                     
                     const isCompleted = checkReadingStatus(room);
+                    console.log(`[DEBUG] 部屋 ${index} 検針状況:`, isCompleted);
                     
                     if (isCompleted) {
                         roomButton.classList.add('reading-completed');
@@ -274,16 +322,22 @@
                         displayText = `${room.roomNumber} 未検針`;
                     }
 
+                    console.log(`[DEBUG] 部屋 ${index} 表示テキスト:`, displayText);
+
                     roomButton.innerHTML = `
                         <div class="room-text">${displayText}</div>
                     `;
 
                     roomButton.onclick = () => {
-                        window.location.href = `meter_reading.html?propertyId=${actualPropertyId}&roomId=${room.id}`;
+                        const targetUrl = `meter_reading.html?propertyId=${actualPropertyId}&roomId=${room.id}`;
+                        console.log('[DEBUG] 部屋クリック、遷移先:', targetUrl);
+                        window.location.href = targetUrl;
                     };
 
                     roomGrid.appendChild(roomButton);
                 });
+                
+                console.log('[DEBUG] displayRooms完了、作成した部屋ボタン数:', roomGrid.children.length);
             }
 
             function checkReadingStatus(room) {
@@ -299,6 +353,7 @@
             }
 
             function onError(error) {
+                console.error('[DEBUG] onError呼び出し:', error);
                 document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました';
                 showError('データの取得でエラーが発生しました: ' + error.message);
             }
