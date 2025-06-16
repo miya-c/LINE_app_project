@@ -108,13 +108,19 @@
         let buildingData = null;
         let roomsData = null;
 
-        // URLパラメータから建物IDを取得
+        // URLパラメータから物件IDを取得
         const urlParams = new URLSearchParams(window.location.search);
-        const buildingId = urlParams.get('buildingId');
+        const propertyId = urlParams.get('propertyId');
 
-        if (!buildingId) {
-            alert('建物IDが指定されていません');
-            window.location.href = 'building_select.html';
+        console.log('URLパラメータ:', {
+            propertyId: propertyId,
+            全URLパラメータ: Object.fromEntries(urlParams)
+        });
+
+        if (!propertyId) {
+            console.error('物件IDが見つかりません。URLパラメータ:', window.location.search);
+            alert('物件IDが指定されていません\nURL: ' + window.location.href);
+            window.location.href = 'property_select.html';
         }
 
         // ページ読み込み時に実行
@@ -123,12 +129,12 @@
         };
 
         function loadRoomData() {
-            console.log('部屋データを読み込み開始:', buildingId);
+            console.log('部屋データを読み込み開始:', propertyId);
             
             google.script.run
                 .withSuccessHandler(onDataLoaded)
                 .withFailureHandler(onError)
-                .getRoomsForBuilding(buildingId);
+                .getRoomsForBuilding(propertyId);
         }
 
         function onDataLoaded(data) {
@@ -184,7 +190,7 @@
                 `;
 
                 roomButton.onclick = () => {
-                    window.location.href = `meter_reading.html?buildingId=${buildingId}&roomId=${room.id}`;
+                    window.location.href = `meter_reading.html?propertyId=${propertyId}&roomId=${room.id}`;
                 };
 
                 roomGrid.appendChild(roomButton);
@@ -215,7 +221,7 @@
         }
 
         function goBack() {
-            window.location.href = 'building_select.html';
+            window.location.href = 'property_select.html';
         }
     </script>
 </body>
