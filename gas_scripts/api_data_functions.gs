@@ -217,11 +217,61 @@ function getSpreadsheetInfo() {
  * @return {Object} 更新結果
  */
 function updateMeterReadings(propertyId, roomId, readings) {
-  try {
-    console.log('[updateMeterReadings] ========= 関数開始 =========');
+  try {    console.log('[updateMeterReadings] ========= 関数開始 =========');
     console.log('[updateMeterReadings] 実行日時:', new Date().toISOString());
-    console.log('[updateMeterReadings] propertyId:', propertyId, 'roomId:', roomId, 'データ数:', readings.length);
-    console.log('[updateMeterReadings] 更新データ:', JSON.stringify(readings));
+    console.log('[updateMeterReadings] 呼び出し元:', new Error().stack);
+    
+    // 直接実行時のエラーガイダンス
+    if (arguments.length === 0 || propertyId === undefined) {
+      const errorMessage = `
+❌ updateMeterReadings関数の直接実行エラー
+
+この関数は Web API 経由でのみ実行可能です。
+
+✅ 正しいテスト方法:
+1. testUpdateMeterReadings() 関数を実行
+2. testWebAppAPI() 関数を実行
+3. Web ブラウザから API を呼び出し
+
+📝 パラメータが必要です:
+- propertyId: 物件ID (例: 'P000001')
+- roomId: 部屋ID (例: 'R000001') 
+- readings: 検針データ配列
+
+🔧 テスト実行コマンド:
+testUpdateMeterReadings() または testWebAppAPI()
+      `;
+      
+      console.error('[updateMeterReadings]', errorMessage);
+      throw new Error('updateMeterReadings関数は直接実行できません。testUpdateMeterReadings()を使用してください。');
+    }
+    
+    console.log('[updateMeterReadings] propertyId:', propertyId, 'roomId:', roomId);
+    console.log('[updateMeterReadings] readings型:', typeof readings, 'isArray:', Array.isArray(readings));
+    console.log('[updateMeterReadings] readingsの内容:', JSON.stringify(readings));
+    
+    // パラメータバリデーションを強化
+    if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
+      throw new Error('propertyId は必須パラメータです。受信値: ' + propertyId);
+    }
+    
+    if (!roomId || roomId === 'undefined' || roomId === 'null') {
+      throw new Error('roomId は必須パラメータです。受信値: ' + roomId);
+    }
+    
+    if (readings === null || readings === undefined) {
+      throw new Error('readings パラメータが null または undefined です。受信値: ' + readings);
+    }
+    
+    if (!Array.isArray(readings)) {
+      throw new Error('readings パラメータが配列ではありません。受信した型: ' + typeof readings + ', 値: ' + JSON.stringify(readings));
+    }
+    
+    if (readings.length === 0) {
+      throw new Error('readings配列が空です。最低1つの検針データが必要です。');
+    }
+    
+    console.log('[updateMeterReadings] パラメータバリデーション通過 - データ数:', readings.length);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('inspection_data');
@@ -283,22 +333,30 @@ function updateMeterReadings(propertyId, roomId, readings) {
     
     console.log('[updateMeterReadings] ===== データ処理開始 =====');
     console.log('[updateMeterReadings] 対象件数:', readings.length);
-    
-    // 各検針データを処理
+      // 各検針データを処理
     for (let i = 0; i < readings.length; i++) {
       const reading = readings[i];
       console.log(`[updateMeterReadings] 処理中 [${i}]:`, reading);
       
       let skip = false;
       try {
+        // readingオブジェクトの検証
+        if (!reading || typeof reading !== 'object') {
+          throw new Error(`読み込み不能なデータ [${i}]: ${JSON.stringify(reading)}`);
+        }
+        
         const recordDate = reading.date || '';
         const currentReadingValue = parseFloat(reading.currentReading) || 0;
         
-        // 既存データを検索
+        // 数値の妥当性チェック
+        if (isNaN(currentReadingValue) || currentReadingValue < 0) {
+          throw new Error(`無効な指示数 [${i}]: ${reading.currentReading}`);
+        }
+          // 既存データを検索
         let existingRowIndex = -1;
         for (let j = 1; j < data.length; j++) {
-          if (data[j][columnIndexes.propertyId] === propertyId && 
-              data[j][columnIndexes.roomId] === roomId) {
+          if (String(data[j][columnIndexes.propertyId]).trim() === String(propertyId).trim() && 
+              String(data[j][columnIndexes.roomId]).trim() === String(roomId).trim()) {
             existingRowIndex = j;
             break;
           }
@@ -352,12 +410,11 @@ function updateMeterReadings(propertyId, roomId, readings) {
         
         updatedCount++;
         console.log(`[updateMeterReadings] 検針データ更新: ${recordDate || '空の日付'} - 指示数: ${currentReadingValue}, 使用量: ${usage}`);
-        
-      } catch (updateError) {
+          } catch (updateError) {
         console.error(`[updateMeterReadings] 検針データ更新エラー (行${i}):`, updateError.message);
         updatedReadings.push({
-          date: reading.date,
-          currentReading: reading.currentReading,
+          date: reading?.date || '',
+          currentReading: reading?.currentReading || '',
           error: updateError.message,
           updated: false
         });
@@ -371,8 +428,13 @@ function updateMeterReadings(propertyId, roomId, readings) {
     console.log(`[updateMeterReadings] 成功件数: ${updatedCount}`);
     
     // スプレッドシートに書き戻し
-    sheet.getDataRange().setValues(data);
-    console.log('[updateMeterReadings] スプレッドシート更新完了');
+    try {
+      sheet.getDataRange().setValues(data);
+      console.log('[updateMeterReadings] スプレッドシート更新完了');
+    } catch (sheetError) {
+      console.error('[updateMeterReadings] スプレッドシート書き込みエラー:', sheetError);
+      throw new Error('スプレッドシートへの書き込みに失敗しました: ' + sheetError.message);
+    }
     
     return {
       success: true,
@@ -384,11 +446,20 @@ function updateMeterReadings(propertyId, roomId, readings) {
     
   } catch (error) {
     console.error('[updateMeterReadings] エラー:', error);
+    console.error('[updateMeterReadings] エラースタック:', error.stack);
+    
     return {
-      success: false,
-      error: error.message,
+      success: false,      error: error.message,
       message: '検針データの更新に失敗しました',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      receivedParameters: {
+        propertyId: propertyId,
+        roomId: roomId,
+        readingsType: typeof readings,
+        readingsIsArray: Array.isArray(readings),
+        readingsLength: readings ? (Array.isArray(readings) ? readings.length : 'not array') : 'null/undefined',
+        readingsValue: readings
+      }
     };
   }
 }
@@ -454,5 +525,93 @@ function getRoomName(propertyId, roomId) {
   } catch (error) {
     console.error('[getRoomName] エラー:', error);
     return '';
+  }
+}
+
+/**
+ * updateMeterReadings関数のテスト実行用
+ */
+function testUpdateMeterReadings() {
+  try {
+    console.log('[testUpdateMeterReadings] ========= テスト実行開始 =========');
+    
+    // テスト用パラメータ
+    const testPropertyId = 'P000001';
+    const testRoomId = 'R000001';
+    const testReadings = [
+      {
+        date: '2025-01-16',
+        currentReading: '1250'
+      }
+    ];
+    
+    console.log('[testUpdateMeterReadings] テストパラメータ:');
+    console.log('[testUpdateMeterReadings] - propertyId:', testPropertyId);
+    console.log('[testUpdateMeterReadings] - roomId:', testRoomId);
+    console.log('[testUpdateMeterReadings] - readings:', JSON.stringify(testReadings));
+    
+    // 関数を正しいパラメータで実行
+    const result = updateMeterReadings(testPropertyId, testRoomId, testReadings);
+    
+    console.log('[testUpdateMeterReadings] ========= テスト実行完了 =========');
+    console.log('[testUpdateMeterReadings] 結果:', JSON.stringify(result, null, 2));
+    
+    return result;
+    
+  } catch (error) {
+    console.error('[testUpdateMeterReadings] エラー:', error);
+    console.error('[testUpdateMeterReadings] エラースタック:', error.stack);
+    throw error;
+  }
+}
+
+/**
+ * Web App API全体のテスト
+ */
+function testWebAppAPI() {
+  try {
+    console.log('[testWebAppAPI] ========= Web APP APIテスト開始 =========');
+    
+    // doGet関数のテスト用パラメータを作成
+    const mockEvent = {
+      parameter: {
+        action: 'updateMeterReadings',
+        propertyId: 'P000001',
+        roomId: 'R000001',
+        readings: JSON.stringify([
+          {
+            date: '2025-01-16',
+            currentReading: '1250'
+          }
+        ])
+      }
+    };
+    
+    console.log('[testWebAppAPI] モックイベント:', JSON.stringify(mockEvent, null, 2));
+    
+    // doGet関数を実行
+    const result = doGet(mockEvent);
+    
+    console.log('[testWebAppAPI] ========= Web APP APIテスト完了 =========');
+    console.log('[testWebAppAPI] 結果タイプ:', typeof result);
+    
+    if (result && typeof result.getContent === 'function') {
+      const content = result.getContent();
+      console.log('[testWebAppAPI] レスポンス内容:', content);
+      
+      try {
+        const jsonResult = JSON.parse(content);
+        console.log('[testWebAppAPI] パースされたJSON:', jsonResult);
+      } catch (parseError) {
+        console.log('[testWebAppAPI] JSON解析失敗 - HTMLレスポンス?');
+      }
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('[testWebAppAPI] エラー:', error);
+    console.error('[testWebAppAPI] エラースタック:', error.stack);
+    throw error;
   }
 }

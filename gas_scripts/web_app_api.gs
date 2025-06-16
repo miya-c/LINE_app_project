@@ -83,8 +83,20 @@ function doGet(e) {
     if (e?.parameter?.action) {
       const action = e.parameter.action;
       console.log('[doGet] API要求 - アクション:', action);
-      
-      switch (action) {
+        switch (action) {
+        case 'test':
+          console.log('[doGet] テストリクエスト');
+          return createCorsJsonResponse({
+            success: true,
+            message: 'Google Apps Script Web App正常動作',
+            timestamp: new Date().toISOString(),
+            version: '2025-01-16-CORS-FIX',
+            debugInfo: {
+              receivedAction: action,
+              allParams: e?.parameter
+            }
+          });
+          
         case 'getProperties':
           console.log('[doGet] API: getProperties');
           try {
@@ -215,29 +227,69 @@ function doGet(e) {
             
             return createCorsJsonResponse(errorResponse);
           }
-          
-        case 'updateMeterReadings':
+            case 'updateMeterReadings':
           console.log('[doGet] API: updateMeterReadings');
           try {
             const propertyId = e.parameter.propertyId;
             const roomId = e.parameter.roomId;
             const readingsParam = e.parameter.readings;
             
-            if (!propertyId || !roomId || !readingsParam) {
-              throw new Error('propertyId, roomId, および readings パラメータが必要です');
+            console.log('[doGet] 受信パラメータ詳細:');
+            console.log('[doGet] - propertyId:', propertyId, '型:', typeof propertyId);
+            console.log('[doGet] - roomId:', roomId, '型:', typeof roomId);
+            console.log('[doGet] - readingsParam:', readingsParam, '型:', typeof readingsParam);
+            
+            if (!propertyId || propertyId === 'undefined') {
+              throw new Error('propertyId パラメータが必要です。受信値: ' + propertyId);
+            }
+            
+            if (!roomId || roomId === 'undefined') {
+              throw new Error('roomId パラメータが必要です。受信値: ' + roomId);
+            }
+            
+            if (!readingsParam || readingsParam === 'undefined') {
+              throw new Error('readings パラメータが必要です。受信値: ' + readingsParam);
             }
             
             console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
             console.log('[doGet] readings param:', readingsParam);
             
             // JSON文字列をパース
-            const readings = JSON.parse(readingsParam);
+            let readings;
+            try {
+              readings = JSON.parse(readingsParam);
+              console.log('[doGet] JSON パース成功:', readings);
+              console.log('[doGet] パース後の型:', typeof readings, 'isArray:', Array.isArray(readings));
+              
+              if (Array.isArray(readings)) {
+                console.log('[doGet] パース後のreadingsの長さ:', readings.length);
+                console.log('[doGet] パース後のreadingsの内容:', JSON.stringify(readings));
+              }
+              
+            } catch (parseError) {
+              console.error('[doGet] JSON パースエラー:', parseError);
+              console.error('[doGet] パース対象の文字列:', readingsParam);
+              throw new Error(`readingsパラメータのJSONパースに失敗しました: ${parseError.message}`);
+            }
+            
+            if (!Array.isArray(readings)) {
+              throw new Error(`readingsは配列である必要があります。受信した型: ${typeof readings}, 値: ${JSON.stringify(readings)}`);
+            }
+            
+            if (readings.length === 0) {
+              throw new Error('readings配列が空です。最低1つの検針データが必要です。');
+            }
+            
+            // updateMeterReadings関数を呼び出し
             const result = updateMeterReadings(propertyId, roomId, readings);
             console.log('[doGet] 検針データ更新完了:', result);
             
             return createCorsJsonResponse(result);
+            
           } catch (apiError) {
             console.error('[doGet] updateMeterReadings API エラー:', apiError);
+            console.error('[doGet] エラースタック:', apiError.stack);
+            
             const errorResponse = {
               success: false,
               error: `検針データ更新エラー: ${apiError.message}`,
@@ -247,7 +299,13 @@ function doGet(e) {
               debugInfo: {
                 errorType: apiError.name,
                 errorMessage: apiError.message,
-                errorStack: apiError.stack
+                errorStack: apiError.stack,
+                receivedParams: {
+                  propertyId: e.parameter.propertyId,
+                  roomId: e.parameter.roomId,
+                  readings: e.parameter.readings,
+                  allParams: e.parameter
+                }
               }
             };
             
