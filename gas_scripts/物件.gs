@@ -1,3 +1,8 @@
+/*
+// このファイルはアーカイブファイルです
+// すべての機能は他のファイルに移行済み
+// web_app_api.gs と api_data_functions.gs を使用してください
+
 // Google Apps Script - 水道メーター読み取りアプリ API
 // 物件データ、部屋データ、検針データの管理
 
@@ -6,6 +11,7 @@
  * @param {Object} data - レスポンスデータ
  * @returns {TextOutput} CORSヘッダー付きJSONレスポンス
  */
+/*
 function createCorsJsonResponse(data) {
   const output = ContentService
     .createTextOutput(JSON.stringify(data))
@@ -24,6 +30,7 @@ function createCorsJsonResponse(data) {
  * @param {Object} e - リクエストイベントオブジェクト
  * @returns {TextOutput} CORSヘッダー付きレスポンス
  */
+/*
 function doPost(e) {
   console.log('[doPost] リクエスト受信 - メソッド: POST');
   console.log('[doPost] パラメータ:', e?.parameter);
@@ -37,6 +44,7 @@ function doPost(e) {
  * @param {Object} e - リクエストイベントオブジェクト
  * @returns {HtmlOutput|TextOutput} HTMLページまたはJSONレスポンス
  */
+/*
 function doGet(e) {
   try {
     console.log('[doGet] Web App アクセス開始');
@@ -232,6 +240,7 @@ function doGet(e) {
  * 物件一覧を取得
  * @return {Array} 物件一覧
  */
+/*
 function getProperties() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -703,8 +712,11 @@ function updateMeterReadings(propertyId, roomId, readings) {
     return {
       success: false,
       error: error.message,
-      message: '検針データの更新に失敗しました',
-      timestamp: new Date().toISOString()
+      message: '検針データの更新に失敗しました',      timestamp: new Date().toISOString()
     };
   }
 }
+*/
+
+// ======= 以上、すべてアーカイブファイルです =======
+// 使用しないでください。web_app_api.gs と api_data_functions.gs を使用してください。
