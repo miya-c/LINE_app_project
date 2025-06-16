@@ -130,11 +130,10 @@ function doGet(e) {
                 functionCalled: 'getRooms',
                 roomsType: typeof rooms,
                 isArray: Array.isArray(rooms)
-              }
-            };
+              }            };
             
             return createCorsJsonResponse(response);
-              
+            
           } catch (apiError) {
             console.error('[doGet] getRooms API エラー:', apiError);
             
@@ -142,9 +141,9 @@ function doGet(e) {
               success: false,
               error: `部屋データ取得エラー: ${apiError.message}`,
               data: [],
-              count: 0,
-              timestamp: new Date().toISOString(),
-              propertyId: e.parameter.propertyId || 'unknown',              debugInfo: {
+              count: 0,              timestamp: new Date().toISOString(),
+              propertyId: e.parameter.propertyId || 'unknown',
+              debugInfo: {
                 errorType: apiError.name,
                 errorMessage: apiError.message,
                 errorStack: apiError.stack
@@ -174,15 +173,14 @@ function doGet(e) {
               count: Array.isArray(meterReadings) ? meterReadings.length : 0,
               timestamp: new Date().toISOString(),
               propertyId: propertyId,
-              roomId: roomId,
-              debugInfo: {
+              roomId: roomId,              debugInfo: {
                 functionCalled: 'getMeterReadings',
                 dataType: typeof meterReadings,
                 isArray: Array.isArray(meterReadings)
-              }            };
+              }
+            };
+              return createCorsJsonResponse(response);
             
-            return createCorsJsonResponse(response);
-              
           } catch (apiError) {
             console.error('[doGet] getMeterReadings API エラー:', apiError);
             
@@ -219,14 +217,13 @@ function doGet(e) {
             try {
               readings = JSON.parse(readingsParam);
             } catch (parseError) {
-              throw new Error('readings パラメータが有効なJSONではありません');
-            }
-              console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
+              throw new Error('readings パラメータが有効なJSONではありません');            }
+            
+            console.log('[doGet] 検針データ更新開始 - propertyId:', propertyId, 'roomId:', roomId);
             const result = updateMeterReadings(propertyId, roomId, readings);
             console.log('[doGet] 検針データ更新完了:', result);
+              return createCorsJsonResponse(result);
             
-            return createCorsJsonResponse(result);
-              
           } catch (apiError) {
             console.error('[doGet] updateMeterReadings API エラー:', apiError);
             
