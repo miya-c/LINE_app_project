@@ -263,130 +263,128 @@
                     window.location.href = 'property_select.html';
                 }
             }, 5000);
-            
-            return; // 処理を停止
-        }
+        } else {
+            // 成功時の処理
+            console.log('物件ID取得成功:', actualPropertyId);
 
-        // 成功時の処理
-        console.log('物件ID取得成功:', actualPropertyId);
+            // ページ読み込み時に実行
+            window.onload = function() {
+                loadRoomData();
+            };
 
-        // ページ読み込み時に実行
-        window.onload = function() {
-            loadRoomData();
-        };
-
-        function loadRoomData() {
-            console.log('部屋データを読み込み開始:', actualPropertyId);
-            
-            // デバッグ情報を更新
-            debugData['=== データ取得状況 ==='] = '';
-            debugData['取得開始時刻'] = new Date().toISOString();
-            debugData['使用する物件ID'] = actualPropertyId;
-            updateDebugInfo();
-            
-            google.script.run
-                .withSuccessHandler(onDataLoaded)
-                .withFailureHandler(onError)
-                .getRoomsForBuilding(actualPropertyId);
-        }
-
-        function onDataLoaded(data) {
-            console.log('取得したデータ:', data);
-            
-            // デバッグ情報を更新
-            debugData['データ取得完了'] = new Date().toISOString();
-            debugData['取得したデータ'] = JSON.stringify(data, null, 2).substring(0, 500) + '...';
-            updateDebugInfo();
-            
-            // デバッグ情報を非表示にする
-            setTimeout(() => {
-                toggleDebug();
-            }, 3000);
-            
-            if (!data || !data.building || !data.rooms) {
-                console.error('データが不正です:', data);
-                showError('データの取得に失敗しました: 不正なデータ形式');
-                return;
+            function loadRoomData() {
+                console.log('部屋データを読み込み開始:', actualPropertyId);
+                
+                // デバッグ情報を更新
+                debugData['=== データ取得状況 ==='] = '';
+                debugData['取得開始時刻'] = new Date().toISOString();
+                debugData['使用する物件ID'] = actualPropertyId;
+                updateDebugInfo();
+                
+                google.script.run
+                    .withSuccessHandler(onDataLoaded)
+                    .withFailureHandler(onError)
+                    .getRoomsForBuilding(actualPropertyId);
             }
 
-            buildingData = data.building;
-            roomsData = data.rooms;
-
-            document.getElementById('buildingName').textContent = buildingData.name;
-            displayRooms();
-            
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('roomGrid').style.display = 'grid';
-        }
-
-        function displayRooms() {
-            const roomGrid = document.getElementById('roomGrid');
-            roomGrid.innerHTML = '';
-
-            if (!roomsData || roomsData.length === 0) {
-                roomGrid.innerHTML = '<p>部屋データがありません</p>';
-                return;
-            }
-
-            roomsData.forEach(room => {
-                const roomButton = document.createElement('div');
-                roomButton.className = 'room-button';
+            function onDataLoaded(data) {
+                console.log('取得したデータ:', data);
                 
-                const isCompleted = checkReadingStatus(room);
+                // デバッグ情報を更新
+                debugData['データ取得完了'] = new Date().toISOString();
+                debugData['取得したデータ'] = JSON.stringify(data, null, 2).substring(0, 500) + '...';
+                updateDebugInfo();
                 
-                if (isCompleted) {
-                    roomButton.classList.add('reading-completed');
-                } else {
-                    roomButton.classList.add('reading-not-completed');
+                // デバッグ情報を非表示にする
+                setTimeout(() => {
+                    toggleDebug();
+                }, 3000);
+                
+                if (!data || !data.building || !data.rooms) {
+                    console.error('データが不正です:', data);
+                    showError('データの取得に失敗しました: 不正なデータ形式');
+                    return;
                 }
 
-                // 一行で横並び表示
-                let displayText = '';
-                if (isCompleted && room.readingDateFormatted) {
-                    displayText = `${room.roomNumber} 検針済み：${room.readingDateFormatted}`;
-                } else {
-                    displayText = `${room.roomNumber} 未検針`;
+                buildingData = data.building;
+                roomsData = data.rooms;
+
+                document.getElementById('buildingName').textContent = buildingData.name;
+                displayRooms();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('roomGrid').style.display = 'grid';
+            }
+
+            function displayRooms() {
+                const roomGrid = document.getElementById('roomGrid');
+                roomGrid.innerHTML = '';
+
+                if (!roomsData || roomsData.length === 0) {
+                    roomGrid.innerHTML = '<p>部屋データがありません</p>';
+                    return;
                 }
 
-                roomButton.innerHTML = `
-                    <div class="room-text">${displayText}</div>
-                `;
+                roomsData.forEach(room => {
+                    const roomButton = document.createElement('div');
+                    roomButton.className = 'room-button';
+                    
+                    const isCompleted = checkReadingStatus(room);
+                    
+                    if (isCompleted) {
+                        roomButton.classList.add('reading-completed');
+                    } else {
+                        roomButton.classList.add('reading-not-completed');
+                    }
 
-                roomButton.onclick = () => {
-                    window.location.href = `meter_reading.html?propertyId=${actualPropertyId}&roomId=${room.id}`;
-                };
+                    // 一行で横並び表示
+                    let displayText = '';
+                    if (isCompleted && room.readingDateFormatted) {
+                        displayText = `${room.roomNumber} 検針済み：${room.readingDateFormatted}`;
+                    } else {
+                        displayText = `${room.roomNumber} 未検針`;
+                    }
 
-                roomGrid.appendChild(roomButton);
-            });
-        }
+                    roomButton.innerHTML = `
+                        <div class="room-text">${displayText}</div>
+                    `;
 
-        function checkReadingStatus(room) {
-            console.log('検針状況チェック:', room);
-            
-            if (room.readingStatus !== undefined) {
-                console.log('readingStatusから判定:', room.readingStatus);
-                return room.readingStatus === 'completed';
+                    roomButton.onclick = () => {
+                        window.location.href = `meter_reading.html?propertyId=${actualPropertyId}&roomId=${room.id}`;
+                    };
+
+                    roomGrid.appendChild(roomButton);
+                });
             }
-            
-            if (room.isCompleted !== undefined) {
-                console.log('isCompletedから判定:', room.isCompleted);
-                return room.isCompleted === true;
-            }
-            
-            console.log('検針状況不明、未検針として扱う');
-            return false;
-        }
 
-        function onError(error) {
-            console.error('エラー:', error);
-            
-            // デバッグ情報を更新
-            debugData['エラー発生'] = new Date().toISOString();
-            debugData['エラー内容'] = error.message || error.toString();
-            updateDebugInfo();
-            
-            document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました: ' + error.message;
-            showError('データの取得でエラーが発生しました: ' + error.message);
+            function checkReadingStatus(room) {
+                console.log('検針状況チェック:', room);
+                
+                if (room.readingStatus !== undefined) {
+                    console.log('readingStatusから判定:', room.readingStatus);
+                    return room.readingStatus === 'completed';
+                }
+                
+                if (room.isCompleted !== undefined) {
+                    console.log('isCompletedから判定:', room.isCompleted);
+                    return room.isCompleted === true;
+                }
+                
+                console.log('検針状況不明、未検針として扱う');
+                return false;
+            }
+
+            function onError(error) {
+                console.error('エラー:', error);
+                
+                // デバッグ情報を更新
+                debugData['エラー発生'] = new Date().toISOString();
+                debugData['エラー内容'] = error.message || error.toString();
+                updateDebugInfo();
+                
+                document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました: ' + error.message;
+                showError('データの取得でエラーが発生しました: ' + error.message);
+            }
         }
 
         function goBack() {
