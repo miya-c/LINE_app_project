@@ -45,48 +45,173 @@ function getProperties() {
 }
 
 /**
- * 指定物件の部屋データを取得
+ * 指定物件の部屋データを取得（検針情報付き）
  * @param {string} propertyId - 物件ID
- * @returns {Array} 部屋データの配列
+ * @returns {Array} 部屋データの配列（検針情報含む）
  */
 function getRooms(propertyId) {
   try {
-    console.log('[getRooms] 部屋データ取得開始 - propertyId:', propertyId);
+    console.log('[getRooms] 検針情報付き部屋データ取得開始 - propertyId:', propertyId);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('部屋マスタ');
+    const roomSheet = ss.getSheetByName('部屋マスタ');
+    const inspectionSheet = ss.getSheetByName('inspection_data');
     
-    if (!sheet) {
+    if (!roomSheet) {
       throw new Error('部屋マスタシートが見つかりません');
     }
     
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) {
+    if (!inspectionSheet) {
+      console.warn('[getRooms] inspection_dataシートが見つかりません - 検針情報なしで継続');
+    }
+    
+    // 部屋マスタからベースデータを取得
+    const roomData = roomSheet.getDataRange().getValues();
+    if (roomData.length <= 1) {
       console.log('[getRooms] 部屋マスタにデータがありません');
       return [];
     }
     
-    const headers = data[0];
-    console.log('[getRooms] 部屋マスタヘッダー:', headers);
+    const roomHeaders = roomData[0];
+    console.log('[getRooms] 部屋マスタヘッダー:', roomHeaders);
     
-    const propertyIdIndex = headers.indexOf('物件ID');
+    const propertyIdIndex = roomHeaders.indexOf('物件ID');
     
     if (propertyIdIndex === -1) {
       throw new Error('物件ID列が見つかりません');
     }
     
-    const rooms = data.slice(1)
+    // 指定物件の部屋を取得
+    const propertyRooms = roomData.slice(1)
       .filter(row => String(row[propertyIdIndex]).trim() === String(propertyId).trim())
       .map(row => {
         const room = {};
-        headers.forEach((header, index) => {
+        roomHeaders.forEach((header, index) => {
           room[header] = row[index];
         });
+        
+        // 英語プロパティも追加（フロントエンド互換性）
+        room.id = room['部屋ID'] || '';
+        room.name = room['部屋名'] || '';
+        room.roomId = room['部屋ID'] || '';
+        room.roomName = room['部屋名'] || '';
+        
         return room;
       });
     
-    console.log('[getRooms] 部屋データ取得完了 - propertyId:', propertyId, '件数:', rooms.length);
-    return rooms;
+    console.log('[getRooms] 部屋マスタから取得完了:', propertyRooms.length, '件');
+    
+    // 検針データがある場合は検針情報を追加
+    if (inspectionSheet && propertyRooms.length > 0) {
+      console.log('[getRooms] 検針情報を取得中...');
+      
+      const inspectionData = inspectionSheet.getDataRange().getValues();
+      if (inspectionData.length > 1) {
+        const inspectionHeaders = inspectionData[0];
+        const inspectionPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
+        const inspectionRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
+        const inspectionDateIndex = inspectionHeaders.indexOf('検針日時');
+        const currentReadingIndex = inspectionHeaders.indexOf('今回の指示数');
+        
+        console.log('[getRooms] inspection_dataヘッダー:', inspectionHeaders);
+        console.log('[getRooms] 列インデックス:', {
+          propertyId: inspectionPropertyIdIndex,
+          roomId: inspectionRoomIdIndex,
+          date: inspectionDateIndex,
+          reading: currentReadingIndex
+        });
+        
+        if (inspectionPropertyIdIndex !== -1 && inspectionRoomIdIndex !== -1) {
+          // 各部屋に対して最新の検針情報を追加
+          propertyRooms.forEach(room => {
+            const roomId = room['部屋ID'] || room.id;
+            
+            // この部屋の検針データを検索（最新順）
+            const roomInspections = inspectionData.slice(1)
+              .filter(row => 
+                String(row[inspectionPropertyIdIndex]).trim() === String(propertyId).trim() && 
+                String(row[inspectionRoomIdIndex]).trim() === String(roomId).trim()
+              )
+              .map(row => {
+                const inspection = {};
+                inspectionHeaders.forEach((header, index) => {
+                  inspection[header] = row[index];
+                });
+                return inspection;
+              })
+              .sort((a, b) => {
+                // 検針日時で降順ソート（最新が最初）
+                const dateA = new Date(a['検針日時'] || 0);
+                const dateB = new Date(b['検針日時'] || 0);
+                return dateB - dateA;
+              });
+            
+            console.log(`[getRooms] 部屋 ${roomId} の検針データ:`, roomInspections.length, '件');
+            
+            if (roomInspections.length > 0) {
+              const latestInspection = roomInspections[0];
+              const inspectionDate = latestInspection['検針日時'];
+              const currentReading = latestInspection['今回の指示数'];
+              
+              // 検針情報を部屋データに追加
+              room.rawInspectionDate = inspectionDate || '';
+              room.inspectionDate = inspectionDate || '';
+              room['検針日時'] = inspectionDate || '';
+              
+              // 検針済みかどうかの判定
+              const hasReading = currentReading && 
+                                String(currentReading).trim() !== '' && 
+                                !isNaN(parseFloat(currentReading));
+              const hasDate = inspectionDate && 
+                             String(inspectionDate).trim() !== '' && 
+                             inspectionDate !== null && 
+                             inspectionDate !== undefined;
+              
+              room.hasActualReading = hasReading;
+              room.hasReading = hasReading;
+              room['検針済み'] = hasReading;
+              
+              console.log(`[getRooms] 部屋 ${roomId} 検針情報:`, {
+                inspectionDate,
+                currentReading,
+                hasReading,
+                hasDate,
+                判定: hasReading ? '検針済み' : '未検針'
+              });
+            } else {
+              // 検針データがない場合
+              room.rawInspectionDate = '';
+              room.inspectionDate = '';
+              room['検針日時'] = '';
+              room.hasActualReading = false;
+              room.hasReading = false;
+              room['検針済み'] = false;
+              
+              console.log(`[getRooms] 部屋 ${roomId}: 検針データなし`);
+            }
+          });
+        } else {
+          console.warn('[getRooms] inspection_dataに必要な列が見つかりません');
+        }
+      } else {
+        console.log('[getRooms] inspection_dataにデータがありません');
+      }
+    }
+    
+    console.log('[getRooms] 検針情報付き部屋データ取得完了 - propertyId:', propertyId, '件数:', propertyRooms.length);
+    
+    // 最終結果をログ出力
+    propertyRooms.forEach((room, index) => {
+      console.log(`[getRooms] 最終部屋データ[${index}]:`, {
+        id: room.id,
+        name: room.name,
+        rawInspectionDate: room.rawInspectionDate,
+        hasActualReading: room.hasActualReading,
+        検針状況: room.hasActualReading ? '検針済み' : '未検針'
+      });
+    });
+    
+    return propertyRooms;
     
   } catch (error) {
     console.error('[getRooms] エラー:', error);
@@ -612,6 +737,39 @@ function testWebAppAPI() {
   } catch (error) {
     console.error('[testWebAppAPI] エラー:', error);
     console.error('[testWebAppAPI] エラースタック:', error.stack);
+    throw error;
+  }
+}
+
+/**
+ * 検針情報付き部屋データ取得のテスト関数
+ */
+function testGetRoomsWithInspection() {
+  try {
+    console.log('=== 検針情報付き部屋データ取得テスト ===');
+    
+    // 実際の物件IDを使用してテスト
+    const rooms = getRooms('P000001');
+    
+    console.log('取得結果:', rooms.length, '件');
+    
+    if (rooms.length > 0) {
+      console.log('サンプルデータ:');
+      rooms.slice(0, 3).forEach((room, index) => {
+        console.log(`部屋[${index}]:`, {
+          ID: room.id,
+          名前: room.name,
+          検針日時: room.rawInspectionDate,
+          検針済み: room.hasActualReading,
+          判定: room.hasActualReading ? '✅検針済み' : '❌未検針'
+        });
+      });
+    }
+    
+    return rooms;
+    
+  } catch (error) {
+    console.error('テストエラー:', error);
     throw error;
   }
 }

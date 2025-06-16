@@ -884,9 +884,7 @@
                   const inspectionStatus = formatInspectionStatus({
                     rawInspectionDate: normalizedRoom.rawInspectionDate,
                     hasActualReading: normalizedRoom.hasActualReading
-                  });
-
-                  // 検針済みの場合は日付のみを表示、未検針の場合は[未検針]
+                  });                  // 検針済みの場合は月日のみを表示、未検針の場合は[未検針]
                   let statusDisplay = null;
                   if (inspectionStatus.status === '検針済み' && inspectionStatus.displayDate) {
                     statusDisplay = (
@@ -896,7 +894,7 @@
                         fontSize: '0.9em',
                         marginLeft: '8px'
                       }}>
-                        [検針日時：{inspectionStatus.displayDate}]
+                        [{inspectionStatus.displayDate}]
                       </span>
                     );
                   } else if (inspectionStatus.status === '検針済み' && !inspectionStatus.displayDate) {

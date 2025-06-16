@@ -133,30 +133,48 @@ function doGet(e) {
             
             return createCorsJsonResponse(errorResponse);
           }
-          
-        case 'getRooms':
+            case 'getRooms':
           console.log('[doGet] API: getRooms');
+          console.log('[doGet] propertyId:', e.parameter.propertyId);
+          
+          if (!e.parameter.propertyId) {
+            return createCorsJsonResponse({ 
+              success: false,
+              error: 'propertyId パラメータが必要です',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
           try {
-            const propertyId = e.parameter.propertyId;
-            if (!propertyId) {
-              throw new Error('propertyId パラメータが必要です');
+            const rooms = getRooms(e.parameter.propertyId);
+            console.log('[doGet] 取得された部屋数:', rooms.length);
+            
+            // 検針情報の確認ログ
+            if (rooms.length > 0) {
+              console.log('[doGet] サンプル部屋データ:', {
+                部屋ID: rooms[0].id || rooms[0]['部屋ID'],
+                部屋名: rooms[0].name || rooms[0]['部屋名'],
+                検針日時: rooms[0].rawInspectionDate || rooms[0]['検針日時'],
+                検針済み: rooms[0].hasActualReading || rooms[0]['検針済み']
+              });
             }
             
-            console.log('[doGet] 部屋データ取得開始 - propertyId:', propertyId);
-            const rooms = getRooms(propertyId);
-            console.log('[doGet] 部屋データ取得完了 - 件数:', Array.isArray(rooms) ? rooms.length : 'not array');
-            
-            const response = {
+            return createCorsJsonResponse({
               success: true,
-              data: Array.isArray(rooms) ? rooms : [],
-              count: Array.isArray(rooms) ? rooms.length : 0,
+              data: rooms,
+              count: rooms.length,
               timestamp: new Date().toISOString(),
-              propertyId: propertyId,
               debugInfo: {
-                functionCalled: 'getRooms',
-                roomsType: typeof rooms,
-                isArray: Array.isArray(rooms)
-              }            };
+                propertyId: e.parameter.propertyId,
+                roomCount: rooms.length,
+                firstRoomSample: rooms.length > 0 ? {
+                  id: rooms[0].id,
+                  name: rooms[0].name,
+                  hasInspectionDate: !!rooms[0].rawInspectionDate,
+                  hasActualReading: !!rooms[0].hasActualReading
+                } : null
+              }
+            });
             
             return createCorsJsonResponse(response);
             
