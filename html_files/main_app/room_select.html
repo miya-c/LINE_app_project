@@ -25,6 +25,38 @@
             margin-bottom: 20px;
             color: #333;
         }
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #6c757d;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .debug-toggle {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .debug-toggle:hover {
+            background-color: #5a6268;
+        }
         .room-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -75,7 +107,7 @@
             padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
-            margin-top: 20px;
+            margin: 5px;
         }
         .back-button:hover {
             background-color: #5a6268;
@@ -99,6 +131,14 @@
 <body>
     <div class="container">
         <div class="building-name" id="buildingName">建物名読み込み中...</div>
+        
+        <!-- デバッグ情報表示エリア -->
+        <div id="debugInfo" class="debug-info"></div>
+        <button class="debug-toggle" onclick="toggleDebug()">デバッグ情報を表示/非表示</button>
+        
+        <!-- エラーメッセージ表示エリア -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
         <div id="loading" class="loading">部屋データを読み込み中...</div>
         <div id="roomGrid" class="room-grid" style="display: none;"></div>
         <button class="back-button" onclick="goBack()">戻る</button>
@@ -107,21 +147,128 @@
     <script>
         let buildingData = null;
         let roomsData = null;
+        let debugVisible = true;
 
-        // URLパラメータから物件IDを取得
+        // URL詳細解析
+        const currentUrl = window.location.href;
+        const urlObj = new URL(currentUrl);
         const urlParams = new URLSearchParams(window.location.search);
         const propertyId = urlParams.get('propertyId');
+        
+        // 可能性のある他のパラメータもチェック
+        const buildingId = urlParams.get('buildingId');
+        const id = urlParams.get('id');
+        const pid = urlParams.get('pid');
 
-        console.log('URLパラメータ:', {
-            propertyId: propertyId,
-            全URLパラメータ: Object.fromEntries(urlParams)
-        });
+        // デバッグ情報の詳細収集
+        const debugData = {
+            '=== URL情報 ===': '',
+            '完全URL': currentUrl,
+            'プロトコル': urlObj.protocol,
+            'ホスト': urlObj.host,
+            'パス': urlObj.pathname,
+            'クエリ文字列': urlObj.search,
+            'ハッシュ': urlObj.hash,
+            '': '',
+            '=== URLパラメータ ===': '',
+            'propertyId': propertyId,
+            'buildingId': buildingId,
+            'id': id,
+            'pid': pid,
+            '全パラメータ数': urlParams.size,
+            '全パラメータ': JSON.stringify(Object.fromEntries(urlParams), null, 2),
+            '  ': '',
+            '=== ナビゲーション情報 ===': '',
+            'referrer': document.referrer,
+            'userAgent': navigator.userAgent.substring(0, 100) + '...',
+            'タイムスタンプ': new Date().toISOString(),
+            '   ': '',
+            '=== 判定結果 ===': '',
+            '使用するID': propertyId || buildingId || id || pid || 'なし',
+            'ID取得成功': !!(propertyId || buildingId || id || pid),
+            '処理継続可能': !!(propertyId || buildingId || id || pid)
+        };
 
-        if (!propertyId) {
-            console.error('物件IDが見つかりません。URLパラメータ:', window.location.search);
-            alert('物件IDが指定されていません\nURL: ' + window.location.href);
-            window.location.href = 'property_select.html';
+        // デバッグ情報を表示
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            let debugHtml = '';
+            
+            Object.entries(debugData).forEach(([key, value]) => {
+                if (key === '' || key === '  ' || key === '   ' || key.startsWith('===')) {
+                    debugHtml += `<div style="font-weight: bold; color: #007bff; margin-top: 10px;">${key}</div>`;
+                } else {
+                    debugHtml += `<div><strong>${key}:</strong> ${value}</div>`;
+                }
+            });
+            
+            debugDiv.innerHTML = debugHtml;
         }
+
+        // デバッグ表示切り替え
+        function toggleDebug() {
+            const debugDiv = document.getElementById('debugInfo');
+            debugVisible = !debugVisible;
+            debugDiv.style.display = debugVisible ? 'block' : 'none';
+        }
+
+        // エラーメッセージ表示
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // 初期化
+        updateDebugInfo();
+
+        console.log('=== room_select.html デバッグ情報 ===');
+        console.log('デバッグデータ:', debugData);
+
+        // パラメータチェックと処理決定
+        const actualPropertyId = propertyId || buildingId || id || pid;
+
+        if (!actualPropertyId) {
+            console.error('物件IDが見つかりません。');
+            
+            const errorMessage = `
+                <strong>物件IDエラー</strong><br>
+                URLから物件IDを取得できませんでした。<br><br>
+                
+                <strong>確認事項:</strong><br>
+                1. property_select.htmlから正しくリンクされているか<br>
+                2. URLに ?propertyId=P000001 のような形式でパラメータが含まれているか<br>
+                3. 直接URLを入力した場合は、正しい形式で入力されているか<br><br>
+                
+                <strong>正しいURL例:</strong><br>
+                room_select.html?propertyId=P000001<br><br>
+                
+                <strong>現在のURL:</strong><br>
+                ${currentUrl}<br><br>
+                
+                <strong>前のページ:</strong><br>
+                ${document.referrer || '不明'}
+            `;
+            
+            showError(errorMessage);
+            document.getElementById('loading').innerHTML = '物件IDが指定されていません';
+            
+            // 5秒後に自動で前のページまたはproperty_select.htmlに戻る
+            setTimeout(() => {
+                if (document.referrer && document.referrer.includes('property_select.html')) {
+                    console.log('前のページに戻ります');
+                    window.history.back();
+                } else {
+                    console.log('property_select.htmlに遷移します');
+                    window.location.href = 'property_select.html';
+                }
+            }, 5000);
+            
+            return; // 処理を停止
+        }
+
+        // 成功時の処理
+        console.log('物件ID取得成功:', actualPropertyId);
 
         // ページ読み込み時に実行
         window.onload = function() {
@@ -129,20 +276,36 @@
         };
 
         function loadRoomData() {
-            console.log('部屋データを読み込み開始:', propertyId);
+            console.log('部屋データを読み込み開始:', actualPropertyId);
+            
+            // デバッグ情報を更新
+            debugData['=== データ取得状況 ==='] = '';
+            debugData['取得開始時刻'] = new Date().toISOString();
+            debugData['使用する物件ID'] = actualPropertyId;
+            updateDebugInfo();
             
             google.script.run
                 .withSuccessHandler(onDataLoaded)
                 .withFailureHandler(onError)
-                .getRoomsForBuilding(propertyId);
+                .getRoomsForBuilding(actualPropertyId);
         }
 
         function onDataLoaded(data) {
             console.log('取得したデータ:', data);
             
+            // デバッグ情報を更新
+            debugData['データ取得完了'] = new Date().toISOString();
+            debugData['取得したデータ'] = JSON.stringify(data, null, 2).substring(0, 500) + '...';
+            updateDebugInfo();
+            
+            // デバッグ情報を非表示にする
+            setTimeout(() => {
+                toggleDebug();
+            }, 3000);
+            
             if (!data || !data.building || !data.rooms) {
                 console.error('データが不正です:', data);
-                alert('データの取得に失敗しました');
+                showError('データの取得に失敗しました: 不正なデータ形式');
                 return;
             }
 
@@ -190,7 +353,7 @@
                 `;
 
                 roomButton.onclick = () => {
-                    window.location.href = `meter_reading.html?propertyId=${propertyId}&roomId=${room.id}`;
+                    window.location.href = `meter_reading.html?propertyId=${actualPropertyId}&roomId=${room.id}`;
                 };
 
                 roomGrid.appendChild(roomButton);
@@ -216,8 +379,14 @@
 
         function onError(error) {
             console.error('エラー:', error);
+            
+            // デバッグ情報を更新
+            debugData['エラー発生'] = new Date().toISOString();
+            debugData['エラー内容'] = error.message || error.toString();
+            updateDebugInfo();
+            
             document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました: ' + error.message;
-            alert('データの取得でエラーが発生しました: ' + error.message);
+            showError('データの取得でエラーが発生しました: ' + error.message);
         }
 
         function goBack() {
