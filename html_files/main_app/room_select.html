@@ -130,7 +130,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="building-name" id="buildingName">建物名読み込み中...</div>
+        <div class="building-name" id="buildingName">物件名読み込み中...</div>
         
         <!-- デバッグ情報表示エリア -->
         <div id="debugInfo" class="debug-info"></div>
@@ -145,7 +145,7 @@
     </div>
 
     <script>
-        let buildingData = null;
+        let propertyData = null;
         let roomsData = null;
         let debugVisible = true;
 
@@ -306,7 +306,7 @@
                 debugData['=== データ取得状況 ==='] = '';
                 debugData['取得開始時刻'] = new Date().toISOString();
                 debugData['使用する物件ID'] = actualPropertyId;
-                debugData['API呼び出しURL'] = `${gasWebAppUrl}?action=getRoomsForBuilding&buildingId=${encodeURIComponent(actualPropertyId)}`;
+                debugData['API呼び出しURL'] = `${gasWebAppUrl}?action=getRoomsForProperty&propertyId=${encodeURIComponent(actualPropertyId)}`;
                 updateDebugInfo();
                 
                 try {
@@ -320,8 +320,8 @@
                         
                         try {
                             const parsedRooms = JSON.parse(cachedRooms);
-                            const buildingInfo = {
-                                building: {
+                            const propertyInfo = {
+                                property: {
                                     id: cachedPropertyId,
                                     name: cachedPropertyName
                                 },
@@ -332,7 +332,7 @@
                             debugData['キャッシュデータ件数'] = parsedRooms.length;
                             updateDebugInfo();
                             
-                            onDataLoaded(buildingInfo);
+                            onDataLoaded(propertyInfo);
                             return; // API呼び出しをスキップ
                         } catch (parseError) {
                             console.warn('[room_select] キャッシュデータの解析に失敗、API呼び出しにフォールバック:', parseError);
@@ -340,7 +340,7 @@
                     }
                     
                     // GAS Web AppのAPIエンドポイントを呼び出し
-                    const requestUrl = `${gasWebAppUrl}?action=getRoomsForBuilding&buildingId=${encodeURIComponent(actualPropertyId)}&cache=${Date.now()}`;
+                    const requestUrl = `${gasWebAppUrl}?action=getRoomsForProperty&propertyId=${encodeURIComponent(actualPropertyId)}&cache=${Date.now()}`;
                     
                     console.log('GAS API呼び出し:', requestUrl);
                     
@@ -363,7 +363,7 @@
                     if (data && data.success === true && data.data) {
                         // 統一レスポンス形式
                         processedData = data.data;
-                    } else if (data && data.building && data.rooms) {
+                    } else if (data && data.property && data.rooms) {
                         // 直接的なレスポンス形式
                         processedData = data;
                     } else {
@@ -391,16 +391,16 @@
                     toggleDebug();
                 }, 3000);
                 
-                if (!data || !data.building || !data.rooms) {
+                if (!data || !data.property || !data.rooms) {
                     console.error('データが不正です:', data);
                     showError('データの取得に失敗しました: 不正なデータ形式');
                     return;
                 }
 
-                buildingData = data.building;
+                propertyData = data.property;
                 roomsData = data.rooms;
 
-                document.getElementById('buildingName').textContent = buildingData.name;
+                document.getElementById('buildingName').textContent = propertyData.name;
                 displayRooms();
                 
                 document.getElementById('loading').style.display = 'none';
