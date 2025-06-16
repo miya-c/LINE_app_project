@@ -426,20 +426,29 @@
               console.error('[ReactApp] Final data is not an array:', actualData);
               throw new Error('物件データが配列形式ではありません。管理者に連絡してください。');
             }
-            
-            console.log('[ReactApp] Data is array, setting properties');
+              console.log('[ReactApp] Data is array, setting properties');
             console.log('[ReactApp] First property sample:', actualData[0]);
             
             // 検針完了日フィールドの確認ログ
-            if (actualData.length > 0 && actualData[0]) {
-              console.log('[ReactApp] completionDate field check:', {
-                hasCompletionDate: 'completionDate' in actualData[0],
-                completionDateValue: actualData[0].completionDate,
-                completionDateType: typeof actualData[0].completionDate
+            if (actualData.length > 0 && actualData[0]) {              console.log('[ReactApp] completionDate field check:', {
+                hasCompletionDate: '検針完了日' in actualData[0],
+                completionDateValue: actualData[0]['検針完了日'],
+                completionDateType: typeof actualData[0]['検針完了日'],
+                normalizedCompletionDate: actualData[0].completionDate || actualData[0]['検針完了日']
               });
             }
             
-            setProperties(actualData);
+            // プロパティ名の正規化（日本語フィールド名をサポート）
+            const normalizedData = actualData.map(property => ({
+              ...property,
+              // 既存のcompletionDateがあればそれを保持、なければ検針完了日を使用
+              completionDate: property.completionDate || property['検針完了日'],
+              // idやnameの正規化も追加
+              id: property.id || property['物件ID'],
+              name: property.name || property['物件名']
+            }));
+            
+            setProperties(normalizedData);
           } catch (fetchError) {
             console.error('[ReactApp] Failed to fetch properties:', fetchError);
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
@@ -754,8 +763,7 @@
                       <div className="property-name-row">
                         <div className="property-name">
                           {property.name != null ? property.name : '名称なし'}
-                        </div>
-                        {/* 検針完了日を物件名の右側に表示 */}
+                        </div>                        {/* 検針完了日を物件名の右側に表示 */}
                         {formatCompletionDate(property.completionDate) && (
                           <div className="completion-date">
                             {formatCompletionDate(property.completionDate)}
