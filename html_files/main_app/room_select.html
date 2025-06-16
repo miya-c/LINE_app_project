@@ -149,6 +149,23 @@
         let roomsData = null;
         let debugVisible = true;
 
+        // GAS Web App URLをsessionStorageから取得（property_select.htmlから継承）
+        let gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+        
+        // フォールバック用のデフォルトURL（緊急時用）
+        const fallbackGasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyQ22XFqc8I8eq8khOlds1vdq28_QMBilQM2ASYlSWUEbF3awBgYAsHeRsqdJ6uw_Nd9w/exec';
+
+        // URL取得の検証とフォールバック処理
+        if (!gasWebAppUrl || gasWebAppUrl.trim() === '') {
+            console.warn('[room_select] gasWebAppUrlがsessionStorageに見つかりません。フォールバックURLを使用します。');
+            gasWebAppUrl = fallbackGasWebAppUrl;
+            // 今後のためにsessionStorageに保存
+            sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
+        }
+
+        console.log('[room_select] 使用するGAS Web App URL:', gasWebAppUrl);
+        console.log('[room_select] URL取得元:', sessionStorage.getItem('gasWebAppUrl') ? 'sessionStorage' : 'fallback');
+
         // URL詳細解析
         const currentUrl = window.location.href;
         const urlObj = new URL(currentUrl);
@@ -183,6 +200,16 @@
             'userAgent': navigator.userAgent.substring(0, 100) + '...',
             'タイムスタンプ': new Date().toISOString(),
             '   ': '',
+            '=== API設定 ===': '',
+            'GAS Web App URL': gasWebAppUrl,
+            'URL取得元': sessionStorage.getItem('gasWebAppUrl') ? 'sessionStorage継承' : 'フォールバック',
+            'sessionStorage確認': sessionStorage.getItem('gasWebAppUrl') || 'なし',
+            '    ': '',
+            '=== SessionStorage情報 ===': '',
+            'selectedPropertyId': sessionStorage.getItem('selectedPropertyId') || 'なし',
+            'selectedPropertyName': sessionStorage.getItem('selectedPropertyName') || 'なし',
+            'selectedRooms': sessionStorage.getItem('selectedRooms') ? 'あり' : 'なし',
+            '     ': '',
             '=== 判定結果 ===': '',
             '使用するID': propertyId || buildingId || id || pid || 'なし',
             'ID取得成功': !!(propertyId || buildingId || id || pid),
@@ -195,7 +222,7 @@
             let debugHtml = '';
             
             Object.entries(debugData).forEach(([key, value]) => {
-                if (key === '' || key === '  ' || key === '   ' || key.startsWith('===')) {
+                if (key === '' || key === '  ' || key === '   ' || key === '    ' || key === '     ' || key.startsWith('===')) {
                     debugHtml += `<div style="font-weight: bold; color: #007bff; margin-top: 10px;">${key}</div>`;
                 } else {
                     debugHtml += `<div><strong>${key}:</strong> ${value}</div>`;
@@ -272,19 +299,83 @@
                 loadRoomData();
             };
 
-            function loadRoomData() {
+            async function loadRoomData() {
                 console.log('部屋データを読み込み開始:', actualPropertyId);
                 
                 // デバッグ情報を更新
                 debugData['=== データ取得状況 ==='] = '';
                 debugData['取得開始時刻'] = new Date().toISOString();
                 debugData['使用する物件ID'] = actualPropertyId;
+                debugData['API呼び出しURL'] = `${gasWebAppUrl}?action=getRoomsForBuilding&buildingId=${encodeURIComponent(actualPropertyId)}`;
                 updateDebugInfo();
                 
-                google.script.run
-                    .withSuccessHandler(onDataLoaded)
-                    .withFailureHandler(onError)
-                    .getRoomsForBuilding(actualPropertyId);
+                try {
+                    // sessionStorageから既存のデータをチェック（高速化のため）
+                    const cachedRooms = sessionStorage.getItem('selectedRooms');
+                    const cachedPropertyId = sessionStorage.getItem('selectedPropertyId');
+                    const cachedPropertyName = sessionStorage.getItem('selectedPropertyName');
+                    
+                    if (cachedRooms && cachedPropertyId === actualPropertyId && cachedPropertyName) {
+                        console.log('[room_select] sessionStorageからキャッシュデータを使用');
+                        
+                        try {
+                            const parsedRooms = JSON.parse(cachedRooms);
+                            const buildingInfo = {
+                                building: {
+                                    id: cachedPropertyId,
+                                    name: cachedPropertyName
+                                },
+                                rooms: parsedRooms
+                            };
+                            
+                            debugData['データ取得方法'] = 'sessionStorageキャッシュ';
+                            debugData['キャッシュデータ件数'] = parsedRooms.length;
+                            updateDebugInfo();
+                            
+                            onDataLoaded(buildingInfo);
+                            return; // API呼び出しをスキップ
+                        } catch (parseError) {
+                            console.warn('[room_select] キャッシュデータの解析に失敗、API呼び出しにフォールバック:', parseError);
+                        }
+                    }
+                    
+                    // GAS Web AppのAPIエンドポイントを呼び出し
+                    const requestUrl = `${gasWebAppUrl}?action=getRoomsForBuilding&buildingId=${encodeURIComponent(actualPropertyId)}&cache=${Date.now()}`;
+                    
+                    console.log('GAS API呼び出し:', requestUrl);
+                    
+                    // デバッグ情報を更新
+                    debugData['データ取得方法'] = 'GAS API呼び出し';
+                    debugData['API呼び出しURL'] = requestUrl;
+                    updateDebugInfo();
+                    
+                    const response = await fetch(requestUrl);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API呼び出しに失敗しました: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('GAS APIレスポンス:', data);
+                    
+                    // レスポンス形式の判定
+                    let processedData = null;
+                    if (data && data.success === true && data.data) {
+                        // 統一レスポンス形式
+                        processedData = data.data;
+                    } else if (data && data.building && data.rooms) {
+                        // 直接的なレスポンス形式
+                        processedData = data;
+                    } else {
+                        throw new Error('APIレスポンスの形式が不正です');
+                    }
+                    
+                    onDataLoaded(processedData);
+                    
+                } catch (error) {
+                    console.error('データ取得エラー:', error);
+                    onError(error);
+                }
             }
 
             function onDataLoaded(data) {
