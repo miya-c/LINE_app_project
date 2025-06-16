@@ -109,7 +109,6 @@
     <div class="container">
         <div class="property-name" id="propertyName">物件名読み込み中...</div>
         
-        <!-- エラーメッセージ表示エリア -->
         <div id="errorMessage" class="error-message"></div>
         
         <div id="loading" class="loading">部屋データを読み込み中...</div>
@@ -118,27 +117,13 @@
     </div>
 
     <script>
-        let propertyData = null;
-        let roomsData = null;
+        // GAS Web App URL取得
+        const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl') || 
+            'https://script.google.com/macros/s/AKfycbyQ22XFqc8I8eq8khOlds1vdq28_QMBilQM2ASYlSWUEbF3awBgYAsHeRsqdJ6uw_Nd9w/exec';
 
-        // GAS Web App URLをsessionStorageから取得（property_select.htmlから継承）
-        let gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-        
-        // フォールバック用のデフォルトURL（緊急時用）
-        const fallbackGasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyQ22XFqc8I8eq8khOlds1vdq28_QMBilQM2ASYlSWUEbF3awBgYAsHeRsqdJ6uw_Nd9w/exec';
-
-        // URL取得の検証とフォールバック処理
-        if (!gasWebAppUrl || gasWebAppUrl.trim() === '') {
-            gasWebAppUrl = fallbackGasWebAppUrl;
-            sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
-        }
-
-        // URL解析
+        // URLパラメータから物件IDを取得
         const urlParams = new URLSearchParams(window.location.search);
         const propertyId = urlParams.get('propertyId');
-        const buildingId = urlParams.get('buildingId');
-        const id = urlParams.get('id');
-        const pid = urlParams.get('pid');
 
         // エラーメッセージ表示
         function showError(message) {
@@ -147,216 +132,81 @@
             errorDiv.style.display = 'block';
         }
 
-        // パラメータチェックと処理決定
-        const actualPropertyId = propertyId || buildingId || id || pid;
-
-        if (!actualPropertyId) {
-            const errorMessage = `
-                <strong>物件IDエラー</strong><br>
-                URLから物件IDを取得できませんでした。<br>
-                5秒後に物件選択画面に戻ります。
-            `;
-            
-            showError(errorMessage);
+        // 物件IDチェック
+        if (!propertyId) {
+            showError('<strong>エラー:</strong> 物件IDが指定されていません。');
             document.getElementById('loading').innerHTML = '物件IDが指定されていません';
-            
-            // 5秒後に自動で前のページまたはproperty_select.htmlに戻る
-            setTimeout(() => {
-                if (document.referrer && document.referrer.includes('property_select')) {
-                    window.history.back();
-                } else {
-                    window.location.href = 'property_select.html';
-                }
-            }, 5000);
+            setTimeout(() => window.location.href = 'property_select.html', 3000);
         } else {
-            // 成功時の処理
-            window.onload = function() {
-                loadRoomData();
-            };
+            window.onload = loadRoomData;
+        }
 
-            async function loadRoomData() {
-                try {
-                    // デバッグ情報をコンソールに出力
-                    console.log('[DEBUG] loadRoomData開始');
-                    console.log('[DEBUG] actualPropertyId:', actualPropertyId);
-                    console.log('[DEBUG] gasWebAppUrl:', gasWebAppUrl);
-                    
-                    // sessionStorageから既存のデータをチェック（高速化のため）
-                    const cachedRooms = sessionStorage.getItem('selectedRooms');
-                    const cachedPropertyId = sessionStorage.getItem('selectedPropertyId');
-                    const cachedPropertyName = sessionStorage.getItem('selectedPropertyName');
-                    
-                    console.log('[DEBUG] キャッシュ確認:');
-                    console.log('- cachedPropertyId:', cachedPropertyId);
-                    console.log('- cachedPropertyName:', cachedPropertyName);
-                    console.log('- cachedRooms length:', cachedRooms ? cachedRooms.length : 'null');
-                    
-                    if (cachedRooms && cachedPropertyId === actualPropertyId && cachedPropertyName) {
-                        console.log('[DEBUG] キャッシュデータを使用');
-                        try {
-                            const parsedRooms = JSON.parse(cachedRooms);
-                            const propertyInfo = {
-                                property: {
-                                    id: cachedPropertyId,
-                                    name: cachedPropertyName
-                                },
-                                rooms: parsedRooms
-                            };
-                            
-                            console.log('[DEBUG] キャッシュから構築したデータ:', propertyInfo);
-                            onDataLoaded(propertyInfo);
-                            return; // API呼び出しをスキップ
-                        } catch (parseError) {
-                            console.warn('[DEBUG] キャッシュエラー:', parseError);
-                            // キャッシュエラー時はAPI呼び出しにフォールバック
-                        }
-                    } else {
-                        console.log('[DEBUG] キャッシュ条件不一致、API呼び出しを実行');
-                    }
-                    
-                    // GAS Web AppのAPIエンドポイントを呼び出し
-                    const requestUrl = `${gasWebAppUrl}?action=getRoomsForProperty&propertyId=${encodeURIComponent(actualPropertyId)}&cache=${Date.now()}`;
-                    
-                    console.log('[DEBUG] API呼び出しURL:', requestUrl);
-                    
-                    const response = await fetch(requestUrl);
-                    
-                    console.log('[DEBUG] APIレスポンス status:', response.status);
-                    console.log('[DEBUG] APIレスポンス ok:', response.ok);
-                    
-                    if (!response.ok) {
-                        throw new Error(`API呼び出しに失敗しました: ${response.status} ${response.statusText}`);
-                    }
-                    
-                    const data = await response.json();
-                    console.log('[DEBUG] 受信したデータ:', data);
-                    
-                    // レスポンス形式の判定
-                    let processedData = null;
-                    if (data && data.success === true && data.data) {
-                        // 統一レスポンス形式
-                        console.log('[DEBUG] 統一レスポンス形式を検出');
-                        processedData = data.data;
-                    } else if (data && data.property && data.rooms) {
-                        // 直接的なレスポンス形式
-                        console.log('[DEBUG] 直接レスポンス形式を検出');
-                        processedData = data;
-                    } else {
-                        console.error('[DEBUG] 不正なレスポンス形式:', data);
-                        throw new Error('APIレスポンスの形式が不正です');
-                    }
-                    
-                    console.log('[DEBUG] 処理されたデータ:', processedData);
-                    onDataLoaded(processedData);
-                    
-                } catch (error) {
-                    console.error('[DEBUG] loadRoomDataエラー:', error);
-                    onError(error);
-                }
-            }
-
-            function onDataLoaded(data) {
-                console.log('[DEBUG] onDataLoaded呼び出し:', data);
+        async function loadRoomData() {
+            try {
+                const response = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`);
                 
-                if (!data || !data.property || !data.rooms) {
-                    console.error('[DEBUG] データ検証失敗:', {
-                        hasData: !!data,
-                        hasProperty: !!(data && data.property),
-                        hasRooms: !!(data && data.rooms),
-                        data: data
-                    });
-                    showError('データの取得に失敗しました: 不正なデータ形式');
-                    return;
-                }
-
-                propertyData = data.property;
-                roomsData = data.rooms;
-
-                console.log('[DEBUG] 設定されたデータ:');
-                console.log('- propertyData:', propertyData);
-                console.log('- roomsData:', roomsData);
-                console.log('- roomsData.length:', roomsData.length);
-
-                document.getElementById('propertyName').textContent = propertyData.name;
-                displayRooms();
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('roomGrid').style.display = 'grid';
-            }
-
-            function displayRooms() {
-                console.log('[DEBUG] displayRooms呼び出し');
-                console.log('[DEBUG] roomsData:', roomsData);
-                
-                const roomGrid = document.getElementById('roomGrid');
-                roomGrid.innerHTML = '';
-
-                if (!roomsData || roomsData.length === 0) {
-                    console.warn('[DEBUG] 部屋データが空またはなし');
-                    roomGrid.innerHTML = '<p>部屋データがありません</p>';
-                    return;
-                }
-
-                console.log('[DEBUG] 部屋データあり、件数:', roomsData.length);
-
-                roomsData.forEach((room, index) => {
-                    console.log(`[DEBUG] 部屋 ${index}:`, room);
-                    
-                    const roomButton = document.createElement('div');
-                    roomButton.className = 'room-button';
-                    
-                    const isCompleted = checkReadingStatus(room);
-                    console.log(`[DEBUG] 部屋 ${index} 検針状況:`, isCompleted);
-                    
-                    if (isCompleted) {
-                        roomButton.classList.add('reading-completed');
-                    } else {
-                        roomButton.classList.add('reading-not-completed');
-                    }
-
-                    // 一行で横並び表示
-                    let displayText = '';
-                    if (isCompleted && room.readingDateFormatted) {
-                        displayText = `${room.roomNumber} 検針済み：${room.readingDateFormatted}`;
-                    } else {
-                        displayText = `${room.roomNumber} 未検針`;
-                    }
-
-                    console.log(`[DEBUG] 部屋 ${index} 表示テキスト:`, displayText);
-
-                    roomButton.innerHTML = `
-                        <div class="room-text">${displayText}</div>
-                    `;
-
-                    roomButton.onclick = () => {
-                        const targetUrl = `meter_reading.html?propertyId=${actualPropertyId}&roomId=${room.id}`;
-                        console.log('[DEBUG] 部屋クリック、遷移先:', targetUrl);
-                        window.location.href = targetUrl;
-                    };
-
-                    roomGrid.appendChild(roomButton);
-                });
-                
-                console.log('[DEBUG] displayRooms完了、作成した部屋ボタン数:', roomGrid.children.length);
-            }
-
-            function checkReadingStatus(room) {
-                if (room.readingStatus !== undefined) {
-                    return room.readingStatus === 'completed';
+                if (!response.ok) {
+                    throw new Error(`API呼び出しに失敗しました: ${response.status}`);
                 }
                 
-                if (room.isCompleted !== undefined) {
-                    return room.isCompleted === true;
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'データの取得に失敗しました');
                 }
                 
-                return false;
-            }
-
-            function onError(error) {
-                console.error('[DEBUG] onError呼び出し:', error);
+                displayData(data.data);
+                
+            } catch (error) {
+                console.error('部屋データの読み込みエラー:', error);
                 document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました';
                 showError('データの取得でエラーが発生しました: ' + error.message);
             }
+        }
+
+        function displayData(data) {
+            if (!data || !data.property || !Array.isArray(data.rooms)) {
+                showError('不正なデータ形式です');
+                return;
+            }
+
+            document.getElementById('propertyName').textContent = data.property.name;
+            displayRooms(data.rooms);
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('roomGrid').style.display = 'grid';
+        }
+
+        function displayRooms(rooms) {
+            const roomGrid = document.getElementById('roomGrid');
+            roomGrid.innerHTML = '';
+
+            if (rooms.length === 0) {
+                roomGrid.innerHTML = '<p>部屋データがありません</p>';
+                return;
+            }
+
+            rooms.forEach(room => {
+                const roomButton = document.createElement('div');
+                roomButton.className = 'room-button';
+                
+                const isCompleted = room.readingStatus === 'completed' || room.isCompleted === true;
+                roomButton.classList.add(isCompleted ? 'reading-completed' : 'reading-not-completed');
+
+                // 部屋名を取得（優先順位: name > 部屋名 > id）
+                const roomName = room.name || room['部屋名'] || room.id || '不明';
+                
+                const displayText = isCompleted && room.readingDateFormatted 
+                    ? `${roomName} 検針済み：${room.readingDateFormatted}`
+                    : `${roomName} 未検針`;
+
+                roomButton.innerHTML = `<div class="room-text">${displayText}</div>`;
+                roomButton.onclick = () => {
+                    window.location.href = `meter_reading.html?propertyId=${propertyId}&roomId=${room.id}`;
+                };
+
+                roomGrid.appendChild(roomButton);
+            });
         }
 
         function goBack() {

@@ -1,16 +1,14 @@
 /**
- * api_data_functions.gs - API用データ取得関数群
- * web_app_api.gs で使用される関数を定義
+ * api_data_functions.gs - API用データ関数群（軽量版）
+ * スプレッドシートからのデータ取得とデータ更新処理を管理
  */
 
 /**
- * 物件データを取得
+ * 物件一覧を取得（軽量版）
  * @returns {Array} 物件データの配列
  */
 function getProperties() {
   try {
-    console.log('[getProperties] 物件データ取得開始');
-    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('物件マスタ');
     
@@ -20,14 +18,11 @@ function getProperties() {
     
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) {
-      console.log('[getProperties] 物件マスタにデータがありません');
       return [];
     }
     
     const headers = data[0];
-    console.log('[getProperties] 物件マスタヘッダー:', headers);
-    
-    const properties = data.slice(1).map((row, index) => {
+    return data.slice(1).map(row => {
       const property = {};
       headers.forEach((header, colIndex) => {
         property[header] = row[colIndex];
@@ -35,200 +30,111 @@ function getProperties() {
       return property;
     });
     
-    console.log('[getProperties] 物件データ取得完了 - 件数:', properties.length);
-    return properties;
-    
   } catch (error) {
-    console.error('[getProperties] エラー:', error);
     throw error;
   }
 }
 
 /**
- * 指定物件の部屋データを取得（検針情報付き）
+ * 指定された物件の部屋一覧と検針状況を取得する（軽量版）
  * @param {string} propertyId - 物件ID
- * @returns {Array} 部屋データの配列（検針情報含む）
+ * @returns {Object} 物件情報と部屋データの配列
  */
 function getRooms(propertyId) {
   try {
-    console.log('[getRooms] 検針情報付き部屋データ取得開始 - propertyId:', propertyId);
-    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertySheet = ss.getSheetByName('物件マスタ');
     const roomSheet = ss.getSheetByName('部屋マスタ');
     const inspectionSheet = ss.getSheetByName('inspection_data');
     
-    if (!roomSheet) {
-      throw new Error('部屋マスタシートが見つかりません');
+    if (!propertySheet || !roomSheet) {
+      throw new Error('必要なシートが見つかりません');
     }
     
-    if (!inspectionSheet) {
-      console.warn('[getRooms] inspection_dataシートが見つかりません - 検針情報なしで継続');
+    // 物件情報取得
+    const propertyData = propertySheet.getDataRange().getValues();
+    const propertyHeaders = propertyData[0];
+    const propertyIdIndex = propertyHeaders.indexOf('物件ID');
+    const propertyNameIndex = propertyHeaders.indexOf('物件名');
+    
+    const propertyRow = propertyData.slice(1).find(row => 
+      String(row[propertyIdIndex]).trim() === String(propertyId).trim()
+    );
+    
+    if (!propertyRow) {
+      throw new Error('物件が見つかりません');
     }
     
-    // 部屋マスタからベースデータを取得
+    // 部屋情報取得
     const roomData = roomSheet.getDataRange().getValues();
-    if (roomData.length <= 1) {
-      console.log('[getRooms] 部屋マスタにデータがありません');
-      return [];
-    }
-    
     const roomHeaders = roomData[0];
-    console.log('[getRooms] 部屋マスタヘッダー:', roomHeaders);
+    const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');
+    const roomIdIndex = roomHeaders.indexOf('部屋ID');
+    const roomNameIndex = roomHeaders.indexOf('部屋名');
     
-    const propertyIdIndex = roomHeaders.indexOf('物件ID');
+    const rooms = roomData.slice(1)
+      .filter(row => String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim())
+      .map(row => ({
+        id: row[roomIdIndex] || '',
+        name: row[roomNameIndex] || '',
+        readingStatus: 'pending',
+        isCompleted: false,
+        readingDateFormatted: null
+      }));
     
-    if (propertyIdIndex === -1) {
-      throw new Error('物件ID列が見つかりません');
-    }
-    
-    // 指定物件の部屋を取得
-    const propertyRooms = roomData.slice(1)
-      .filter(row => String(row[propertyIdIndex]).trim() === String(propertyId).trim())
-      .map(row => {
-        const room = {};
-        roomHeaders.forEach((header, index) => {
-          room[header] = row[index];
-        });
-        
-        // 英語プロパティも追加（フロントエンド互換性）
-        room.id = room['部屋ID'] || '';
-        room.name = room['部屋名'] || '';
-        room.roomId = room['部屋ID'] || '';
-        room.roomName = room['部屋名'] || '';
-        
-        return room;
-      });
-    
-    console.log('[getRooms] 部屋マスタから取得完了:', propertyRooms.length, '件');
-    
-    // 検針データがある場合は検針情報を追加
-    if (inspectionSheet && propertyRooms.length > 0) {
-      console.log('[getRooms] 検針情報を取得中...');
-      
+    // 今日の検針データ確認（簡素化）
+    if (inspectionSheet) {
+      const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
       const inspectionData = inspectionSheet.getDataRange().getValues();
+      
       if (inspectionData.length > 1) {
-        const inspectionHeaders = inspectionData[0];
-        const inspectionPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
-        const inspectionRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
-        const inspectionDateIndex = inspectionHeaders.indexOf('検針日時');
-        const currentReadingIndex = inspectionHeaders.indexOf('今回の指示数');
+        const inspHeaders = inspectionData[0];
+        const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');
+        const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');
+        const inspDateIndex = inspHeaders.indexOf('検針日時');
         
-        console.log('[getRooms] inspection_dataヘッダー:', inspectionHeaders);
-        console.log('[getRooms] 列インデックス:', {
-          propertyId: inspectionPropertyIdIndex,
-          roomId: inspectionRoomIdIndex,
-          date: inspectionDateIndex,
-          reading: currentReadingIndex
+        const todayReadings = new Set();
+        inspectionData.slice(1).forEach(row => {
+          if (row[inspPropertyIdIndex] && row[inspRoomIdIndex] && row[inspDateIndex]) {
+            const readingDate = Utilities.formatDate(new Date(row[inspDateIndex]), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+            if (readingDate === today && String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim()) {
+              todayReadings.add(String(row[inspRoomIdIndex]).trim());
+            }
+          }
         });
         
-        if (inspectionPropertyIdIndex !== -1 && inspectionRoomIdIndex !== -1) {
-          // 各部屋に対して最新の検針情報を追加
-          propertyRooms.forEach(room => {
-            const roomId = room['部屋ID'] || room.id;
-            
-            // この部屋の検針データを検索（最新順）
-            const roomInspections = inspectionData.slice(1)
-              .filter(row => 
-                String(row[inspectionPropertyIdIndex]).trim() === String(propertyId).trim() && 
-                String(row[inspectionRoomIdIndex]).trim() === String(roomId).trim()
-              )
-              .map(row => {
-                const inspection = {};
-                inspectionHeaders.forEach((header, index) => {
-                  inspection[header] = row[index];
-                });
-                return inspection;
-              })
-              .sort((a, b) => {
-                // 検針日時で降順ソート（最新が最初）
-                const dateA = new Date(a['検針日時'] || 0);
-                const dateB = new Date(b['検針日時'] || 0);
-                return dateB - dateA;
-              });
-            
-            console.log(`[getRooms] 部屋 ${roomId} の検針データ:`, roomInspections.length, '件');
-            
-            if (roomInspections.length > 0) {
-              const latestInspection = roomInspections[0];
-              const inspectionDate = latestInspection['検針日時'];
-              const currentReading = latestInspection['今回の指示数'];
-              
-              // 検針情報を部屋データに追加
-              room.rawInspectionDate = inspectionDate || '';
-              room.inspectionDate = inspectionDate || '';
-              room['検針日時'] = inspectionDate || '';
-              
-              // 検針済みかどうかの判定
-              const hasReading = currentReading && 
-                                String(currentReading).trim() !== '' && 
-                                !isNaN(parseFloat(currentReading));
-              const hasDate = inspectionDate && 
-                             String(inspectionDate).trim() !== '' && 
-                             inspectionDate !== null && 
-                             inspectionDate !== undefined;
-              
-              room.hasActualReading = hasReading;
-              room.hasReading = hasReading;
-              room['検針済み'] = hasReading;
-              
-              console.log(`[getRooms] 部屋 ${roomId} 検針情報:`, {
-                inspectionDate,
-                currentReading,
-                hasReading,
-                hasDate,
-                判定: hasReading ? '検針済み' : '未検針'
-              });
-            } else {
-              // 検針データがない場合
-              room.rawInspectionDate = '';
-              room.inspectionDate = '';
-              room['検針日時'] = '';
-              room.hasActualReading = false;
-              room.hasReading = false;
-              room['検針済み'] = false;
-              
-              console.log(`[getRooms] 部屋 ${roomId}: 検針データなし`);
-            }
-          });
-        } else {
-          console.warn('[getRooms] inspection_dataに必要な列が見つかりません');
-        }
-      } else {
-        console.log('[getRooms] inspection_dataにデータがありません');
+        rooms.forEach(room => {
+          if (todayReadings.has(String(room.id).trim())) {
+            room.readingStatus = 'completed';
+            room.isCompleted = true;
+            const date = new Date();
+            room.readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
+          }
+        });
       }
     }
     
-    console.log('[getRooms] 検針情報付き部屋データ取得完了 - propertyId:', propertyId, '件数:', propertyRooms.length);
-    
-    // 最終結果をログ出力
-    propertyRooms.forEach((room, index) => {
-      console.log(`[getRooms] 最終部屋データ[${index}]:`, {
-        id: room.id,
-        name: room.name,
-        rawInspectionDate: room.rawInspectionDate,
-        hasActualReading: room.hasActualReading,
-        検針状況: room.hasActualReading ? '検針済み' : '未検針'
-      });
-    });
-    
-    return propertyRooms;
+    return {
+      property: {
+        id: propertyRow[propertyIdIndex],
+        name: propertyRow[propertyNameIndex]
+      },
+      rooms: rooms
+    };
     
   } catch (error) {
-    console.error('[getRooms] エラー:', error);
     throw error;
   }
 }
 
 /**
- * 指定物件・部屋の検針データを取得
+ * 指定物件・部屋の検針データを取得（軽量版）
  * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
  * @returns {Array} 検針データの配列
  */
 function getMeterReadings(propertyId, roomId) {
   try {
-    console.log('[getMeterReadings] 検針データ取得開始 - propertyId:', propertyId, 'roomId:', roomId);
-    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('inspection_data');
     
@@ -238,13 +144,10 @@ function getMeterReadings(propertyId, roomId) {
     
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) {
-      console.log('[getMeterReadings] inspection_dataにデータがありません');
       return [];
     }
     
     const headers = data[0];
-    console.log('[getMeterReadings] inspection_dataヘッダー:', headers);
-    
     const propertyIdIndex = headers.indexOf('物件ID');
     const roomIdIndex = headers.indexOf('部屋ID');
     
@@ -265,326 +168,176 @@ function getMeterReadings(propertyId, roomId) {
         return reading;
       });
     
-    console.log('[getMeterReadings] 検針データ取得完了 - propertyId:', propertyId, 'roomId:', roomId, '件数:', meterReadings.length);
     return meterReadings;
     
   } catch (error) {
-    console.error('[getMeterReadings] エラー:', error);
     throw error;
   }
 }
 
 /**
- * 物件IDの存在確認
- * @param {string} propertyId - 物件ID
- * @returns {boolean} 存在する場合はtrue
- */
-function validatePropertyId(propertyId) {
-  try {
-    const properties = getProperties();
-    return properties.some(property => String(property['物件ID']).trim() === String(propertyId).trim());
-  } catch (error) {
-    console.error('[validatePropertyId] エラー:', error);
-    return false;
-  }
-}
-
-/**
- * 部屋IDの存在確認
+ * 検針データを更新（軽量版）
  * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
- * @returns {boolean} 存在する場合はtrue
- */
-function validateRoomId(propertyId, roomId) {
-  try {
-    const rooms = getRooms(propertyId);
-    return rooms.some(room => String(room['部屋ID']).trim() === String(roomId).trim());
-  } catch (error) {
-    console.error('[validateRoomId] エラー:', error);
-    return false;
-  }
-}
-
-/**
- * スプレッドシートの基本情報を取得（デバッグ用）
- * @returns {Object} スプレッドシート情報
- */
-function getSpreadsheetInfo() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheets = ss.getSheets();
-    
-    const info = {
-      spreadsheetName: ss.getName(),
-      spreadsheetId: ss.getId(),
-      sheetsCount: sheets.length,
-      sheets: sheets.map(sheet => ({
-        name: sheet.getName(),
-        rowCount: sheet.getLastRow(),
-        columnCount: sheet.getLastColumn()
-      }))
-    };
-    
-    console.log('[getSpreadsheetInfo] スプレッドシート情報:', info);
-    return info;
-    
-  } catch (error) {
-    console.error('[getSpreadsheetInfo] エラー:', error);
-    throw error;
-  }
-}
-
-/**
- * 検針データを更新
- * @param {string} propertyId - 物件ID
- * @param {string} roomId - 部屋ID  
  * @param {Array} readings - 更新する検針データ
  * @return {Object} 更新結果
  */
 function updateMeterReadings(propertyId, roomId, readings) {
-  try {    console.log('[updateMeterReadings] ========= 関数開始 =========');
-    console.log('[updateMeterReadings] 実行日時:', new Date().toISOString());
-    console.log('[updateMeterReadings] 呼び出し元:', new Error().stack);
-    
-    // 直接実行時のエラーガイダンス
-    if (arguments.length === 0 || propertyId === undefined) {
-      const errorMessage = `
-❌ updateMeterReadings関数の直接実行エラー
-
-この関数は Web API 経由でのみ実行可能です。
-
-✅ 正しいテスト方法:
-1. testUpdateMeterReadings() 関数を実行
-2. testWebAppAPI() 関数を実行
-3. Web ブラウザから API を呼び出し
-
-📝 パラメータが必要です:
-- propertyId: 物件ID (例: 'P000001')
-- roomId: 部屋ID (例: 'R000001') 
-- readings: 検針データ配列
-
-🔧 テスト実行コマンド:
-testUpdateMeterReadings() または testWebAppAPI()
-      `;
-      
-      console.error('[updateMeterReadings]', errorMessage);
-      throw new Error('updateMeterReadings関数は直接実行できません。testUpdateMeterReadings()を使用してください。');
+  try {
+    // 基本検証のみ
+    if (!propertyId || !roomId || !Array.isArray(readings) || readings.length === 0) {
+      throw new Error('無効なパラメータ');
     }
-    
-    console.log('[updateMeterReadings] propertyId:', propertyId, 'roomId:', roomId);
-    console.log('[updateMeterReadings] readings型:', typeof readings, 'isArray:', Array.isArray(readings));
-    console.log('[updateMeterReadings] readingsの内容:', JSON.stringify(readings));
-    
-    // パラメータバリデーションを強化
-    if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
-      throw new Error('propertyId は必須パラメータです。受信値: ' + propertyId);
-    }
-    
-    if (!roomId || roomId === 'undefined' || roomId === 'null') {
-      throw new Error('roomId は必須パラメータです。受信値: ' + roomId);
-    }
-    
-    if (readings === null || readings === undefined) {
-      throw new Error('readings パラメータが null または undefined です。受信値: ' + readings);
-    }
-    
-    if (!Array.isArray(readings)) {
-      throw new Error('readings パラメータが配列ではありません。受信した型: ' + typeof readings + ', 値: ' + JSON.stringify(readings));
-    }
-    
-    if (readings.length === 0) {
-      throw new Error('readings配列が空です。最低1つの検針データが必要です。');
-    }
-    
-    console.log('[updateMeterReadings] パラメータバリデーション通過 - データ数:', readings.length);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('inspection_data');
     
     if (!sheet) {
-      throw new Error('inspection_data シートが見つかりません');
+      throw new Error('inspection_dataシートが見つかりません');
     }
     
-    console.log('[updateMeterReadings] inspection_data シート取得成功');
-    
-    // スプレッドシートのデータを取得
     const data = sheet.getDataRange().getValues();
-    if (data.length < 2) {
-      throw new Error('スプレッドシートにデータが不足しています');
-    }
-    
-    // ヘッダーから列インデックスを動的に取得
     const headers = data[0];
-    console.log('[updateMeterReadings] スプレッドシートのヘッダー:', headers);
     
-    const columnIndexes = {
+    // 必要な列インデックスのみ取得
+    const colIndexes = {
       propertyId: headers.indexOf('物件ID'),
       roomId: headers.indexOf('部屋ID'),
       date: headers.indexOf('検針日時'),
-      currentReading: headers.indexOf('今回の指示数') >= 0 ? headers.indexOf('今回の指示数') : headers.indexOf('今回指示数（水道）'),
+      currentReading: headers.indexOf('今回の指示数') >= 0 ? 
+        headers.indexOf('今回の指示数') : headers.indexOf('今回指示数（水道）'),
       previousReading: headers.indexOf('前回指示数'),
-      usage: headers.indexOf('今回使用量'),
-      warningFlag: headers.indexOf('警告フラグ'),
-      recordId: headers.indexOf('記録ID')
+      usage: headers.indexOf('今回使用量')
     };
     
-    console.log('[updateMeterReadings] 列インデックス:', columnIndexes);
-    
-    // 必要な列が存在するかチェック
-    const requiredColumns = ['物件ID', '部屋ID'];
-    for (const colName of requiredColumns) {
-      if (!headers.includes(colName)) {
-        console.log('[updateMeterReadings] ❌ 必須列が見つかりません:', colName);
-        console.log('[updateMeterReadings] 利用可能な列一覧:', headers);
-        throw new Error(`必要な列が見つかりません: ${colName}`);
-      }
-    }
-    
-    // 検針日時と今回指示数の列を検索
-    if (columnIndexes.date === -1) {
-      console.log('[updateMeterReadings] ❌ 検針日時列が見つかりません。利用可能な列:', headers);
-      console.log('[updateMeterReadings] 検針日時列存在チェック:', headers.includes('検針日時'));
-      throw new Error('必要な列が見つかりません: 検針日時');
-    }
-    if (columnIndexes.currentReading === -1) {
-      console.log('[updateMeterReadings] ❌ 今回指示数列が見つかりません。利用可能な列:', headers);
-      console.log('[updateMeterReadings] 今回の指示数列存在チェック:', headers.includes('今回の指示数'));
-      console.log('[updateMeterReadings] 今回指示数（水道）列存在チェック:', headers.includes('今回指示数（水道）'));
-      throw new Error('必要な列が見つかりません: 今回の指示数 (または 今回指示数（水道）)');
+    // 必須列チェック
+    if (colIndexes.propertyId === -1 || colIndexes.roomId === -1 || 
+        colIndexes.date === -1 || colIndexes.currentReading === -1) {
+      throw new Error('必要な列が見つかりません');
     }
     
     let updatedCount = 0;
-    const updatedReadings = [];
     
-    console.log('[updateMeterReadings] ===== データ処理開始 =====');
-    console.log('[updateMeterReadings] 対象件数:', readings.length);
-      // 各検針データを処理
-    for (let i = 0; i < readings.length; i++) {
-      const reading = readings[i];
-      console.log(`[updateMeterReadings] 処理中 [${i}]:`, reading);
+    // データ処理（簡素化）
+    for (const reading of readings) {
+      if (!reading || typeof reading !== 'object') continue;
       
-      let skip = false;
-      try {
-        // readingオブジェクトの検証
-        if (!reading || typeof reading !== 'object') {
-          throw new Error(`読み込み不能なデータ [${i}]: ${JSON.stringify(reading)}`);
+      const currentValue = parseFloat(reading.currentReading) || 0;
+      if (currentValue < 0) continue;
+      
+      // 既存データ検索
+      let existingRowIndex = -1;
+      for (let j = 1; j < data.length; j++) {
+        if (String(data[j][colIndexes.propertyId]).trim() === String(propertyId).trim() && 
+            String(data[j][colIndexes.roomId]).trim() === String(roomId).trim()) {
+          existingRowIndex = j;
+          break;
         }
-        
-        const recordDate = reading.date || '';
-        const currentReadingValue = parseFloat(reading.currentReading) || 0;
-        
-        // 数値の妥当性チェック
-        if (isNaN(currentReadingValue) || currentReadingValue < 0) {
-          throw new Error(`無効な指示数 [${i}]: ${reading.currentReading}`);
-        }
-          // 既存データを検索
-        let existingRowIndex = -1;
-        for (let j = 1; j < data.length; j++) {
-          if (String(data[j][columnIndexes.propertyId]).trim() === String(propertyId).trim() && 
-              String(data[j][columnIndexes.roomId]).trim() === String(roomId).trim()) {
-            existingRowIndex = j;
-            break;
-          }
-        }
-        
-        let usage = 0;
-        if (existingRowIndex >= 0) {
-          // 既存データを更新
-          const previousReadingValue = parseFloat(data[existingRowIndex][columnIndexes.previousReading]) || 0;
-          
-          if (previousReadingValue === 0 || data[existingRowIndex][columnIndexes.previousReading] === '' || 
-              data[existingRowIndex][columnIndexes.previousReading] === null) {
-            usage = currentReadingValue;
-            console.log(`[updateMeterReadings] 新規検針データ - 今回指示数をそのまま使用量として設定: ${usage}`);
-          } else {
-            usage = Math.max(0, currentReadingValue - previousReadingValue);
-            console.log(`[updateMeterReadings] 既存データ更新 - 使用量計算: ${currentReadingValue} - ${previousReadingValue} = ${usage}`);
-          }
-          
-          // 既存行を更新
-          if (recordDate) data[existingRowIndex][columnIndexes.date] = recordDate;
-          data[existingRowIndex][columnIndexes.currentReading] = currentReadingValue;
-          if (columnIndexes.usage >= 0) data[existingRowIndex][columnIndexes.usage] = usage;
-          if (columnIndexes.warningFlag >= 0) data[existingRowIndex][columnIndexes.warningFlag] = '正常';
-          
-        } else {
-          // 新規データを追加
-          const previousReading = 0;
-          usage = currentReadingValue;
-          
-          const newRow = new Array(headers.length).fill('');
-          newRow[columnIndexes.propertyId] = propertyId;
-          newRow[columnIndexes.roomId] = roomId;
-          if (recordDate) newRow[columnIndexes.date] = recordDate;
-          newRow[columnIndexes.currentReading] = currentReadingValue;
-          newRow[columnIndexes.previousReading] = previousReading;
-          if (columnIndexes.usage >= 0) newRow[columnIndexes.usage] = usage;
-          if (columnIndexes.warningFlag >= 0) newRow[columnIndexes.warningFlag] = '正常';
-          if (columnIndexes.recordId >= 0) newRow[columnIndexes.recordId] = Utilities.getUuid();
-          
-          data.push(newRow);
-          console.log(`[updateMeterReadings] 新規データ追加: 指示数=${currentReadingValue}, 使用量=${usage}`);
-        }
-        
-        updatedReadings.push({
-          date: recordDate,
-          currentReading: currentReadingValue,
-          usage: usage,
-          updated: true
-        });
-        
-        updatedCount++;
-        console.log(`[updateMeterReadings] 検針データ更新: ${recordDate || '空の日付'} - 指示数: ${currentReadingValue}, 使用量: ${usage}`);
-          } catch (updateError) {
-        console.error(`[updateMeterReadings] 検針データ更新エラー (行${i}):`, updateError.message);
-        updatedReadings.push({
-          date: reading?.date || '',
-          currentReading: reading?.currentReading || '',
-          error: updateError.message,
-          updated: false
-        });
-        skip = true;
       }
-      if (skip) continue;
+      
+      let usage = 0;
+      if (existingRowIndex >= 0) {
+        // 既存データ更新
+        const prevValue = parseFloat(data[existingRowIndex][colIndexes.previousReading]) || 0;
+        usage = prevValue > 0 ? currentValue - prevValue : currentValue;
+        
+        data[existingRowIndex][colIndexes.date] = reading.date || '';
+        data[existingRowIndex][colIndexes.currentReading] = currentValue;
+        if (colIndexes.usage >= 0) data[existingRowIndex][colIndexes.usage] = usage;
+        
+      } else {
+        // 新規データ追加
+        const newRow = new Array(headers.length).fill('');
+        newRow[colIndexes.propertyId] = propertyId;
+        newRow[colIndexes.roomId] = roomId;
+        newRow[colIndexes.date] = reading.date || '';
+        newRow[colIndexes.currentReading] = currentValue;
+        if (colIndexes.usage >= 0) newRow[colIndexes.usage] = currentValue;
+        
+        data.push(newRow);
+      }
+      
+      updatedCount++;
     }
     
-    console.log('[updateMeterReadings] ===== 検針データ更新処理完了 =====');
-    console.log(`[updateMeterReadings] 総処理件数: ${updatedReadings.length}`);
-    console.log(`[updateMeterReadings] 成功件数: ${updatedCount}`);
-    
-    // スプレッドシートに書き戻し
-    try {
-      sheet.getDataRange().setValues(data);
-      console.log('[updateMeterReadings] スプレッドシート更新完了');
-    } catch (sheetError) {
-      console.error('[updateMeterReadings] スプレッドシート書き込みエラー:', sheetError);
-      throw new Error('スプレッドシートへの書き込みに失敗しました: ' + sheetError.message);
-    }
+    // 一括書き込み
+    sheet.getRange(1, 1, data.length, headers.length).setValues(data);
     
     return {
       success: true,
       updatedCount: updatedCount,
-      message: `${updatedCount}件のデータを更新しました`,
-      updatedReadings: updatedReadings,
-      timestamp: new Date().toISOString()
+      message: `${updatedCount}件のデータを更新しました`
     };
     
   } catch (error) {
-    console.error('[updateMeterReadings] エラー:', error);
-    console.error('[updateMeterReadings] エラースタック:', error.stack);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * 物件IDの妥当性を検証
+ * @param {string} propertyId - 物件ID
+ * @returns {boolean} 妥当性
+ */
+function validatePropertyId(propertyId) {
+  try {
+    if (!propertyId) return false;
+    
+    const properties = getProperties();
+    return properties.some(property => 
+      String(property['物件ID']).trim() === String(propertyId).trim()
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * 部屋IDの妥当性を検証
+ * @param {string} propertyId - 物件ID
+ * @param {string} roomId - 部屋ID
+ * @returns {boolean} 妥当性
+ */
+function validateRoomId(propertyId, roomId) {
+  try {
+    if (!propertyId || !roomId) return false;
+    
+    const roomData = getRooms(propertyId);
+    return roomData.rooms.some(room => 
+      String(room.id).trim() === String(roomId).trim()
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * スプレッドシート情報を取得
+ * @returns {Object} スプレッドシート情報
+ */
+function getSpreadsheetInfo() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = ss.getSheets().map(sheet => ({
+      name: sheet.getName(),
+      rows: sheet.getLastRow(),
+      cols: sheet.getLastColumn()
+    }));
     
     return {
-      success: false,      error: error.message,
-      message: '検針データの更新に失敗しました',
-      timestamp: new Date().toISOString(),
-      receivedParameters: {
-        propertyId: propertyId,
-        roomId: roomId,
-        readingsType: typeof readings,
-        readingsIsArray: Array.isArray(readings),
-        readingsLength: readings ? (Array.isArray(readings) ? readings.length : 'not array') : 'null/undefined',
-        readingsValue: readings
-      }
+      success: true,
+      spreadsheetId: ss.getId(),
+      name: ss.getName(),
+      sheets: sheets,
+      url: ss.getUrl()
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
     };
   }
 }
@@ -600,29 +353,32 @@ function getPropertyName(propertyId) {
     const sheet = ss.getSheetByName('物件マスタ');
     
     if (!sheet) {
-      console.log('[getPropertyName] 物件マスタシートが見つかりません');
       return '';
     }
     
     const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(propertyId).trim()) {
-        return String(data[i][1]).trim();
-      }
+    const headers = data[0];
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const propertyNameIndex = headers.indexOf('物件名');
+    
+    if (propertyIdIndex === -1 || propertyNameIndex === -1) {
+      return '';
     }
     
-    console.log('[getPropertyName] 物件名が見つかりません - propertyId:', propertyId);
-    return '';
+    const propertyRow = data.slice(1).find(row => 
+      String(row[propertyIdIndex]).trim() === String(propertyId).trim()
+    );
+    
+    return propertyRow ? propertyRow[propertyNameIndex] : '';
     
   } catch (error) {
-    console.error('[getPropertyName] エラー:', error);
     return '';
   }
 }
 
 /**
  * 部屋名を取得
- * @param {string} propertyId - 物件ID  
+ * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
  * @returns {string} 部屋名
  */
@@ -632,274 +388,27 @@ function getRoomName(propertyId, roomId) {
     const sheet = ss.getSheetByName('部屋マスタ');
     
     if (!sheet) {
-      console.log('[getRoomName] 部屋マスタシートが見つかりません');
       return '';
     }
     
     const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(propertyId).trim() && 
-          String(data[i][1]).trim() === String(roomId).trim()) {
-        return String(data[i][2]).trim();
-      }
+    const headers = data[0];
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const roomIdIndex = headers.indexOf('部屋ID');
+    const roomNameIndex = headers.indexOf('部屋名');
+    
+    if (propertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
+      return '';
     }
     
-    console.log('[getRoomName] 部屋名が見つかりません - propertyId:', propertyId, 'roomId:', roomId);
-    return '';
-    
-  } catch (error) {
-    console.error('[getRoomName] エラー:', error);
-    return '';
-  }
-}
-
-/**
- * 指定建物の部屋データを取得（検針状況付き）
- * @param {string} propertyId - 物件ID
- * @returns {Object} 建物情報と部屋データの配列
- */
-function getRoomsForProperty(propertyId) {
-  try {
-    console.log('getRoomsForProperty called with propertyId:', propertyId);
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const propertySheet = ss.getSheetByName('物件マスタ');
-    const roomSheet = ss.getSheetByName('部屋マスタ');
-    const inspectionSheet = ss.getSheetByName('inspection_data');
-    
-    if (!propertySheet) {
-      throw new Error('物件マスタシートが見つかりません');
-    }
-    
-    if (!roomSheet) {
-      throw new Error('部屋マスタシートが見つかりません');
-    }
-    
-    // 建物情報を取得
-    const propertyData = propertySheet.getDataRange().getValues();
-    const propertyHeaders = propertyData[0];
-    const propertyIdIndex = propertyHeaders.indexOf('物件ID');
-    const propertyNameIndex = propertyHeaders.indexOf('物件名');
-    
-    if (propertyIdIndex === -1 || propertyNameIndex === -1) {
-      throw new Error('物件マスタに必要な列が見つかりません');
-    }
-    
-    const propertyRow = propertyData.slice(1).find(row => 
-      String(row[propertyIdIndex]).trim() === String(propertyId).trim()
+    const roomRow = data.slice(1).find(row => 
+      String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
+      String(row[roomIdIndex]).trim() === String(roomId).trim()
     );
     
-    if (!propertyRow) {
-      throw new Error('物件が見つかりません');
-    }
-    
-    // 部屋情報を取得
-    const roomData = roomSheet.getDataRange().getValues();
-    const roomHeaders = roomData[0];
-    const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');
-    const roomIdIndex = roomHeaders.indexOf('部屋ID');
-    const roomNameIndex = roomHeaders.indexOf('部屋名');
-    
-    if (roomPropertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
-      throw new Error('部屋マスタに必要な列が見つかりません');
-    }
-    
-    const rooms = roomData.slice(1)
-      .filter(row => String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim())
-      .map(row => {
-        const room = {};
-        roomHeaders.forEach((header, index) => {
-          room[header] = row[index];
-        });
-        
-        // フロントエンド互換性のため英語プロパティも追加
-        room.id = room['部屋ID'] || '';
-        room.roomNumber = room['部屋名'] || '';
-        
-        return room;
-      });
-    
-    // 今日の検針データを一括取得
-    const today = new Date();
-    const todayStr = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    
-    if (inspectionSheet) {
-      const inspectionData = inspectionSheet.getDataRange().getValues();
-      if (inspectionData.length > 1) {
-        const inspectionHeaders = inspectionData[0];
-        const inspPropertyIdIndex = inspectionHeaders.indexOf('物件ID');
-        const inspRoomIdIndex = inspectionHeaders.indexOf('部屋ID');
-        const inspDateIndex = inspectionHeaders.indexOf('検針日時');
-        
-        // 今日の検針データをマップ化
-        const todayReadings = new Map();
-        inspectionData.slice(1).forEach(row => {
-          if (row[inspPropertyIdIndex] && row[inspRoomIdIndex] && row[inspDateIndex]) {
-            const readingDate = new Date(row[inspDateIndex]);
-            const readingDateStr = Utilities.formatDate(readingDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-            
-            if (readingDateStr === todayStr && 
-                String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim()) {
-              todayReadings.set(String(row[inspRoomIdIndex]).trim(), row[inspDateIndex]);
-            }
-          }
-        });
-        
-        // 各部屋の検針状況を確認
-        rooms.forEach(room => {
-          const roomId = String(room['部屋ID'] || '').trim();
-          const todayReading = todayReadings.get(roomId);
-          
-          let readingDateFormatted = null;
-          if (todayReading) {
-            // 検針日を「M月d日」形式でフォーマット
-            const readingDate = new Date(todayReading);
-            const month = readingDate.getMonth() + 1; // 月は0から始まるので+1
-            const day = readingDate.getDate();
-            readingDateFormatted = `${month}月${day}日`;
-          }
-          
-          room.readingStatus = todayReading ? 'completed' : 'pending';
-          room.isCompleted = !!todayReading;
-          room.lastReadingDate = todayReading || null;
-          room.readingDateFormatted = readingDateFormatted;
-        });
-      }
-    }
-    
-    console.log('Rooms with status:', rooms);
-    
-    return {
-      property: {
-        id: propertyRow[propertyIdIndex],
-        name: propertyRow[propertyNameIndex]
-      },
-      rooms: rooms
-    };
+    return roomRow ? roomRow[roomNameIndex] : '';
     
   } catch (error) {
-    console.error('getRoomsForProperty error:', error);
-    throw error;
-  }
-}
-
-/**
- * updateMeterReadings関数のテスト実行用
- */
-function testUpdateMeterReadings() {
-  try {
-    console.log('[testUpdateMeterReadings] ========= テスト実行開始 =========');
-    
-    // テスト用パラメータ
-    const testPropertyId = 'P000001';
-    const testRoomId = 'R000001';
-    const testReadings = [
-      {
-        date: '2025-01-16',
-        currentReading: '1250'
-      }
-    ];
-    
-    console.log('[testUpdateMeterReadings] テストパラメータ:');
-    console.log('[testUpdateMeterReadings] - propertyId:', testPropertyId);
-    console.log('[testUpdateMeterReadings] - roomId:', testRoomId);
-    console.log('[testUpdateMeterReadings] - readings:', JSON.stringify(testReadings));
-    
-    // 関数を正しいパラメータで実行
-    const result = updateMeterReadings(testPropertyId, testRoomId, testReadings);
-    
-    console.log('[testUpdateMeterReadings] ========= テスト実行完了 =========');
-    console.log('[testUpdateMeterReadings] 結果:', JSON.stringify(result, null, 2));
-    
-    return result;
-    
-  } catch (error) {
-    console.error('[testUpdateMeterReadings] エラー:', error);
-    console.error('[testUpdateMeterReadings] エラースタック:', error.stack);
-    throw error;
-  }
-}
-
-/**
- * Web App API全体のテスト
- */
-function testWebAppAPI() {
-  try {
-    console.log('[testWebAppAPI] ========= Web APP APIテスト開始 =========');
-    
-    // doGet関数のテスト用パラメータを作成
-    const mockEvent = {
-      parameter: {
-        action: 'updateMeterReadings',
-        propertyId: 'P000001',
-        roomId: 'R000001',
-        readings: JSON.stringify([
-          {
-            date: '2025-01-16',
-            currentReading: '1250'
-          }
-        ])
-      }
-    };
-    
-    console.log('[testWebAppAPI] モックイベント:', JSON.stringify(mockEvent, null, 2));
-    
-    // doGet関数を実行
-    const result = doGet(mockEvent);
-    
-    console.log('[testWebAppAPI] ========= Web APP APIテスト完了 =========');
-    console.log('[testWebAppAPI] 結果タイプ:', typeof result);
-    
-    if (result && typeof result.getContent === 'function') {
-      const content = result.getContent();
-      console.log('[testWebAppAPI] レスポンス内容:', content);
-      
-      try {
-        const jsonResult = JSON.parse(content);
-        console.log('[testWebAppAPI] パースされたJSON:', jsonResult);
-      } catch (parseError) {
-        console.log('[testWebAppAPI] JSON解析失敗 - HTMLレスポンス?');
-      }
-    }
-    
-    return result;
-    
-  } catch (error) {
-    console.error('[testWebAppAPI] エラー:', error);
-    console.error('[testWebAppAPI] エラースタック:', error.stack);
-    throw error;
-  }
-}
-
-/**
- * 検針情報付き部屋データ取得のテスト関数
- */
-function testGetRoomsWithInspection() {
-  try {
-    console.log('=== 検針情報付き部屋データ取得テスト ===');
-    
-    // 実際の物件IDを使用してテスト
-    const rooms = getRooms('P000001');
-    
-    console.log('取得結果:', rooms.length, '件');
-    
-    if (rooms.length > 0) {
-      console.log('サンプルデータ:');
-      rooms.slice(0, 3).forEach((room, index) => {
-        console.log(`部屋[${index}]:`, {
-          ID: room.id,
-          名前: room.name,
-          検針日時: room.rawInspectionDate,
-          検針済み: room.hasActualReading,
-          判定: room.hasActualReading ? '✅検針済み' : '❌未検針'
-        });
-      });
-    }
-    
-    return rooms;
-    
-  } catch (error) {
-    console.error('テストエラー:', error);
-    throw error;
+    return '';
   }
 }

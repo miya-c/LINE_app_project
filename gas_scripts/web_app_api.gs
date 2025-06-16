@@ -1,52 +1,125 @@
 /**
- * web_app_api.gs - Web App API関数群
- * Web App API の処理とデータ更新を管理
+ * web_app_api.gs - Web App API関数群（軽量版）
  */
 
-/**
- * CORSヘッダーを付与したJSONレスポンスを作成する関数
- * @param {Object} data - レスポンスデータ
- * @returns {TextOutput} CORSヘッダー付きJSONレスポンス
- */
 function createCorsJsonResponse(data) {
-  const jsonOutput = ContentService
+  return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-  
-  // Google Apps ScriptではsetHeaderメソッドは存在しません
-  // CORSはWeb Appの設定で自動的に処理されます
-  return jsonOutput;
 }
 
-/**
- * CORSプリフライトリクエスト（OPTIONS）専用の処理
- * @param {Object} e - リクエストイベントオブジェクト
- * @returns {TextOutput} CORSヘッダー付きレスポンス
- */
-function doOptions(e) {
-  console.log('[doOptions] CORSプリフライトリクエスト受信');
-  
-  // OPTIONSリクエストには空のレスポンスを返す
-  return ContentService
-    .createTextOutput('')
-    .setMimeType(ContentService.MimeType.TEXT);
-}
-
-/**
- * CORSプリフライトリクエスト（OPTIONS）に対応するdoPost関数
- * @param {Object} e - リクエストイベントオブジェクト
- * @returns {TextOutput} CORSヘッダー付きレスポンス
- */
-function doPost(e) {
-  console.log('[doPost] リクエスト受信 - メソッド: POST');
-  console.log('[doPost] パラメータ:', e?.parameter);
-  console.log('[doPost] ヘッダー:', e?.headers);
-  
-  // OPTIONSリクエスト（CORSプリフライト）に対応
-  if (e?.parameter?.method === 'OPTIONS' || e?.headers?.['Access-Control-Request-Method']) {
-    console.log('[doPost] CORSプリフライトリクエストを処理');
-    return createCorsJsonResponse({ status: 'OK', message: 'CORS preflight successful' });
+function doGet(e) {
+  try {
+    const action = e?.parameter?.action;
+    
+    if (!action) {
+      // テストページ表示（簡素版）
+      return HtmlService.createHtmlOutput(`
+        <html>
+          <head><title>水道検針アプリ API</title></head>
+          <body>
+            <h1>🚰 水道検針アプリ API</h1>
+            <p>現在時刻: ${new Date().toISOString()}</p>
+            <ul>
+              <li><a href="?action=getProperties">物件一覧を取得</a></li>
+              <li>部屋一覧: ?action=getRooms&propertyId=物件ID</li>
+              <li>検針データ: ?action=getMeterReadings&propertyId=物件ID&roomId=部屋ID</li>
+            </ul>
+          </body>
+        </html>
+      `).setTitle('水道検針アプリ API');
+    }
+    
+    // API処理
+    switch (action) {
+      case 'test':
+        return createCorsJsonResponse({
+          success: true,
+          message: 'API正常動作',
+          timestamp: new Date().toISOString()
+        });
+        
+      case 'getProperties':
+        const properties = getProperties();
+        return createCorsJsonResponse({
+          success: true,
+          data: Array.isArray(properties) ? properties : [],
+          count: Array.isArray(properties) ? properties.length : 0
+        });
+        
+      case 'getRooms':
+        if (!e.parameter.propertyId) {
+          return createCorsJsonResponse({ 
+            success: false,
+            error: 'propertyIdが必要です'
+          });
+        }
+        
+        const roomData = getRooms(e.parameter.propertyId);
+        return createCorsJsonResponse({
+          success: true,
+          data: roomData
+        });
+        
+      case 'getMeterReadings':
+        if (!e.parameter.propertyId || !e.parameter.roomId) {
+          return createCorsJsonResponse({ 
+            success: false,
+            error: 'propertyIdとroomIdが必要です'
+          });
+        }
+        
+        const readings = getMeterReadings(e.parameter.propertyId, e.parameter.roomId);
+        return createCorsJsonResponse({
+          success: true,
+          data: Array.isArray(readings) ? readings : []
+        });
+        
+      case 'updateMeterReadings':
+        if (!e.parameter.propertyId || !e.parameter.roomId || !e.parameter.readings) {
+          return createCorsJsonResponse({ 
+            success: false,
+            error: '必須パラメータが不足しています'
+          });
+        }
+        
+        try {
+          const readings = JSON.parse(e.parameter.readings);
+          if (!Array.isArray(readings) || readings.length === 0) {
+            throw new Error('readings配列が無効です');
+          }
+          
+          const result = updateMeterReadings(e.parameter.propertyId, e.parameter.roomId, readings);
+          return createCorsJsonResponse(result);
+          
+        } catch (parseError) {
+          return createCorsJsonResponse({
+            success: false,
+            error: `データ処理エラー: ${parseError.message}`
+          });
+        }
+        
+      default:
+        return createCorsJsonResponse({ 
+          success: false,
+          error: `未対応のアクション: ${action}`
+        });
+    }
+    
+  } catch (error) {
+    return createCorsJsonResponse({ 
+      success: false,
+      error: `サーバーエラー: ${error.message}`
+    });
   }
+}
+
+function doPost(e) {
+  return createCorsJsonResponse({ 
+    success: true, 
+    message: 'POST request received'
+  });
+}
   
   // 通常のPOSTリクエスト処理
   try {
@@ -134,56 +207,7 @@ function doGet(e) {
             return createCorsJsonResponse(errorResponse);
           }
           
-        case 'getRoomsForProperty':
-          console.log('[doGet] API: getRoomsForProperty');
-          console.log('[doGet] propertyId:', e.parameter.propertyId);
-          
-          if (!e.parameter.propertyId) {
-            return createCorsJsonResponse({ 
-              success: false,
-              error: 'propertyId パラメータが必要です',
-              timestamp: new Date().toISOString()
-            });
-          }
-          
-          try {
-            const propertyData = getRoomsForProperty(e.parameter.propertyId);
-            console.log('[doGet] 取得された物件データ:', propertyData);
-            
-            const response = {
-              success: true,
-              data: propertyData,
-              timestamp: new Date().toISOString(),
-              debugInfo: {
-                functionCalled: 'getRoomsForProperty',
-                propertyId: e.parameter.propertyId,
-                hasProperty: !!(propertyData && propertyData.property),
-                roomCount: propertyData && propertyData.rooms ? propertyData.rooms.length : 0
-              }
-            };
-            
-            return createCorsJsonResponse(response);
-            
-          } catch (apiError) {
-            console.error('[doGet] getRoomsForProperty API エラー:', apiError);
-            
-            const errorResponse = {
-              success: false,
-              error: `物件部屋データ取得エラー: ${apiError.message}`,
-              data: null,
-              timestamp: new Date().toISOString(),
-              propertyId: e.parameter.propertyId || 'unknown',
-              debugInfo: {
-                errorType: apiError.name,
-                errorMessage: apiError.message,
-                errorStack: apiError.stack
-              }
-            };
-            
-            return createCorsJsonResponse(errorResponse);
-          }
-            
-            case 'getRooms':
+        case 'getRooms':
           console.log('[doGet] API: getRooms');
           console.log('[doGet] propertyId:', e.parameter.propertyId);
           
@@ -196,35 +220,20 @@ function doGet(e) {
           }
           
           try {
-            const rooms = getRooms(e.parameter.propertyId);
-            console.log('[doGet] 取得された部屋数:', rooms.length);
+            const propertyData = getRooms(e.parameter.propertyId);
+            console.log('[doGet] 取得された物件データ:', propertyData);
             
-            // 検針情報の確認ログ
-            if (rooms.length > 0) {
-              console.log('[doGet] サンプル部屋データ:', {
-                部屋ID: rooms[0].id || rooms[0]['部屋ID'],
-                部屋名: rooms[0].name || rooms[0]['部屋名'],
-                検針日時: rooms[0].rawInspectionDate || rooms[0]['検針日時'],
-                検針済み: rooms[0].hasActualReading || rooms[0]['検針済み']
-              });
-            }
-            
-            return createCorsJsonResponse({
+            const response = {
               success: true,
-              data: rooms,
-              count: rooms.length,
+              data: propertyData,
               timestamp: new Date().toISOString(),
               debugInfo: {
+                functionCalled: 'getRooms',
                 propertyId: e.parameter.propertyId,
-                roomCount: rooms.length,
-                firstRoomSample: rooms.length > 0 ? {
-                  id: rooms[0].id,
-                  name: rooms[0].name,
-                  hasInspectionDate: !!rooms[0].rawInspectionDate,
-                  hasActualReading: !!rooms[0].hasActualReading
-                } : null
+                hasProperty: !!(propertyData && propertyData.property),
+                roomCount: propertyData && propertyData.rooms ? propertyData.rooms.length : 0
               }
-            });
+            };
             
             return createCorsJsonResponse(response);
             
@@ -233,9 +242,9 @@ function doGet(e) {
             
             const errorResponse = {
               success: false,
-              error: `部屋データ取得エラー: ${apiError.message}`,
-              data: [],
-              count: 0,              timestamp: new Date().toISOString(),
+              error: `物件部屋データ取得エラー: ${apiError.message}`,
+              data: null,
+              timestamp: new Date().toISOString(),
               propertyId: e.parameter.propertyId || 'unknown',
               debugInfo: {
                 errorType: apiError.name,
