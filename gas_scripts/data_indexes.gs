@@ -114,7 +114,7 @@ function createMeterReadingIndex() {
   try {
     console.log('[createMeterReadingIndex] 検針データインデックス作成開始');
     
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('検針データ');
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('inspection_data');
     if (!sheet) {
       throw new Error('検針データシートが見つかりません');
     }
@@ -209,15 +209,37 @@ function createAllIndexes() {
 
 /**
  * インデックスを使用した高速検索
- * @param {string} type - 検索タイプ ('property', 'room', 'meter')
+ * @param {string} type - 検索タイプ ('property', 'room', 'meter', 'propertyRooms', 'roomMeters')
  * @param {string} key - 検索キー
  * @param {Object} indexes - インデックス（省略時は新規作成）
  * @returns {Object|null} 検索結果
  */
 function fastSearch(type, key, indexes = null) {
   try {
+    // 引数バリデーション
+    if (!type) {
+      throw new Error('検索タイプが指定されていません。使用可能なタイプ: property, room, meter, propertyRooms, roomMeters');
+    }
+    
+    if (!key) {
+      throw new Error('検索キーが指定されていません');
+    }
+    
+    const validTypes = ['property', 'room', 'meter', 'propertyRooms', 'roomMeters'];
+    if (!validTypes.includes(type)) {
+      throw new Error(`不明な検索タイプ: "${type}". 使用可能なタイプ: ${validTypes.join(', ')}`);
+    }
+    
+    console.log(`[fastSearch] 検索開始: type="${type}", key="${key}"`);
+    
     if (!indexes) {
+      console.log('[fastSearch] インデックスを新規作成中...');
       indexes = createAllIndexes();
+    }
+    
+    // インデックスの存在確認
+    if (!indexes || typeof indexes !== 'object') {
+      throw new Error('インデックスの作成に失敗しました');
     }
     
     switch (type) {
@@ -267,4 +289,193 @@ function getIndexStats() {
     console.error('[getIndexStats] エラー:', error);
     throw error;
   }
+}
+
+/**
+ * fastSearch関数のテスト用関数
+ */
+function testFastSearch() {
+  try {
+    console.log('[testFastSearch] 高速検索テスト開始');
+    
+    // インデックスを一度作成
+    const indexes = createAllIndexes();
+    console.log('[testFastSearch] インデックス作成完了');
+    
+    // 各検索タイプのテスト
+    const testCases = [
+      { type: 'property', description: '物件検索テスト' },
+      { type: 'room', description: '部屋検索テスト' },
+      { type: 'meter', description: '検針データ検索テスト' },
+      { type: 'propertyRooms', description: '物件別部屋一覧テスト' },
+      { type: 'roomMeters', description: '部屋別検針データテスト' }
+    ];
+    
+    const results = [];
+    
+    testCases.forEach(testCase => {
+      try {
+        console.log(`[testFastSearch] ${testCase.description}`);
+        
+        // テスト用の検索を実行（存在しないキーで安全にテスト）
+        const result = fastSearch(testCase.type, 'TEST_KEY_NOT_EXISTS', indexes);
+        
+        results.push({
+          type: testCase.type,
+          description: testCase.description,
+          status: 'OK',
+          result: result
+        });
+        
+        console.log(`[testFastSearch] ${testCase.type}: OK`);
+        
+      } catch (error) {
+        results.push({
+          type: testCase.type,
+          description: testCase.description,
+          status: 'ERROR',
+          error: error.message
+        });
+        
+        console.error(`[testFastSearch] ${testCase.type}: ERROR -`, error.message);
+      }
+    });
+    
+    // 結果サマリー
+    const successCount = results.filter(r => r.status === 'OK').length;
+    const totalCount = results.length;
+    
+    console.log(`[testFastSearch] テスト完了: ${successCount}/${totalCount} 成功`);
+    
+    return {
+      成功率: `${successCount}/${totalCount}`,
+      詳細結果: results,
+      実行時間: new Date()
+    };
+    
+  } catch (error) {
+    console.error('[testFastSearch] テストエラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * 実際のデータを使用した検索サンプル
+ */
+function sampleDataSearch() {
+  try {
+    console.log('[sampleDataSearch] 実データ検索サンプル');
+    
+    // インデックス作成
+    const indexes = createAllIndexes();
+    
+    // 利用可能なキーを取得してサンプル検索
+    const propertyKeys = Object.keys(indexes.property);
+    const roomKeys = Object.keys(indexes.room);
+    
+    const samples = [];
+    
+    // 物件検索サンプル
+    if (propertyKeys.length > 0) {
+      const samplePropertyId = propertyKeys[0];
+      const propertyResult = fastSearch('property', samplePropertyId, indexes);
+      samples.push({
+        type: '物件検索',
+        key: samplePropertyId,
+        found: !!propertyResult,
+        data: propertyResult ? propertyResult.data : null
+      });
+    }
+    
+    // 部屋検索サンプル
+    if (roomKeys.length > 0) {
+      const sampleRoomId = roomKeys[0];
+      const roomResult = fastSearch('room', sampleRoomId, indexes);
+      samples.push({
+        type: '部屋検索',
+        key: sampleRoomId,
+        found: !!roomResult,
+        data: roomResult ? roomResult.data : null
+      });
+      
+      // 物件別部屋一覧サンプル
+      if (roomResult && roomResult.data) {
+        const propertyId = roomResult.data['物件ID'] || roomResult.data[Object.keys(roomResult.data)[1]];
+        if (propertyId) {
+          const propertyRooms = fastSearch('propertyRooms', propertyId, indexes);
+          samples.push({
+            type: '物件別部屋一覧',
+            key: propertyId,
+            found: propertyRooms.length > 0,
+            count: propertyRooms.length
+          });
+        }
+      }
+    }
+    
+    console.log('[sampleDataSearch] サンプル検索完了:', samples);
+    return samples;
+    
+  } catch (error) {
+    console.error('[sampleDataSearch] エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * 検索機能の使用方法ガイド
+ */
+function showSearchGuide() {
+  const guide = `
+=== 高速検索機能の使用方法 ===
+
+1. 基本的な使用方法:
+   const result = fastSearch(type, key);
+
+2. 検索タイプ:
+   - 'property': 物件IDで物件情報を検索
+   - 'room': 部屋IDで部屋情報を検索
+   - 'meter': レコードIDで検針データを検索
+   - 'propertyRooms': 物件IDで該当する部屋一覧を取得
+   - 'roomMeters': 部屋IDで該当する検針データ一覧を取得
+
+3. 使用例:
+   // 物件情報の取得
+   const property = fastSearch('property', 'P001');
+   
+   // 部屋情報の取得
+   const room = fastSearch('room', 'R001-101');
+   
+   // 物件内の全部屋を取得
+   const rooms = fastSearch('propertyRooms', 'P001');
+   
+   // 部屋の全検針データを取得
+   const meters = fastSearch('roomMeters', 'R001-101');
+
+4. エラーハンドリング:
+   try {
+     const result = fastSearch('property', 'P001');
+     if (result) {
+       console.log('見つかりました:', result.data);
+     } else {
+       console.log('データが見つかりません');
+     }
+   } catch (error) {
+     console.error('検索エラー:', error.message);
+   }
+
+5. パフォーマンス最適化:
+   // インデックスを一度作成して再利用
+   const indexes = createAllIndexes();
+   const result1 = fastSearch('property', 'P001', indexes);
+   const result2 = fastSearch('room', 'R001-101', indexes);
+
+=== テスト関数 ===
+- testFastSearch(): 検索機能のテスト
+- sampleDataSearch(): 実データでのサンプル検索
+- getIndexStats(): インデックス統計情報
+  `;
+  
+  console.log(guide);
+  return guide;
 }

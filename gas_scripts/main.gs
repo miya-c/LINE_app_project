@@ -31,12 +31,14 @@ function onOpen() {
     dataManagementMenu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
     
     menu.addSubMenu(dataManagementMenu);
-    
-    // データ品質管理メニュー
+      // データ品質管理メニュー
     const dataQualityMenu = ui.createMenu('🔍 データ品質管理');
     dataQualityMenu.addItem('1. 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
     dataQualityMenu.addItem('2. データ整合性チェック', 'validateInspectionDataIntegrity');
     dataQualityMenu.addItem('3. データ高速検索インデックス作成', 'createDataIndexes');
+    dataQualityMenu.addSeparator();
+    dataQualityMenu.addItem('4. 高速検索機能テスト', 'testSearchFunctions');
+    dataQualityMenu.addItem('5. 検索使用方法ガイド', 'showSearchUsageGuide');
     
     menu.addSubMenu(dataQualityMenu);
     
@@ -370,6 +372,105 @@ function showIntegrationSummary() {
       ui.alert('エラー', `サマリー表示に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
     } catch (uiError) {
       console.error('[showIntegrationSummary] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 高速検索機能テスト（メニュー用）
+ */
+function testSearchFunctions() {
+  try {
+    console.log('[testSearchFunctions] 検索機能テスト開始');
+    
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      '検索機能テスト',
+      '高速検索機能のテストを実行します。\n' +
+      'データの状況により時間がかかる場合があります。\n\n' +
+      'テストを実行しますか？',
+      ui.ButtonSet.YES_NO
+    );
+    
+    if (response !== ui.Button.YES) {
+      return;
+    }
+    
+    // テスト実行
+    const testResult = testFastSearch();
+    const sampleResult = sampleDataSearch();
+    
+    // 結果表示
+    let message = '検索機能テスト結果:\n\n';
+    message += `テスト成功率: ${testResult.成功率}\n`;
+    message += `実行時間: ${testResult.実行時間.toLocaleString()}\n\n`;
+    
+    if (sampleResult.length > 0) {
+      message += '実データ検索サンプル:\n';
+      sampleResult.forEach(sample => {
+        message += `・${sample.type}: ${sample.found ? 'OK' : 'NG'}\n`;
+      });
+    } else {
+      message += '実データが見つかりませんでした\n';
+    }
+    
+    message += '\n詳細はログをご確認ください。';
+    
+    ui.alert('検索テスト完了', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[testSearchFunctions] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `検索テストに失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[testSearchFunctions] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 検索使用方法ガイド（メニュー用）
+ */
+function showSearchUsageGuide() {
+  try {
+    console.log('[showSearchUsageGuide] 使用方法ガイド表示');
+    
+    const guide = showSearchGuide();
+    
+    const ui = SpreadsheetApp.getUi();
+    const shortGuide = `
+高速検索機能の使用方法
+
+【基本的な使用方法】
+fastSearch(type, key)
+
+【検索タイプ】
+• property: 物件IDで物件情報を検索
+• room: 部屋IDで部屋情報を検索  
+• meter: レコードIDで検針データを検索
+• propertyRooms: 物件の部屋一覧を取得
+• roomMeters: 部屋の検針データ一覧を取得
+
+【使用例】
+const property = fastSearch('property', 'P001');
+const rooms = fastSearch('propertyRooms', 'P001');
+
+詳細な使用方法とサンプルコードは
+実行トランスクリプトをご確認ください。
+    `;
+    
+    ui.alert('検索機能使用ガイド', shortGuide, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[showSearchUsageGuide] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `ガイド表示に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[showSearchUsageGuide] UI表示エラー:', uiError);
     }
   }
 }
