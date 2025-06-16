@@ -511,10 +511,24 @@
             console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
             throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
           }
-          
-          const roomData = await roomResponse.json();
+            const roomData = await roomResponse.json();
           console.log('[ReactApp] Fetched room data:', roomData);
           console.log('[ReactApp] Room data type:', typeof roomData);
+          
+          // 🔍 部屋データの詳細構造をログ出力
+          if (roomData && roomData.data && Array.isArray(roomData.data)) {
+            console.log('[ReactApp] 部屋データサンプル:');
+            roomData.data.slice(0, 2).forEach((room, index) => {
+              console.log(`[ReactApp] 部屋[${index}] プロパティ一覧:`, Object.keys(room));
+              console.log(`[ReactApp] 部屋[${index}] 詳細:`, room);
+            });
+          } else if (Array.isArray(roomData)) {
+            console.log('[ReactApp] 直接配列の部屋データサンプル:');
+            roomData.slice(0, 2).forEach((room, index) => {
+              console.log(`[ReactApp] 部屋[${index}] プロパティ一覧:`, Object.keys(room));
+              console.log(`[ReactApp] 部屋[${index}] 詳細:`, room);
+            });
+          }
 
           // 🔥 完全修正版: 統一レスポンス判定処理
           let rooms = [];
@@ -559,18 +573,45 @@
 
           console.log('[ReactApp] 最終採用データ:', rooms.length, '件');
           
-          console.log('[ReactApp] Processed rooms:', rooms);
-          console.log('[ReactApp] Rooms array check:', Array.isArray(rooms));
-          console.log('[ReactApp] Rooms length:', rooms.length);
+          // 🔧 部屋データの正規化処理を追加
+          const normalizedRooms = rooms.map((room, index) => {
+            console.log(`[ReactApp] 部屋データ[${index}] 正規化前:`, room);
+            console.log(`[ReactApp] 部屋データ[${index}] プロパティ一覧:`, Object.keys(room));
+            
+            return {
+              ...room,
+              // 基本プロパティの正規化
+              id: room.id || room.roomId || room['部屋ID'] || `room-${index}`,
+              name: room.name || room.roomName || room['部屋名'] || '部屋名未設定',
+              
+              // 検針関連プロパティの正規化
+              rawInspectionDate: room.rawInspectionDate || room.inspectionDate || room['検針日時'],
+              hasActualReading: room.hasActualReading || room.hasReading || room['検針済み'] || false,
+              
+              // その他のプロパティを保持
+              ...Object.keys(room).reduce((acc, key) => {
+                if (!['id', 'name', 'rawInspectionDate', 'hasActualReading'].includes(key)) {
+                  acc[key] = room[key];
+                }
+                return acc;
+              }, {})
+            };
+          });
+          
+          console.log('[ReactApp] 正規化後の部屋データ:', normalizedRooms);
+          console.log('[ReactApp] 正規化後サンプル:', normalizedRooms.slice(0, 1));          
+          console.log('[ReactApp] Processed rooms:', normalizedRooms);
+          console.log('[ReactApp] Rooms array check:', Array.isArray(normalizedRooms));
+          console.log('[ReactApp] Rooms length:', normalizedRooms.length);
 
           console.log('[ReactApp] Storing to sessionStorage...');
           console.log('[ReactApp] - propertyId:', property.id, '(type:', typeof property.id, ')');
           console.log('[ReactApp] - propertyName:', property.name, '(type:', typeof property.name, ')');
-          console.log('[ReactApp] - rooms length:', Array.isArray(rooms) ? rooms.length : 'not array');
+          console.log('[ReactApp] - rooms length:', Array.isArray(normalizedRooms) ? normalizedRooms.length : 'not array');
           
           sessionStorage.setItem('selectedPropertyId', String(property.id));
           sessionStorage.setItem('selectedPropertyName', String(property.name));
-          sessionStorage.setItem('selectedRooms', JSON.stringify(rooms));
+          sessionStorage.setItem('selectedRooms', JSON.stringify(normalizedRooms));
           
           console.log('[ReactApp] sessionStorage after saving:');
           console.log('[ReactApp] - selectedPropertyId:', sessionStorage.getItem('selectedPropertyId'));

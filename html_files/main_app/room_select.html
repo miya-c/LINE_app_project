@@ -850,26 +850,40 @@
             
             {Array.isArray(rooms) && rooms.length === 0 && (
               <p className="mantine-text center">この物件に登録されている部屋はありません。</p>
-            )}
-
-            {Array.isArray(rooms) && rooms.length > 0 && (
+            )}            {Array.isArray(rooms) && rooms.length > 0 && (
               <div className="mantine-stack">
-                {rooms.map(room => {
-                  // デバッグ: 各部屋の生データを出力
+                {rooms.map((room, index) => {
+                  // 🔍 実際のデータ構造をデバッグ
+                  console.log(`[room_select] 部屋データ[${index}] 実際の構造:`, room);
+                  console.log(`[room_select] 部屋データ[${index}] プロパティ一覧:`, Object.keys(room));
+                  
+                  // 🔧 データ正規化処理を追加
+                  const normalizedRoom = {
+                    ...room,
+                    // 英語プロパティがない場合は日本語プロパティを使用
+                    id: room.id || room.roomId || room['部屋ID'] || `room-${index}`,
+                    name: room.name || room.roomName || room['部屋名'] || '部屋名未設定',
+                    rawInspectionDate: room.rawInspectionDate || room.inspectionDate || room['検針日時'],
+                    hasActualReading: room.hasActualReading || room.hasReading || room['検針済み'] || false
+                  };
+                  
+                  console.log(`[room_select] 正規化後データ[${index}]:`, normalizedRoom);
+                  
+                  // デバッグ: 各部屋の正規化データを出力
                   console.log('[room_select] 部屋データ処理:', {
-                    roomId: room.id,
-                    name: room.name,
-                    rawInspectionDate: room.rawInspectionDate,
-                    hasActualReading: room.hasActualReading,
-                    rawInspectionDateType: typeof room.rawInspectionDate
+                    roomId: normalizedRoom.id,
+                    name: normalizedRoom.name,
+                    rawInspectionDate: normalizedRoom.rawInspectionDate,
+                    hasActualReading: normalizedRoom.hasActualReading,
+                    rawInspectionDateType: typeof normalizedRoom.rawInspectionDate
                   });
                   
                   // 分離アーキテクチャ: フォーマット関数を使用
-                  const displayName = room.name || room.roomName || '部屋名未設定';
+                  const displayName = normalizedRoom.name || '部屋名未設定';
                   // hasActualReadingを優先的に使う
                   const inspectionStatus = formatInspectionStatus({
-                    rawInspectionDate: room.rawInspectionDate,
-                    hasActualReading: room.hasActualReading
+                    rawInspectionDate: normalizedRoom.rawInspectionDate,
+                    hasActualReading: normalizedRoom.hasActualReading
                   });
 
                   // 検針済みの場合は日付のみを表示、未検針の場合は[未検針]
@@ -909,15 +923,14 @@
                       </span>
                     );
                   }
-                  
-                  return (
+                    return (
                     <div 
-                      key={room.id} 
+                      key={normalizedRoom.id}
                       className={`mantine-paper ${loading || isNavigating ? 'disabled' : ''}`}
                       onClick={() => {
                         if (!loading && !isNavigating) {
-                          console.log('[room_select] Room card clicked:', room);
-                          handleRoomSelect(room);
+                          console.log('[room_select] Room card clicked:', normalizedRoom);
+                          handleRoomSelect(normalizedRoom);
                         } else {
                           console.log('[room_select] Click ignored - loading/navigating state');
                         }
