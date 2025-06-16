@@ -9,17 +9,27 @@
  * @returns {TextOutput} CORSヘッダー付きJSONレスポンス
  */
 function createCorsJsonResponse(data) {
-  const output = ContentService
+  const jsonOutput = ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
   
-  // CORSヘッダーを設定（複数オリジンに対応）
-  return output
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-    .setHeader('Access-Control-Max-Age', '3600')
-    .setHeader('Access-Control-Allow-Credentials', 'false');
+  // Google Apps ScriptではsetHeaderメソッドは存在しません
+  // CORSはWeb Appの設定で自動的に処理されます
+  return jsonOutput;
+}
+
+/**
+ * CORSプリフライトリクエスト（OPTIONS）専用の処理
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} CORSヘッダー付きレスポンス
+ */
+function doOptions(e) {
+  console.log('[doOptions] CORSプリフライトリクエスト受信');
+  
+  // OPTIONSリクエストには空のレスポンスを返す
+  return ContentService
+    .createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 /**
