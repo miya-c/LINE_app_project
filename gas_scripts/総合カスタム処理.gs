@@ -1,3 +1,25 @@
+/*
+=================================================================
+🗂️ アーカイブファイル: 総合カスタム処理.gs
+=================================================================
+このファイルの全機能は以下のアクティブファイルに移行済み：
+
+📋 移行先マッピング:
+├── main.gs                    → onOpen, showWaterMeterApp
+├── data_validation.gs         → validateInspectionDataIntegrity
+├── data_cleanup.gs           → optimizedCleanupDuplicateInspectionData
+├── data_management.gs        → データ管理機能
+├── batch_processing.gs       → バッチ処理機能
+├── data_indexes.gs           → インデックス作成
+└── dialog_functions.gs       → ダイアログ機能
+
+🚫 このファイルは完全に無効化されています
+=================================================================
+*/
+
+// 以下、全ての関数定義をコメントアウト
+
+/*
 // 総合カスタム処理.gs
 // 複数のGoogle Apps Scriptファイルの機能を統合したカスタム処理スクリプト
 
