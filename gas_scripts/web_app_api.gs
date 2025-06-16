@@ -13,12 +13,13 @@ function createCorsJsonResponse(data) {
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
   
-  // CORSヘッダーを設定
+  // CORSヘッダーを設定（複数オリジンに対応）
   return output
     .setHeader('Access-Control-Allow-Origin', '*')
     .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-    .setHeader('Access-Control-Max-Age', '3600');
+    .setHeader('Access-Control-Max-Age', '3600')
+    .setHeader('Access-Control-Allow-Credentials', 'false');
 }
 
 /**
@@ -40,17 +41,20 @@ function doPost(e) {
   // 通常のPOSTリクエスト処理
   try {
     // POST用のAPI処理をここに追加可能
+    console.log('[doPost] POSTリクエスト処理開始');
     return createCorsJsonResponse({ 
       success: true, 
-      message: 'POST request received',
-      timestamp: new Date().toISOString()
+      message: 'POST request received successfully',
+      timestamp: new Date().toISOString(),
+      method: 'POST'
     });
   } catch (error) {
     console.error('[doPost] エラー:', error);
     return createCorsJsonResponse({ 
       success: false, 
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      method: 'POST'
     });
   }
 }
