@@ -392,22 +392,25 @@
         return null;
       }
     };
-    
-    const formatInspectionStatus = (rawDate) => {
+      const formatInspectionStatus = (rawDate) => {
       console.log('[room_select] formatInspectionStatus 呼び出し - 引数:', rawDate);
       
-      const result = (rawDate && rawDate.hasActualReading !== undefined)
-        ? (rawDate.hasActualReading
-            ? { status: '検針済み', displayDate: formatDateForDisplay(rawDate.rawInspectionDate) }
-            : { status: '未検針', displayDate: null })
-        : (() => {
-            const formattedDate = formatDateForDisplay(rawDate);
-            return formattedDate ? 
-              { status: '検針済み', displayDate: formattedDate } : 
-              { status: '未検針', displayDate: null };
-          })();
+      // 最優先: hasActualReadingプロパティによる判定
+      if (rawDate && typeof rawDate.hasActualReading === 'boolean') {
+        const result = rawDate.hasActualReading
+          ? { status: '検針済み', displayDate: formatDateForDisplay(rawDate.rawInspectionDate || rawDate.inspectionDate) }
+          : { status: '未検針', displayDate: null };
+        console.log('[room_select] formatInspectionStatus 結果 (hasActualReading判定):', result);
+        return result;
+      }
       
-      console.log('[room_select] formatInspectionStatus 結果:', result);
+      // フォールバック: 日付の存在による判定（互換性維持）
+      const formattedDate = formatDateForDisplay(rawDate);
+      const result = formattedDate ? 
+        { status: '検針済み', displayDate: formattedDate } : 
+        { status: '未検針', displayDate: null };
+      
+      console.log('[room_select] formatInspectionStatus 結果 (日付判定):', result);
       return result;
     };
 
