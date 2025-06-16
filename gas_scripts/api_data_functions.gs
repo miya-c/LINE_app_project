@@ -655,7 +655,7 @@ function getRoomName(propertyId, roomId) {
 
 /**
  * 指定建物の部屋データを取得（検針状況付き）
- * @param {string} buildingId - 建物ID（物件IDと同じ）
+ * @param {string} propertyId - 物件ID
  * @returns {Object} 建物情報と部屋データの配列
  */
 function getRoomsForProperty(propertyId) {

@@ -19,7 +19,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .building-name {
+        .property-name {
             text-align: center;
             font-size: 24px;
             margin-bottom: 20px;
@@ -107,7 +107,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="building-name" id="buildingName">物件名読み込み中...</div>
+        <div class="property-name" id="propertyName">物件名読み込み中...</div>
         
         <!-- エラーメッセージ表示エリア -->
         <div id="errorMessage" class="error-message"></div>
@@ -277,7 +277,7 @@
                 console.log('- roomsData:', roomsData);
                 console.log('- roomsData.length:', roomsData.length);
 
-                document.getElementById('buildingName').textContent = propertyData.name;
+                document.getElementById('propertyName').textContent = propertyData.name;
                 displayRooms();
                 
                 document.getElementById('loading').style.display = 'none';
