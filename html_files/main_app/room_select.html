@@ -116,10 +116,16 @@
         <button class="back-button" onclick="goBack()">戻る</button>
     </div>
 
-    <script>
-        // GAS Web App URL取得
-        const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl') || 
-            'https://script.google.com/macros/s/AKfycbyQ22XFqc8I8eq8khOlds1vdq28_QMBilQM2ASYlSWUEbF3awBgYAsHeRsqdJ6uw_Nd9w/exec';
+    <script>        // GAS Web App URL取得（property_select.htmlから継承）
+        const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+        
+        // URL検証
+        if (!gasWebAppUrl) {
+            showError('<strong>エラー:</strong> Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
+            document.getElementById('loading').innerHTML = 'Web App URLが設定されていません';
+            setTimeout(() => window.location.href = 'property_select.html', 3000);
+            return;
+        }
 
         // URLパラメータから物件IDを取得
         const urlParams = new URLSearchParams(window.location.search);
