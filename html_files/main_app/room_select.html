@@ -119,20 +119,18 @@
     <script>        // GAS Web App URL取得（property_select.htmlから継承）
         const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
           // URL検証
-        if (!gasWebAppUrl) {
-            showError('<strong>エラー:</strong> Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
+        if (!gasWebAppUrl) {            showError('<strong>エラー:</strong> Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
             document.getElementById('loading').innerHTML = 'Web App URLが設定されていません';
-            setTimeout(() => window.location.href = 'property_select.html', 3000);
+            setTimeout(() => window.location.href = './property_select.html', 3000);
         } else {
             // URLパラメータから物件IDを取得
             const urlParams = new URLSearchParams(window.location.search);
             const propertyId = urlParams.get('propertyId');
             
             // 物件IDチェックと処理継続
-            if (!propertyId) {
-                showError('<strong>エラー:</strong> 物件IDが指定されていません。');
+            if (!propertyId) {                showError('<strong>エラー:</strong> 物件IDが指定されていません。');
                 document.getElementById('loading').innerHTML = '物件IDが指定されていません';
-                setTimeout(() => window.location.href = 'property_select.html', 3000);            } else {
+                setTimeout(() => window.location.href = './property_select.html', 3000);} else {
                 // 正常な場合のみloadRoomDataを実行
                 window.onload = loadRoomData;
             }
@@ -212,17 +210,14 @@
                     ? `${roomName} 検針済み：${room.readingDateFormatted}`
                     : `${roomName} 未検針`;
 
-                roomButton.innerHTML = `<div class="room-text">${displayText}</div>`;
-                roomButton.onclick = () => {
-                    window.location.href = `meter_reading.html?propertyId=${propertyId}&roomId=${room.id}`;
+                roomButton.innerHTML = `<div class="room-text">${displayText}</div>`;                roomButton.onclick = () => {
+                    window.location.href = `./meter_reading.html?propertyId=${propertyId}&roomId=${room.id}`;
                 };
 
                 roomGrid.appendChild(roomButton);
             });
-        }
-
-        function goBack() {
-            window.location.href = 'property_select.html';
+        }        function goBack() {
+            window.location.href = './property_select.html';
         }
     </script>
 </body>
