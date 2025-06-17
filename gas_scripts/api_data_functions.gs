@@ -214,51 +214,158 @@ function getRooms(propertyId) {
 }
 
 /**
- * 指定物件・部屋の検針データを取得（軽量版）
+ * 指定された物件・部屋の検針データと名称を一括取得する（統合版）
+ * inspection_dataから物件名・部屋名・検針データを一括取得し、
+ * 名称が取得できない場合はマスタシートからフォールバック
  * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
- * @returns {Array} 検針データの配列
+ * @returns {Object} {propertyName, roomName, readings} 形式のオブジェクト
  */
 function getMeterReadings(propertyId, roomId) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('inspection_data');
+    Logger.log(`[getMeterReadings] 統合版開始 - propertyId: ${propertyId}, roomId: ${roomId}`);
     
-    if (!sheet) {
+    if (!propertyId || !roomId) {
+      throw new Error('物件IDと部屋IDが必要です');
+    }
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const inspectionSheet = ss.getSheetByName('inspection_data');
+    
+    if (!inspectionSheet) {
       throw new Error('inspection_dataシートが見つかりません');
     }
     
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      return [];
+    const inspectionData = inspectionSheet.getDataRange().getValues();
+    if (inspectionData.length <= 1) {
+      // 検針データがない場合でも名称は取得して返す
+      const fallbackNames = getFallbackNames(propertyId, roomId);
+      return {
+        propertyName: fallbackNames.propertyName,
+        roomName: fallbackNames.roomName,
+        readings: []
+      };
     }
     
-    const headers = data[0];
+    const headers = inspectionData[0];
     const propertyIdIndex = headers.indexOf('物件ID');
     const roomIdIndex = headers.indexOf('部屋ID');
+    const propertyNameIndex = headers.indexOf('物件名');
+    const roomNameIndex = headers.indexOf('部屋名');
     
     if (propertyIdIndex === -1 || roomIdIndex === -1) {
       throw new Error('必要な列（物件ID、部屋ID）が見つかりません');
     }
     
-    const meterReadings = data.slice(1)
-      .filter(row => 
-        String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
-        String(row[roomIdIndex]).trim() === String(roomId).trim()
-      )
-      .map(row => {
-        const reading = {};
-        headers.forEach((header, index) => {
-          reading[header] = row[index];
-        });
-        return reading;
-      });
+    // 該当する検針データを抽出
+    const targetRows = inspectionData.slice(1).filter(row => 
+      String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
+      String(row[roomIdIndex]).trim() === String(roomId).trim()
+    );
     
-    return meterReadings;
+    let propertyName = '';
+    let roomName = '';
+    
+    // inspection_dataから名称を取得（最初の該当行から）
+    if (targetRows.length > 0 && propertyNameIndex >= 0 && roomNameIndex >= 0) {
+      propertyName = targetRows[0][propertyNameIndex] || '';
+      roomName = targetRows[0][roomNameIndex] || '';
+    }
+    
+    // 名称が取得できない場合はマスタシートからフォールバック
+    if (!propertyName || !roomName) {
+      Logger.log('[getMeterReadings] 名称フォールバック実行');
+      const fallbackNames = getFallbackNames(propertyId, roomId);
+      if (!propertyName) propertyName = fallbackNames.propertyName;
+      if (!roomName) roomName = fallbackNames.roomName;
+    }
+    
+    // 検針データを整形
+    const readings = targetRows.map(row => {
+      const reading = {};
+      headers.forEach((header, index) => {
+        reading[header] = row[index];
+      });
+      return reading;
+    });
+    
+    Logger.log(`[getMeterReadings] 完了 - 物件名: ${propertyName}, 部屋名: ${roomName}, 検針件数: ${readings.length}`);
+    
+    return {
+      propertyName: propertyName,
+      roomName: roomName,
+      readings: readings
+    };
     
   } catch (error) {
+    Logger.log(`[getMeterReadings] エラー: ${error.message}`);
     throw error;
   }
+}
+
+/**
+ * マスタシートから物件名・部屋名をフォールバック取得
+ * @param {string} propertyId - 物件ID
+ * @param {string} roomId - 部屋ID
+ * @returns {Object} {propertyName, roomName}
+ */
+function getFallbackNames(propertyId, roomId) {
+  let propertyName = '';
+  let roomName = '';
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 物件名を物件マスタから取得
+    const propertySheet = ss.getSheetByName('物件マスタ');
+    if (propertySheet) {
+      const propertyData = propertySheet.getDataRange().getValues();
+      if (propertyData.length > 1) {
+        const propertyHeaders = propertyData[0];
+        const propertyIdIndex = propertyHeaders.indexOf('物件ID');
+        const propertyNameIndex = propertyHeaders.indexOf('物件名');
+        
+        if (propertyIdIndex >= 0 && propertyNameIndex >= 0) {
+          const propertyRow = propertyData.slice(1).find(row => 
+            String(row[propertyIdIndex]).trim() === String(propertyId).trim()
+          );
+          if (propertyRow) {
+            propertyName = propertyRow[propertyNameIndex] || '';
+          }
+        }
+      }
+    }
+    
+    // 部屋名を部屋マスタから取得
+    const roomSheet = ss.getSheetByName('部屋マスタ');
+    if (roomSheet) {
+      const roomData = roomSheet.getDataRange().getValues();
+      if (roomData.length > 1) {
+        const roomHeaders = roomData[0];
+        const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');
+        const roomIdIndex = roomHeaders.indexOf('部屋ID');
+        const roomNameIndex = roomHeaders.indexOf('部屋名');
+        
+        if (roomPropertyIdIndex >= 0 && roomIdIndex >= 0 && roomNameIndex >= 0) {
+          const roomRow = roomData.slice(1).find(row => 
+            String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim() &&
+            String(row[roomIdIndex]).trim() === String(roomId).trim()
+          );
+          if (roomRow) {
+            roomName = roomRow[roomNameIndex] || '';
+          }
+        }
+      }
+    }
+    
+  } catch (error) {
+    Logger.log(`[getFallbackNames] エラー: ${error.message}`);
+  }
+  
+  return {
+    propertyName: propertyName,
+    roomName: roomName
+  };
 }
 
 /**
@@ -425,132 +532,5 @@ function getSpreadsheetInfo() {
       success: false,
       error: error.message
     };
-  }
-}
-
-/**
- * 物件名を取得
- * @param {string} propertyId - 物件ID
- * @returns {string} 物件名
- */
-function getPropertyName(propertyId) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('物件マスタ');
-    
-    if (!sheet) {
-      return '';
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const propertyIdIndex = headers.indexOf('物件ID');
-    const propertyNameIndex = headers.indexOf('物件名');
-    
-    if (propertyIdIndex === -1 || propertyNameIndex === -1) {
-      return '';
-    }
-    
-    const propertyRow = data.slice(1).find(row => 
-      String(row[propertyIdIndex]).trim() === String(propertyId).trim()
-    );
-    
-    return propertyRow ? propertyRow[propertyNameIndex] : '';
-    
-  } catch (error) {
-    return '';
-  }
-}
-
-/**
- * 部屋名を取得（inspection_dataシートから、フォールバックとして部屋マスタも参照）
- * @param {string} propertyId - 物件ID
- * @param {string} roomId - 部屋ID
- * @returns {string} 部屋名
- */
-function getRoomName(propertyId, roomId) {
-  try {
-    Logger.log(`[getRoomName] 開始 - propertyId: ${propertyId}, roomId: ${roomId}`);
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // まずinspection_dataから取得を試行
-    const inspectionSheet = ss.getSheetByName('inspection_data');
-    if (inspectionSheet) {
-      const data = inspectionSheet.getDataRange().getValues();
-      if (data.length > 1) {
-        const headers = data[0];
-        Logger.log(`[getRoomName] inspection_dataヘッダー: ${JSON.stringify(headers)}`);
-        
-        const propertyIdIndex = headers.indexOf('物件ID');
-        const roomIdIndex = headers.indexOf('部屋ID');
-        const roomNameIndex = headers.indexOf('部屋名');
-        
-        Logger.log(`[getRoomName] inspection_dataインデックス - 物件ID:${propertyIdIndex}, 部屋ID:${roomIdIndex}, 部屋名:${roomNameIndex}`);
-        
-        if (propertyIdIndex !== -1 && roomIdIndex !== -1 && roomNameIndex !== -1) {
-          // 最新のデータを取得（該当するデータの最初のレコード）
-          const roomRow = data.slice(1).find(row => 
-            String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
-            String(row[roomIdIndex]).trim() === String(roomId).trim()
-          );
-          
-          if (roomRow && roomRow[roomNameIndex] !== null && roomRow[roomNameIndex] !== undefined) {
-            const roomName = String(roomRow[roomNameIndex]).trim();
-            if (roomName) {
-              Logger.log(`[getRoomName] ✅ inspection_dataから取得成功: "${roomName}"`);
-              return roomName;
-            }
-          }
-        }
-      }
-    }
-    
-    // inspection_dataで見つからない場合、部屋マスタから取得
-    Logger.log('[getRoomName] inspection_dataで見つからないため、部屋マスタを確認');
-    
-    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
-    if (!roomMasterSheet) {
-      Logger.log('[getRoomName] 部屋マスタシートが見つかりません');
-      return '';
-    }
-    
-    const roomMasterData = roomMasterSheet.getDataRange().getValues();
-    if (roomMasterData.length <= 1) {
-      Logger.log('[getRoomName] 部屋マスタにデータがありません');
-      return '';
-    }
-    
-    const headers = roomMasterData[0];
-    Logger.log(`[getRoomName] 部屋マスタヘッダー: ${JSON.stringify(headers)}`);
-    
-    const propertyIdIndex = headers.indexOf('物件ID');
-    const roomIdIndex = headers.indexOf('部屋ID');
-    const roomNameIndex = headers.indexOf('部屋名');
-    
-    Logger.log(`[getRoomName] 部屋マスタインデックス - 物件ID:${propertyIdIndex}, 部屋ID:${roomIdIndex}, 部屋名:${roomNameIndex}`);
-    
-    if (propertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
-      Logger.log('[getRoomName] 部屋マスタで必要な列が見つかりません');
-      return '';
-    }
-    
-    const roomRow = roomMasterData.slice(1).find(row => 
-      String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
-      String(row[roomIdIndex]).trim() === String(roomId).trim()
-    );
-    
-    if (roomRow) {
-      const roomName = String(roomRow[roomNameIndex]).trim();
-      Logger.log(`[getRoomName] ✅ 部屋マスタから取得成功: "${roomName}"`);
-      return roomName;
-    } else {
-      Logger.log(`[getRoomName] ⚠️ 該当データなし - propertyId:${propertyId}, roomId:${roomId}`);
-      return '';
-    }
-    
-  } catch (error) {
-    Logger.log(`[getRoomName] エラー: ${error.message}`);
-    return '';
   }
 }

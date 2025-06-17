@@ -76,11 +76,23 @@ function doGet(e) {
           });
         }
         
-        const readings = getMeterReadings(e.parameter.propertyId, e.parameter.roomId);
-        return createCorsJsonResponse({
-          success: true,
-          data: Array.isArray(readings) ? readings : []
-        });
+        try {
+          const result = getMeterReadings(e.parameter.propertyId, e.parameter.roomId);
+          return createCorsJsonResponse({
+            success: true,
+            data: {
+              propertyName: result.propertyName || '物件名不明',
+              roomName: result.roomName || '部屋名不明',
+              readings: Array.isArray(result.readings) ? result.readings : []
+            }
+          });
+        } catch (error) {
+          Logger.log(`[web_app_api] getMeterReadingsエラー: ${error.message}`);
+          return createCorsJsonResponse({
+            success: false,
+            error: `検針データ取得に失敗しました: ${error.message}`
+          });
+        }
         
       case 'updateMeterReadings':
         if (!e.parameter.propertyId || !e.parameter.roomId || !e.parameter.readings) {
@@ -102,35 +114,6 @@ function doGet(e) {
         } catch (parseError) {          return createCorsJsonResponse({
             success: false,
             error: `データ処理エラー: ${parseError.message}`
-          });
-        }
-        
-      case 'getRoomName':
-        try {
-          const propertyId = e.parameter.propertyId;
-          const roomId = e.parameter.roomId;
-          
-          if (!propertyId || !roomId) {
-            return createCorsJsonResponse({ 
-              success: false,
-              error: 'propertyIdとroomIdが必要です'
-            });
-          }
-          
-          const roomName = getRoomName(propertyId, roomId);
-          
-          return createCorsJsonResponse({
-            success: true,
-            data: {
-              roomName: roomName || '部屋名不明'
-            }
-          });
-          
-        } catch (error) {
-          Logger.log(`[web_app_api] getRoomNameエラー: ${error.message}`);
-          return createCorsJsonResponse({
-            success: false,
-            error: `部屋名の取得に失敗しました: ${error.message}`
           });
         }
         
