@@ -185,9 +185,7 @@
             
             document.getElementById('loading').style.display = 'none';
             document.getElementById('roomGrid').style.display = 'grid';
-        }
-
-        function displayRooms(rooms) {
+        }        function displayRooms(rooms) {
             const roomGrid = document.getElementById('roomGrid');
             roomGrid.innerHTML = '';
 
@@ -195,6 +193,10 @@
                 roomGrid.innerHTML = '<p>部屋データがありません</p>';
                 return;
             }
+
+            // URLパラメータから物件IDを取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const propertyId = urlParams.get('propertyId');
 
             rooms.forEach(room => {
                 const roomButton = document.createElement('div');
