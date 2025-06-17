@@ -463,7 +463,7 @@ function getPropertyName(propertyId) {
 }
 
 /**
- * 部屋名を取得
+ * 部屋名を取得（inspection_dataシートから、フォールバックとして部屋マスタも参照）
  * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
  * @returns {string} 部屋名
@@ -473,44 +473,79 @@ function getRoomName(propertyId, roomId) {
     Logger.log(`[getRoomName] 開始 - propertyId: ${propertyId}, roomId: ${roomId}`);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('部屋マスタ');
     
-    if (!sheet) {
+    // まずinspection_dataから取得を試行
+    const inspectionSheet = ss.getSheetByName('inspection_data');
+    if (inspectionSheet) {
+      const data = inspectionSheet.getDataRange().getValues();
+      if (data.length > 1) {
+        const headers = data[0];
+        Logger.log(`[getRoomName] inspection_dataヘッダー: ${JSON.stringify(headers)}`);
+        
+        const propertyIdIndex = headers.indexOf('物件ID');
+        const roomIdIndex = headers.indexOf('部屋ID');
+        const roomNameIndex = headers.indexOf('部屋名');
+        
+        Logger.log(`[getRoomName] inspection_dataインデックス - 物件ID:${propertyIdIndex}, 部屋ID:${roomIdIndex}, 部屋名:${roomNameIndex}`);
+        
+        if (propertyIdIndex !== -1 && roomIdIndex !== -1 && roomNameIndex !== -1) {
+          // 最新のデータを取得（該当するデータの最初のレコード）
+          const roomRow = data.slice(1).find(row => 
+            String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
+            String(row[roomIdIndex]).trim() === String(roomId).trim()
+          );
+          
+          if (roomRow && roomRow[roomNameIndex] !== null && roomRow[roomNameIndex] !== undefined) {
+            const roomName = String(roomRow[roomNameIndex]).trim();
+            if (roomName) {
+              Logger.log(`[getRoomName] ✅ inspection_dataから取得成功: "${roomName}"`);
+              return roomName;
+            }
+          }
+        }
+      }
+    }
+    
+    // inspection_dataで見つからない場合、部屋マスタから取得
+    Logger.log('[getRoomName] inspection_dataで見つからないため、部屋マスタを確認');
+    
+    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+    if (!roomMasterSheet) {
       Logger.log('[getRoomName] 部屋マスタシートが見つかりません');
       return '';
     }
     
-    const data = sheet.getDataRange().getValues();
-    if (data.length === 0) {
+    const roomMasterData = roomMasterSheet.getDataRange().getValues();
+    if (roomMasterData.length <= 1) {
       Logger.log('[getRoomName] 部屋マスタにデータがありません');
       return '';
     }
     
-    const headers = data[0];
-    Logger.log(`[getRoomName] 実際のヘッダー: ${JSON.stringify(headers)}`);
+    const headers = roomMasterData[0];
+    Logger.log(`[getRoomName] 部屋マスタヘッダー: ${JSON.stringify(headers)}`);
     
     const propertyIdIndex = headers.indexOf('物件ID');
     const roomIdIndex = headers.indexOf('部屋ID');
     const roomNameIndex = headers.indexOf('部屋名');
     
-    Logger.log(`[getRoomName] インデックス - 物件ID:${propertyIdIndex}, 部屋ID:${roomIdIndex}, 部屋名:${roomNameIndex}`);
+    Logger.log(`[getRoomName] 部屋マスタインデックス - 物件ID:${propertyIdIndex}, 部屋ID:${roomIdIndex}, 部屋名:${roomNameIndex}`);
     
     if (propertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
-      Logger.log('[getRoomName] 必要な列が見つかりません - ヘッダー名が一致していない可能性があります');
+      Logger.log('[getRoomName] 部屋マスタで必要な列が見つかりません');
       return '';
     }
     
-    const roomRow = data.slice(1).find(row => 
+    const roomRow = roomMasterData.slice(1).find(row => 
       String(row[propertyIdIndex]).trim() === String(propertyId).trim() && 
       String(row[roomIdIndex]).trim() === String(roomId).trim()
     );
     
     if (roomRow) {
       const roomName = String(roomRow[roomNameIndex]).trim();
-      Logger.log(`[getRoomName] 部屋名取得成功: ${roomName}`);
+      Logger.log(`[getRoomName] ✅ 部屋マスタから取得成功: "${roomName}"`);
       return roomName;
     } else {
-      Logger.log(`[getRoomName] 該当データなし - propertyId:${propertyId}, roomId:${roomId}`);
+      Logger.log(`[getRoomName] ⚠️ 該当データなし - propertyId:${propertyId}, roomId:${roomId}`);
       return '';
     }
     
