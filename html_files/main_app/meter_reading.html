@@ -551,15 +551,6 @@
             
             console.log('[meter_reading] Setting mapped meterReadings state with:', mappedReadings);
             setMeterReadings(mappedReadings);
-            
-            // 部屋名がまだ設定されていない場合、検針データから取得
-            if ((roomName === '部屋名不明' || !roomName) && mappedReadings.length > 0) {
-              const firstReading = mappedReadings[0];
-              if (firstReading.roomName) {
-                console.log('[meter_reading] ✅ 検針データから部屋名を取得:', firstReading.roomName);
-                setRoomName(String(firstReading.roomName));
-              }
-            }
           } else {
             console.log('[meter_reading] Setting meterReadings state with:', Array.isArray(readings) ? readings : []);
             setMeterReadings(Array.isArray(readings) ? readings : []);
