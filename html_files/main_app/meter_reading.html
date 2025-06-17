@@ -580,6 +580,24 @@
                 if (!mapped.standardDeviation || mapped.standardDeviation === '') {
                   mapped.standardDeviation = warningResult.standardDeviation;
                 }
+              } else {
+                // 今回指示数が未入力の場合、履歴データから閾値を計算して表示
+                if (!mapped.currentReading || mapped.currentReading === '') {
+                  const thresholdResult = calculateWarningFlag(
+                    null, // 今回指示数は未入力
+                    mapped.previousReading,
+                    mapped.previousPreviousReading,
+                    mapped.threeTimesPrevious
+                  );
+                  
+                  // 閾値情報を警告フラグに設定
+                  if (!mapped.warningFlag || mapped.warningFlag === '' || mapped.warningFlag === '正常') {
+                    mapped.warningFlag = thresholdResult.warningFlag;
+                  }
+                  if (!mapped.standardDeviation || mapped.standardDeviation === '') {
+                    mapped.standardDeviation = thresholdResult.standardDeviation;
+                  }
+                }
               }
               
               console.log(`[meter_reading] マッピング後 [${index}]:`, {
@@ -1343,7 +1361,8 @@
         const thresholdInfo = calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading);
         
         // 今回指示数が無効な場合は閾値情報を表示（N/A判定を削除）
-        if (typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
+        if (currentReading === null || currentReading === undefined || currentReading === '' || 
+            typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
           return {
             warningFlag: `閾値: ${thresholdInfo.threshold}`,
             standardDeviation: thresholdInfo.standardDeviation,
@@ -1403,8 +1422,14 @@
       const current = parseFloat(currentReading) || 0;
       const previous = parseFloat(previousReading) || 0;
       
-      if (current === 0 || isNaN(current)) {
-        return { usage: '-', warningFlag: '正常', standardDeviation: 0 };
+      if (current === 0 || isNaN(current) || !currentReading || currentReading === '') {
+        // 今回指示数が未入力の場合、履歴データから閾値を計算
+        const thresholdResult = calculateWarningFlag(null, previous, parseFloat(previousPreviousReading) || 0, parseFloat(threeTimesPreviousReading) || 0);
+        return { 
+          usage: '-', 
+          warningFlag: thresholdResult.warningFlag,
+          standardDeviation: thresholdResult.standardDeviation 
+        };
       }
       
       const usage = previous > 0 ? current - previous : current;
@@ -1429,7 +1454,18 @@
     // 状態表示の拡張
     const getStatusDisplay = (reading) => {
       if (!reading.currentReading || reading.currentReading === '') {
-        return 'N/A';
+        // 未入力時は警告フラグから閾値情報を表示
+        if (reading.warningFlag && reading.warningFlag.startsWith('閾値:')) {
+          return reading.warningFlag;
+        }
+        
+        // 警告フラグが計算されていない場合は履歴データから閾値を計算
+        const previousReading = parseFloat(reading.previousReading) || 0;
+        const previousPreviousReading = parseFloat(reading.previousPreviousReading) || 0;
+        const threeTimesPreviousReading = parseFloat(reading.threeTimesPrevious) || 0;
+        
+        const thresholdResult = calculateWarningFlag(null, previousReading, previousPreviousReading, threeTimesPreviousReading);
+        return thresholdResult.warningFlag;
       }
       
       // 警告フラグがある場合はそれを表示
