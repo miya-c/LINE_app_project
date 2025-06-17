@@ -713,7 +713,7 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
   } catch (error) {
     Logger.log(`[calculateWarningFlag] エラー: ${error.message}`);
     return {
-      warningFlag: 'N/A',
+      warningFlag: '閾値: 0',
       standardDeviation: 0,
       threshold: 0,
       reason: 'エラー'
