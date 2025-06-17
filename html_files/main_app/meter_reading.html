@@ -1342,13 +1342,13 @@
         // まず閾値情報を履歴データのみで計算（今回指示数不要）
         const thresholdInfo = calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading);
         
-        // 今回指示数が無効な場合は閾値情報のみ返却（判定なし）
+        // 今回指示数が無効な場合は閾値情報を表示（N/A判定を削除）
         if (typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
           return {
-            warningFlag: 'N/A',
+            warningFlag: `閾値: ${thresholdInfo.threshold}`,
             standardDeviation: thresholdInfo.standardDeviation,
             threshold: thresholdInfo.threshold,
-            reason: '今回指示数が無効'
+            reason: '閾値表示（未入力）'
           };
         }
         
