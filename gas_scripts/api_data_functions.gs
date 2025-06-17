@@ -122,20 +122,11 @@ function getRooms(propertyId) {
         // 検針データが読み込めなくても部屋一覧は返す
       }
     }
-    
-    // HTMLが期待する形式で返却
+      // HTMLが期待する形式で返却
     return {
       property: propertyInfo,
       rooms: rooms
     };
-      } catch (error) {
-    Logger.log(`getRooms エラー: ${error.message}`);
-    throw error;
-  }
-}
-    }
-    
-    return rooms;
     
   } catch (error) {
     Logger.log(`getRooms エラー: ${error.message}`);
