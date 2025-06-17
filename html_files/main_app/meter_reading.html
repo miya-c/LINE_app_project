@@ -741,6 +741,7 @@
           const date = input.getAttribute('data-date');
           const originalValue = input.getAttribute('data-original-value') || '';
           const currentValue = input.value || '';
+          const previousValue = input.getAttribute('data-previous-reading') || ''; // previousValueを追加
           
           input.style.borderColor = '';
           setInputErrors(prev => ({...prev, [date]: ''})); 
@@ -777,12 +778,29 @@
             } else {
               inspectionDate = currentValue && currentValue.trim() !== '' ? getCurrentJSTDateString() : '';
             }
-            const warningResult = calculateUsageWithWarning(
-              currentValue,
-              previousValue,
-              0, // 前々回は取得できないため0
-              0  // 前々々回も取得できないため0
-            );
+
+            // 警告フラグ計算のために、検針データから履歴使用量を取得
+            let previousUsage = 0;
+            let previousPreviousUsage = 0;
+            let threeTimesPreviousUsage = 0;
+
+            // meterReadingsから該当データを検索して履歴使用量を計算
+            const currentReading = meterReadings.find(reading => reading.date === date);
+            if (currentReading) {
+              const currentVal = parseFloat(currentValue) || 0;
+              const prevVal = parseFloat(currentReading.previousReading) || 0;
+              const prevPrevVal = parseFloat(currentReading.previousPreviousReading) || 0;
+              const threePrevVal = parseFloat(currentReading.threeTimesPrevious) || 0;
+
+              // 各期間の使用量を計算
+              if (prevVal > 0) previousUsage = currentVal - prevVal;
+              if (prevPrevVal > 0) previousPreviousUsage = prevVal - prevPrevVal;
+              if (threePrevVal > 0) threeTimesPreviousUsage = prevPrevVal - threePrevVal;
+            }
+
+            // 警告フラグを計算
+            const usage = parseFloat(currentValue) || 0;
+            const warningResult = calculateWarningFlag(usage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage);
             
             updatedReadings.push({
               date: inspectionDate,
