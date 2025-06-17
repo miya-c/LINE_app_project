@@ -437,6 +437,10 @@ function updateMeterReadings(propertyId, roomId, readings) {
       let usage = 0;
       let warningResult = { warningFlag: '正常', standardDeviation: 0 };
       
+      // 日付をJST形式に正規化
+      const normalizedDate = reading.date ? normalizeToJSTDate(reading.date) : getCurrentJSTDate();
+      Logger.log(`[updateMeterReadings] 日付正規化: ${reading.date} → ${normalizedDate}`);
+      
       if (existingRowIndex >= 0) {
         // 既存データ更新
         const prevValue = parseFloat(data[existingRowIndex][colIndexes.previousReading]) || 0;
@@ -463,7 +467,8 @@ function updateMeterReadings(propertyId, roomId, readings) {
           Logger.log(`[updateMeterReadings] 履歴データ不足のため正常判定`);
         }
         
-        data[existingRowIndex][colIndexes.date] = reading.date || '';
+        // データ更新（JST日付を使用）
+        data[existingRowIndex][colIndexes.date] = normalizedDate;
         data[existingRowIndex][colIndexes.currentReading] = currentValue;
         if (colIndexes.usage >= 0) data[existingRowIndex][colIndexes.usage] = usage;
         
@@ -486,7 +491,7 @@ function updateMeterReadings(propertyId, roomId, readings) {
         const newRow = new Array(headers.length).fill('');
         newRow[colIndexes.propertyId] = propertyId;
         newRow[colIndexes.roomId] = roomId;
-        newRow[colIndexes.date] = reading.date || '';
+        newRow[colIndexes.date] = normalizedDate; // JST日付を使用
         newRow[colIndexes.currentReading] = currentValue;
         if (colIndexes.usage >= 0) newRow[colIndexes.usage] = usage;
         
@@ -655,4 +660,88 @@ function calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage
       reason: 'エラー'
     };
   }
+}
+
+/**
+ * 日本時間（JST）でYYYY-MM-DD形式に正規化
+ * @param {string|Date} dateValue - 正規化する日付値
+ * @returns {string} YYYY-MM-DD形式の日付文字列（JST基準）
+ */
+function normalizeToJSTDate(dateValue) {
+  if (!dateValue) return '';
+  
+  try {
+    let date;
+    
+    // 文字列の場合
+    if (typeof dateValue === 'string') {
+      // 既にYYYY-MM-DD形式の場合
+      if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        Logger.log(`[normalizeToJSTDate] 既に正規化済み: ${dateValue}`);
+        return dateValue;
+      }
+      
+      // ISO形式の場合（UTC → JST変換）
+      if (dateValue.includes('T')) {
+        date = new Date(dateValue);
+        // UTC時間をJST（UTC+9）に変換
+        const jstTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+        date = jstTime;
+        Logger.log(`[normalizeToJSTDate] UTC→JST変換: ${dateValue} → JST`);
+      } else {
+        // その他の文字列形式
+        date = new Date(dateValue);
+        // 現地時間として解釈されるため、JST調整が必要
+        const jstTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+        date = jstTime;
+      }
+    } 
+    // Dateオブジェクトの場合
+    else if (dateValue instanceof Date) {
+      // JST時間に変換
+      const jstTime = new Date(dateValue.getTime() + (9 * 60 * 60 * 1000));
+      date = jstTime;
+    }
+    else {
+      Logger.log(`[normalizeToJSTDate] 未対応の型: ${typeof dateValue}, 値: ${dateValue}`);
+      return '';
+    }
+    
+    // 有効な日付かチェック
+    if (isNaN(date.getTime())) {
+      Logger.log(`[normalizeToJSTDate] 無効な日付: ${dateValue}`);
+      return '';
+    }
+    
+    // YYYY-MM-DD形式で返す（JST基準）
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const normalized = `${year}-${month}-${day}`;
+    
+    Logger.log(`[normalizeToJSTDate] JST日付正規化: ${dateValue} → ${normalized}`);
+    return normalized;
+    
+  } catch (error) {
+    Logger.log(`[normalizeToJSTDate] エラー: ${error.message}, 入力値: ${dateValue}`);
+    return '';
+  }
+}
+
+/**
+ * 現在のJST日付を取得
+ * @returns {string} YYYY-MM-DD形式の今日の日付（JST）
+ */
+function getCurrentJSTDate() {
+  const now = new Date();
+  // UTC時間を取得して、JST（UTC+9）に変換
+  const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  
+  const year = jstTime.getUTCFullYear();
+  const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(jstTime.getUTCDate()).padStart(2, '0');
+  
+  const jstDateString = `${year}-${month}-${day}`;
+  Logger.log(`[getCurrentJSTDate] 現在のJST日付: ${jstDateString}`);
+  return jstDateString;
 }
