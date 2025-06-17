@@ -46,8 +46,7 @@ function doGet(e) {
           data: Array.isArray(properties) ? properties : [],
           count: Array.isArray(properties) ? properties.length : 0
         });
-        
-      case 'getRooms':
+          case 'getRooms':
         if (!e.parameter.propertyId) {
           return createCorsJsonResponse({ 
             success: false,
@@ -55,11 +54,20 @@ function doGet(e) {
           });
         }
         
-        const roomData = getRooms(e.parameter.propertyId);
-        return createCorsJsonResponse({
-          success: true,
-          data: roomData
-        });
+        try {
+          const roomData = getRooms(e.parameter.propertyId);
+          return createCorsJsonResponse({
+            success: true,
+            data: Array.isArray(roomData) ? roomData : [],
+            message: `${Array.isArray(roomData) ? roomData.length : 0}件の部屋データを取得しました`
+          });
+        } catch (error) {
+          Logger.log(`getRooms API エラー: ${error.message}`);
+          return createCorsJsonResponse({
+            success: false,
+            error: `部屋データの取得に失敗しました: ${error.message}`
+          });
+        }
         
       case 'getMeterReadings':
         if (!e.parameter.propertyId || !e.parameter.roomId) {
@@ -115,12 +123,6 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  return createCorsJsonResponse({ 
-    success: true, 
-    message: 'POST request received'
-  });
-}
-  
   // 通常のPOSTリクエスト処理
   try {
     // POST用のAPI処理をここに追加可能
@@ -134,8 +136,7 @@ function doPost(e) {
   } catch (error) {
     console.error('[doPost] エラー:', error);
     return createCorsJsonResponse({ 
-      success: false, 
-      error: error.message,
+      success: false,      error: error.message,
       timestamp: new Date().toISOString(),
       method: 'POST'
     });

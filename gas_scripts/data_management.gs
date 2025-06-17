@@ -284,3 +284,4 @@ function processInspectionDataMonthly() {
     safeAlert('エラー', `月次検針データ保存中にエラーが発生しました:\n${e.message}`);
   }
 }
+
