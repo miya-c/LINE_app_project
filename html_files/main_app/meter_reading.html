@@ -609,19 +609,36 @@
           setIsNavigating(true);
           setNavigationMessage('画面を切り替えています...');
           
-          await updateSessionStorageCache(propertyId, roomId);
+          // キャッシュ更新（エラー時も継続）
+          try {
+            await updateSessionStorageCache(propertyId, roomId);
+          } catch (cacheError) {
+            console.warn('[meter_reading] キャッシュ更新エラー（継続）:', cacheError);
+          }
           
           window.scrollTo(0, 0);
           
+          // 戻る遷移用の情報を保存
           sessionStorage.setItem('forceRefreshRooms', 'true');
           sessionStorage.setItem('updatedRoomId', roomId);
           sessionStorage.setItem('lastUpdateTime', Date.now().toString());
           
-          window.location.href = '/room_select';
+          // ✅ 物件IDパラメータを含めて遷移
+          const backUrl = `/room_select?propertyId=${encodeURIComponent(propertyId)}`;
+          console.log('[meter_reading] 戻るURL:', backUrl);
+          
+          window.location.href = backUrl;
           
         } catch (error) {
           console.error('[meter_reading] 戻るボタン処理エラー:', error);
-          window.location.href = '/room_select';
+          
+          // ✅ エラー時でも物件IDパラメータを含めて遷移
+          const fallbackUrl = propertyId ? 
+            `/room_select?propertyId=${encodeURIComponent(propertyId)}` : 
+            '/property_select';
+          
+          console.log('[meter_reading] フォールバック遷移:', fallbackUrl);
+          window.location.href = fallbackUrl;
         }
       };
 
@@ -1327,19 +1344,19 @@
         const average = calculateAVERAGE(readingHistory);
         const standardDeviation = calculateSTDEV_S(readingHistory);
         
-        // 閾値を計算（平均 + 標準偏差 + 10）
-        const threshold = average + standardDeviation + 10;
+        // ✅ 修正：前回値を基準にした閾値計算（前回値 + 標準偏差 + 10）
+        const threshold = previousReading + standardDeviation + 10;
         
         // 警告フラグを判定：今回指示数が閾値を超えた場合のみ「要確認」
         const warningFlag = (currentReading > threshold) ? '要確認' : '正常';
         
-        console.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
+        console.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 前回値: ${previousReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
         
         return {
           warningFlag: warningFlag,
           standardDeviation: Math.round(standardDeviation * 100) / 100, // 小数点以下2桁で丸める
           threshold: Math.round(threshold * 100) / 100,
-          reason: `履歴${readingHistory.length}件より算出`
+          reason: `前回値${previousReading} + σ${standardDeviation.toFixed(1)} + 10`
         };
         
       } catch (error) {

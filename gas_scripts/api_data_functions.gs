@@ -655,19 +655,19 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
     const average = calculateAVERAGE(readingHistory);
     const standardDeviation = calculateSTDEV_S(readingHistory);
     
-    // 閾値を計算（平均 + 標準偏差 + 10）
-    const threshold = average + standardDeviation + 10;
+    // ✅ 修正：前回値を基準にした閾値計算（前回値 + 標準偏差 + 10）
+    const threshold = previousReading + standardDeviation + 10;
     
     // 警告フラグを判定：今回指示数が閾値を超えた場合のみ「要確認」
     const warningFlag = (currentReading > threshold) ? '要確認' : '正常';
     
-    Logger.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
+    Logger.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 前回値: ${previousReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
     
     return {
       warningFlag: warningFlag,
       standardDeviation: Math.round(standardDeviation * 100) / 100, // 小数点以下2桁で丸める
       threshold: Math.round(threshold * 100) / 100,
-      reason: `履歴${readingHistory.length}件より算出`
+      reason: `前回値${previousReading} + σ${standardDeviation.toFixed(1)} + 10`
     };
     
   } catch (error) {

@@ -123,8 +123,10 @@
 
     <script>        // GAS Web App URL取得（property_select.htmlから継承）
         const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-          // URL検証
-        if (!gasWebAppUrl) {            showError('<strong>エラー:</strong> Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
+        
+        // URL検証
+        if (!gasWebAppUrl) {
+            showError('<strong>エラー:</strong> Web App URLが設定されていません。物件選択画面から再度アクセスしてください。');
             document.getElementById('loading').innerHTML = 'Web App URLが設定されていません';
             setTimeout(() => window.location.href = '/property_select', 3000);
         } else {
@@ -132,10 +134,36 @@
             const urlParams = new URLSearchParams(window.location.search);
             const propertyId = urlParams.get('propertyId');
             
+            console.log('[room_select] URLパラメータ確認:', {
+                propertyId: propertyId,
+                fullUrl: window.location.href,
+                searchParams: window.location.search
+            });
+            
             // 物件IDチェックと処理継続
-            if (!propertyId) {                showError('<strong>エラー:</strong> 物件IDが指定されていません。');
-                document.getElementById('loading').innerHTML = '物件IDが指定されていません';
-                setTimeout(() => window.location.href = '/property_select', 3000);} else {
+            if (!propertyId) {
+                console.error('[room_select] 物件IDが見つかりません');
+                
+                // ✅ セッションストレージから物件IDを復元試行
+                const savedPropertyId = sessionStorage.getItem('selectedPropertyId');
+                const savedPropertyName = sessionStorage.getItem('selectedPropertyName');
+                
+                if (savedPropertyId) {
+                    console.log('[room_select] セッションストレージから物件ID復元:', savedPropertyId);
+                    
+                    // URLを修正して再読み込み
+                    const correctedUrl = `/room_select?propertyId=${encodeURIComponent(savedPropertyId)}`;
+                    console.log('[room_select] URL修正して再読み込み:', correctedUrl);
+                    
+                    window.location.href = correctedUrl;
+                    return;
+                } else {
+                    showError('<strong>エラー:</strong> 物件IDが指定されていません。物件選択画面に戻ります。');
+                    document.getElementById('loading').innerHTML = '物件IDが指定されていません';
+                    setTimeout(() => window.location.href = '/property_select', 3000);
+                }
+            } else {
+                console.log('[room_select] 物件ID確認完了:', propertyId);
                 // 正常な場合のみloadRoomDataを実行
                 window.onload = loadRoomData;
             }
@@ -152,17 +180,26 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const propertyId = urlParams.get('propertyId');
                 
+                console.log('[room_select] loadRoomData開始:', {
+                    gasWebAppUrl: gasWebAppUrl ? 'あり' : 'なし',
+                    propertyId: propertyId
+                });
+                
                 if (!gasWebAppUrl || !propertyId) {
                     throw new Error('必要なパラメータが不足しています');
                 }
                 
-                const response = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`);
+                const fetchUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`;
+                console.log('[room_select] API呼び出しURL:', fetchUrl);
+                
+                const response = await fetch(fetchUrl);
                 
                 if (!response.ok) {
                     throw new Error(`API呼び出しに失敗しました: ${response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log('[room_select] API応答:', data);
                 
                 if (!data.success) {
                     throw new Error(data.error || 'データの取得に失敗しました');
@@ -171,14 +208,17 @@
                 displayData(data.data);
                 
             } catch (error) {
-                console.error('部屋データの読み込みエラー:', error);
+                console.error('[room_select] 部屋データの読み込みエラー:', error);
                 document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました';
                 showError('データの取得でエラーが発生しました: ' + error.message);
             }
         }
 
         function displayData(data) {
+            console.log('[room_select] displayData開始:', data);
+            
             if (!data || !data.property || !Array.isArray(data.rooms)) {
+                console.error('[room_select] 不正なデータ形式:', data);
                 showError('不正なデータ形式です');
                 return;
             }
@@ -188,6 +228,8 @@
             
             document.getElementById('loading').style.display = 'none';
             document.getElementById('roomGrid').style.display = 'grid';
+            
+            console.log('[room_select] 表示完了 - 物件名:', data.property.name, '部屋数:', data.rooms.length);
         }        function displayRooms(rooms) {
             const roomGrid = document.getElementById('roomGrid');
             roomGrid.innerHTML = '';
@@ -201,7 +243,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const propertyId = urlParams.get('propertyId');
 
-            rooms.forEach(room => {
+            console.log('[room_select] 部屋表示開始 - 部屋数:', rooms.length, '物件ID:', propertyId);
+
+            rooms.forEach((room, index) => {
                 const roomButton = document.createElement('div');
                 roomButton.className = 'room-button';
                 
@@ -215,13 +259,20 @@
                     ? `${roomName} 検針済み：${room.readingDateFormatted}`
                     : `${roomName} 未検針`;
 
-                roomButton.innerHTML = `<div class="room-text">${displayText}</div>`;                roomButton.onclick = () => {
-                    window.location.href = `/meter_reading?propertyId=${propertyId}&roomId=${room.id}`;
+                roomButton.innerHTML = `<div class="room-text">${displayText}</div>`;
+                
+                roomButton.onclick = () => {
+                    const meterReadingUrl = `/meter_reading?propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(room.id)}`;
+                    console.log(`[room_select] 部屋[${index}]クリック:`, meterReadingUrl);
+                    window.location.href = meterReadingUrl;
                 };
 
                 roomGrid.appendChild(roomButton);
             });
+            
+            console.log('[room_select] 部屋ボタン生成完了');
         }        function goBack() {
+            console.log('[room_select] 戻るボタンクリック');
             window.location.href = '/property_select';
         }
     </script>
