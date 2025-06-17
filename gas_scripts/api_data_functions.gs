@@ -663,7 +663,7 @@ function calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage
 }
 
 /**
- * 日本時間（JST）でYYYY-MM-DD形式に正規化
+ * 日本時間（JST）でYYYY-MM-DD形式に正規化（最適化版）
  * @param {string|Date} dateValue - 正規化する日付値
  * @returns {string} YYYY-MM-DD形式の日付文字列（JST基準）
  */
@@ -680,30 +680,14 @@ function normalizeToJSTDate(dateValue) {
         Logger.log(`[normalizeToJSTDate] 既に正規化済み: ${dateValue}`);
         return dateValue;
       }
-      
-      // ISO形式の場合（UTC → JST変換）
-      if (dateValue.includes('T')) {
-        date = new Date(dateValue);
-        // UTC時間をJST（UTC+9）に変換
-        const jstTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
-        date = jstTime;
-        Logger.log(`[normalizeToJSTDate] UTC→JST変換: ${dateValue} → JST`);
-      } else {
-        // その他の文字列形式
-        date = new Date(dateValue);
-        // 現地時間として解釈されるため、JST調整が必要
-        const jstTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
-        date = jstTime;
-      }
+      date = new Date(dateValue);
     } 
     // Dateオブジェクトの場合
     else if (dateValue instanceof Date) {
-      // JST時間に変換
-      const jstTime = new Date(dateValue.getTime() + (9 * 60 * 60 * 1000));
-      date = jstTime;
+      date = dateValue;
     }
     else {
-      Logger.log(`[normalizeToJSTDate] 未対応の型: ${typeof dateValue}, 値: ${dateValue}`);
+      Logger.log(`[normalizeToJSTDate] 未対応の型: ${typeof dateValue}`);
       return '';
     }
     
@@ -713,14 +697,11 @@ function normalizeToJSTDate(dateValue) {
       return '';
     }
     
-    // YYYY-MM-DD形式で返す（JST基準）
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const normalized = `${year}-${month}-${day}`;
+    // Google Apps Script推奨: Utilities.formatDateを使用
+    const jstDateString = Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy-MM-dd');
     
-    Logger.log(`[normalizeToJSTDate] JST日付正規化: ${dateValue} → ${normalized}`);
-    return normalized;
+    Logger.log(`[normalizeToJSTDate] JST日付正規化: ${dateValue} → ${jstDateString}`);
+    return jstDateString;
     
   } catch (error) {
     Logger.log(`[normalizeToJSTDate] エラー: ${error.message}, 入力値: ${dateValue}`);
@@ -729,19 +710,14 @@ function normalizeToJSTDate(dateValue) {
 }
 
 /**
- * 現在のJST日付を取得
+ * 現在のJST日付を取得（最適化版）
  * @returns {string} YYYY-MM-DD形式の今日の日付（JST）
  */
 function getCurrentJSTDate() {
   const now = new Date();
-  // UTC時間を取得して、JST（UTC+9）に変換
-  const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  // Google Apps Script推奨: Utilities.formatDateを使用
+  const jstDateString = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
   
-  const year = jstTime.getUTCFullYear();
-  const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(jstTime.getUTCDate()).padStart(2, '0');
-  
-  const jstDateString = `${year}-${month}-${day}`;
   Logger.log(`[getCurrentJSTDate] 現在のJST日付: ${jstDateString}`);
   return jstDateString;
 }

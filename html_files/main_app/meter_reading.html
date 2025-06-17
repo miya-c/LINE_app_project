@@ -221,8 +221,9 @@
       });
     }
     
+    // JST基準での日付表示（最適化版）
     const formatDateForDisplay = (rawDate) => {
-      console.log('[formatDateForDisplay] JST表示用デバッグ: 入力値:', rawDate, '型:', typeof rawDate);
+      console.log('[formatDateForDisplay] JST表示用: 入力値:', rawDate, '型:', typeof rawDate);
       
       if (!rawDate) {
         console.log('[formatDateForDisplay] 空の日付を受信');
@@ -230,41 +231,21 @@
       }
       
       try {
-        // YYYY-MM-DD形式の場合（JST日付として扱う）
-        if (typeof rawDate === 'string') {
-          const match = rawDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-          if (match) {
-            const [, year, month, day] = match;
-            const result = `${parseInt(month)}月${parseInt(day)}日`;
-            console.log('[formatDateForDisplay] JST YYYY-MM-DD形式:', result);
-            return result;
-          }
-          
-          // ISO形式の場合はJSTに変換してから表示
-          if (rawDate.includes('T')) {
-            const utcDate = new Date(rawDate);
-            const jstTime = new Date(utcDate.getTime() + (9 * 60 * 60 * 1000));
-            const month = jstTime.getUTCMonth() + 1;
-            const day = jstTime.getUTCDate();
-            const result = `${month}月${day}日`;
-            console.log('[formatDateForDisplay] ISO→JST変換表示:', result);
-            return result;
-          }
+        const date = new Date(rawDate);
+        if (isNaN(date.getTime())) {
+          console.log('[formatDateForDisplay] 無効な日付');
+          return null;
         }
         
-        // Dateオブジェクトの場合
-        if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
-          // JSTに変換
-          const jstTime = new Date(rawDate.getTime() + (9 * 60 * 60 * 1000));
-          const month = jstTime.getUTCMonth() + 1;
-          const day = jstTime.getUTCDate();
-          const result = `${month}月${day}日`;
-          console.log('[formatDateForDisplay] Dateオブジェクト→JST:', result);
-          return result;
-        }
+        // Intl.DateTimeFormatで日本語表示（標準API使用）
+        const formatted = new Intl.DateTimeFormat('ja-JP', {
+          timeZone: 'Asia/Tokyo',
+          month: 'long',
+          day: 'numeric'
+        }).format(date);
         
-        console.log('[formatDateForDisplay] JST変換処理が不可能');
-        return null;
+        console.log(`[formatDateForDisplay] JST表示: ${rawDate} → ${formatted}`);
+        return formatted;
         
       } catch (error) {
         console.warn('[formatDateForDisplay] JST日付フォーマットエラー:', rawDate, error);
@@ -295,24 +276,25 @@
 
     const calculateUsageDisplay = calculateUsage;
     
+    // JST日付処理の最適化版（標準ライブラリ使用）
     const getCurrentJSTDateString = () => {
       const now = new Date();
       
-      // UTC時間を取得してJST（UTC+9）に変換
-      const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      // Intl.DateTimeFormatを使用（ブラウザ標準API）
+      const jstDateString = new Intl.DateTimeFormat('ja-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(now);
       
-      const year = jstTime.getUTCFullYear();
-      const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(jstTime.getUTCDate()).padStart(2, '0');
-      
-      const jstDateString = `${year}-${month}-${day}`;
       console.log(`[getCurrentJSTDateString] JST日付生成: ${jstDateString} (今日は2025-06-18)`);
       return jstDateString;
     };
 
-    // 日本時間での日付正規化関数
+    // 日本時間での日付正規化関数（最適化版）
     const normalizeToJSTDate = (dateValue) => {
-      if (!dateValue) return getCurrentJSTDateString(); // 空の場合は今日の日付
+      if (!dateValue) return getCurrentJSTDateString();
       
       try {
         // 既にYYYY-MM-DD形式の場合
@@ -321,37 +303,23 @@
           return dateValue;
         }
         
-        // ISO形式の場合（UTC → JST変換）
-        if (typeof dateValue === 'string' && dateValue.includes('T')) {
-          const utcDate = new Date(dateValue);
-          // UTC時間をJST（UTC+9）に変換
-          const jstTime = new Date(utcDate.getTime() + (9 * 60 * 60 * 1000));
-          
-          const year = jstTime.getUTCFullYear();
-          const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
-          const day = String(jstTime.getUTCDate()).padStart(2, '0');
-          const normalized = `${year}-${month}-${day}`;
-          
-          console.log(`[normalizeToJSTDate] UTC→JST変換: ${dateValue} → ${normalized}`);
-          return normalized;
-        }
-        
-        // その他の場合はDateオブジェクトを経由してJST変換
+        // 標準のIntl.DateTimeFormatを使用
         const date = new Date(dateValue);
         if (isNaN(date.getTime())) {
           console.warn(`[normalizeToJSTDate] 無効な日付、今日の日付を使用: ${dateValue}`);
           return getCurrentJSTDateString();
         }
         
-        // JST時間に変換
-        const jstTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
-        const year = jstTime.getUTCFullYear();
-        const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(jstTime.getUTCDate()).padStart(2, '0');
-        const normalized = `${year}-${month}-${day}`;
+        // Intl.DateTimeFormatでJST変換
+        const jstDate = new Intl.DateTimeFormat('ja-CA', {
+          timeZone: 'Asia/Tokyo',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(date);
         
-        console.log(`[normalizeToJSTDate] 一般日付→JST変換: ${dateValue} → ${normalized}`);
-        return normalized;
+        console.log(`[normalizeToJSTDate] JST正規化: ${dateValue} → ${jstDate}`);
+        return jstDate;
         
       } catch (error) {
         console.warn('[normalizeToJSTDate] 日付変換エラー:', error);
@@ -1439,6 +1407,42 @@
         }
       };
     };
+    
+    // JST日付処理のテスト用関数（開発時のみ）
+    const testJSTDateFunctions = () => {
+      console.log('=== JST日付処理テスト開始 ===');
+      
+      const testCases = [
+        '2025-01-15T15:00:00.000Z',  // ISO UTC形式
+        '2025-01-15',                // YYYY-MM-DD形式
+        new Date('2025-01-15'),      // Dateオブジェクト
+        '',                          // 空文字
+        null,                        // null
+        undefined                    // undefined
+      ];
+      
+      testCases.forEach((testCase, index) => {
+        console.log(`--- テストケース ${index + 1}: ${testCase} ---`);
+        
+        const normalized = normalizeToJSTDate(testCase);
+        console.log(`正規化結果: ${normalized}`);
+        
+        const displayed = formatDateForDisplay(testCase);
+        console.log(`表示結果: ${displayed}`);
+        
+        console.log('');
+      });
+      
+      console.log('=== 現在日時テスト ===');
+      const currentJST = getCurrentJSTDateString();
+      console.log(`現在のJST日付: ${currentJST}`);
+      
+      console.log('=== JST日付処理テスト完了 ===');
+    };
+
+    // 開発時にテストを実行（本番では削除可能）
+    // testJSTDateFunctions();
+
   </script>
   
   <!-- PWA初期化スクリプト -->
