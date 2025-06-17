@@ -99,10 +99,38 @@ function doGet(e) {
           const result = updateMeterReadings(e.parameter.propertyId, e.parameter.roomId, readings);
           return createCorsJsonResponse(result);
           
-        } catch (parseError) {
-          return createCorsJsonResponse({
+        } catch (parseError) {          return createCorsJsonResponse({
             success: false,
             error: `データ処理エラー: ${parseError.message}`
+          });
+        }
+        
+      case 'getRoomName':
+        try {
+          const propertyId = e.parameter.propertyId;
+          const roomId = e.parameter.roomId;
+          
+          if (!propertyId || !roomId) {
+            return createCorsJsonResponse({ 
+              success: false,
+              error: 'propertyIdとroomIdが必要です'
+            });
+          }
+          
+          const roomName = getRoomName(propertyId, roomId);
+          
+          return createCorsJsonResponse({
+            success: true,
+            data: {
+              roomName: roomName || '部屋名不明'
+            }
+          });
+          
+        } catch (error) {
+          Logger.log(`[web_app_api] getRoomNameエラー: ${error.message}`);
+          return createCorsJsonResponse({
+            success: false,
+            error: `部屋名の取得に失敗しました: ${error.message}`
           });
         }
         

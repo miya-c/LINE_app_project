@@ -396,14 +396,12 @@
       // コンポーネントマウント時にスクロール位置をリセット
       React.useEffect(() => {
         window.scrollTo(0, 0);
-      }, []);
-
-      const loadUrlParams = () => {
+      }, []);      const loadUrlParams = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const propId = urlParams.get('propertyId');
         const propName = urlParams.get('propertyName');
         const rId = urlParams.get('roomId');
-        const rName = urlParams.get('roomName');
+        let rName = urlParams.get('roomName');
 
         console.log('[meter_reading] 🔍 URLパラメータ詳細:');
         console.log('[meter_reading] - propertyId:', `"${propId}"`, '型:', typeof propId, 'length:', propId ? propId.length : 'N/A');
@@ -413,10 +411,36 @@
         console.log('[meter_reading] - 完全なURL:', window.location.href);
         console.log('[meter_reading] - URLSearchParams:', window.location.search);
 
+        // 部屋名がURLパラメータにない場合、APIから取得
+        if (!rName && propId && rId) {
+          try {
+            const currentGasUrl = gasWebAppUrl || sessionStorage.getItem('gasWebAppUrl');
+            if (currentGasUrl) {
+              console.log('[meter_reading] 部屋名をAPIから取得します...');
+              const response = await fetch(`${currentGasUrl}?action=getRoomName&propertyId=${propId}&roomId=${rId}`);
+              if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data && result.data.roomName) {
+                  rName = result.data.roomName;
+                  console.log('[meter_reading] ✅ APIから部屋名を取得:', rName);
+                } else {
+                  console.warn('[meter_reading] ⚠️ API応答に部屋名がありません:', result);
+                }
+              } else {
+                console.warn('[meter_reading] ⚠️ 部屋名取得APIの呼び出しに失敗:', response.status);
+              }
+            } else {
+              console.warn('[meter_reading] ⚠️ gasWebAppUrlが設定されていません');
+            }
+          } catch (error) {
+            console.warn('[meter_reading] ⚠️ 部屋名の取得に失敗:', error);
+          }
+        }
+
         setPropertyId(propId || 'N/A');
         setPropertyName(propName || 'N/A');
         setRoomId(rId || 'N/A');
-        setRoomName(rName || 'N/A');
+        setRoomName(rName || '部屋名不明');
 
         if (!propId || !rId) {
           console.error('[meter_reading] 物件IDまたは部屋IDがURLパラメータにありません。');
