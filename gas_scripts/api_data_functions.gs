@@ -470,20 +470,33 @@ function getPropertyName(propertyId) {
  */
 function getRoomName(propertyId, roomId) {
   try {
+    Logger.log(`[getRoomName] 開始 - propertyId: ${propertyId}, roomId: ${roomId}`);
+    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('部屋マスタ');
     
     if (!sheet) {
+      Logger.log('[getRoomName] 部屋マスタシートが見つかりません');
       return '';
     }
     
     const data = sheet.getDataRange().getValues();
+    if (data.length === 0) {
+      Logger.log('[getRoomName] 部屋マスタにデータがありません');
+      return '';
+    }
+    
     const headers = data[0];
+    Logger.log(`[getRoomName] 実際のヘッダー: ${JSON.stringify(headers)}`);
+    
     const propertyIdIndex = headers.indexOf('物件ID');
     const roomIdIndex = headers.indexOf('部屋ID');
     const roomNameIndex = headers.indexOf('部屋名');
     
+    Logger.log(`[getRoomName] インデックス - 物件ID:${propertyIdIndex}, 部屋ID:${roomIdIndex}, 部屋名:${roomNameIndex}`);
+    
     if (propertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
+      Logger.log('[getRoomName] 必要な列が見つかりません - ヘッダー名が一致していない可能性があります');
       return '';
     }
     
@@ -492,9 +505,17 @@ function getRoomName(propertyId, roomId) {
       String(row[roomIdIndex]).trim() === String(roomId).trim()
     );
     
-    return roomRow ? roomRow[roomNameIndex] : '';
+    if (roomRow) {
+      const roomName = String(roomRow[roomNameIndex]).trim();
+      Logger.log(`[getRoomName] 部屋名取得成功: ${roomName}`);
+      return roomName;
+    } else {
+      Logger.log(`[getRoomName] 該当データなし - propertyId:${propertyId}, roomId:${roomId}`);
+      return '';
+    }
     
   } catch (error) {
+    Logger.log(`[getRoomName] エラー: ${error.message}`);
     return '';
   }
 }

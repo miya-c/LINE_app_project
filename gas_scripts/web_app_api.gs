@@ -137,7 +137,8 @@ function doGet(e) {
       default:
         return createCorsJsonResponse({ 
           success: false,
-          error: `未対応のアクション: ${action}`
+          error: `未対応のAPI要求: ${action}`,
+          timestamp: new Date().toISOString()
         });
     }
     
