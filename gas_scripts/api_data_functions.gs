@@ -42,7 +42,8 @@ function getProperties() {
  * @returns {Object} {property: {...}, rooms: [...]} 形式
  */
 function getRooms(propertyId) {
-  try {    const ss = SpreadsheetApp.getActiveSpreadsheet();
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
     const propertySheet = ss.getSheetByName('物件マスタ');
     const roomSheet = ss.getSheetByName('部屋マスタ');
     
@@ -74,16 +75,16 @@ function getRooms(propertyId) {
     const roomHeaders = roomData[0];
     const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');
     const roomIdIndex = roomHeaders.indexOf('部屋ID');
-    const roomNameIndex = roomHeaders.indexOf('部屋名');
-    
-    const rooms = roomData.slice(1)
+    const roomNameIndex = roomHeaders.indexOf('部屋名');    const rooms = roomData.slice(1)
       .filter(row => String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim())
       .map(row => ({
         id: String(row[roomIdIndex] || '').trim(),
         name: String(row[roomNameIndex] || '').trim(),
-        hasReading: false // 初期値
-      }));
-      // 検針完了状況確認（inspection_data.csvから）
+        hasReading: false, // 初期値
+        readingStatus: 'not-completed', // HTMLが期待するフィールド（'completed' / 'not-completed'）
+        isCompleted: false, // HTMLが期待するフィールド
+        readingDateFormatted: null // HTMLが期待するフィールド
+      }));    // 検針完了状況確認（inspection_data.csvから）
     const inspectionSheet = ss.getSheetByName('inspection_data');
     if (inspectionSheet) {
       try {
@@ -94,28 +95,52 @@ function getRooms(propertyId) {
           const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');
           const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');
           const inspValueIndex = inspHeaders.indexOf('今回の指示数');
+          const inspDateIndex = inspHeaders.indexOf('検針日時'); // 検針日時列を取得
           
-          Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}`);
+          Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}, 検針日時列:${inspDateIndex}`);
           
           if (inspPropertyIdIndex !== -1 && inspRoomIdIndex !== -1 && inspValueIndex !== -1) {
-            const readingCompleted = new Set();
+            const readingMap = new Map(); // 部屋IDと検針日のマップ
             
             inspectionData.slice(1).forEach(row => {
               if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim() &&
                   row[inspValueIndex] !== null && row[inspValueIndex] !== undefined && 
                   String(row[inspValueIndex]).trim() !== '') {
-                readingCompleted.add(String(row[inspRoomIdIndex]).trim());
+                const roomId = String(row[inspRoomIdIndex]).trim();
+                
+                // 検針日時を取得してフォーマット
+                let readingDateFormatted = null;
+                if (inspDateIndex !== -1 && row[inspDateIndex]) {
+                  try {
+                    const date = new Date(row[inspDateIndex]);
+                    if (!isNaN(date.getTime())) {
+                      readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
+                    }
+                  } catch (e) {
+                    // 日付変換エラーの場合は今日の日付を使用
+                    const today = new Date();
+                    readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
+                  }                } else {
+                  // 検針日時列がない場合は今日の日付を使用
+                  const today = new Date();
+                  readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
+                }
+                
+                readingMap.set(roomId, readingDateFormatted);
               }
             });
             
             // 検針完了状況を更新
             rooms.forEach(room => {
-              if (readingCompleted.has(room.id)) {
+              if (readingMap.has(room.id)) {
                 room.hasReading = true;
+                room.readingStatus = 'completed';
+                room.isCompleted = true;
+                room.readingDateFormatted = readingMap.get(room.id);
               }
             });
             
-            Logger.log(`[getRooms] 検針完了部屋数: ${readingCompleted.size}件`);
+            Logger.log(`[getRooms] 検針完了部屋数: ${readingMap.size}件`);
           } else {
             Logger.log('[getRooms] inspection_dataの必要な列が見つかりません');
           }
