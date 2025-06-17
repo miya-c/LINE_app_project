@@ -407,6 +407,8 @@ function updateMeterReadings(propertyId, roomId, readings) {
       standardDeviation: headers.indexOf('標準偏差値')
     };
     
+    Logger.log(`[updateMeterReadings] カラムインデックス確認: ${JSON.stringify(colIndexes)}`);
+    
     // 必須列チェック
     if (colIndexes.propertyId === -1 || colIndexes.roomId === -1 || 
         colIndexes.date === -1 || colIndexes.currentReading === -1) {
@@ -450,9 +452,15 @@ function updateMeterReadings(propertyId, roomId, readings) {
         const previousPreviousUsage = threePrevValue > 0 ? prevPrevValue - threePrevValue : 0;
         const threeTimesPreviousUsage = 0; // さらに前のデータは取得できないため0
         
+        Logger.log(`[updateMeterReadings] 使用量計算: 今回=${usage}, 前回=${previousUsage}, 前々回=${previousPreviousUsage}, 前々々回=${threeTimesPreviousUsage}`);
+        
         // 警告フラグを計算
         if (usage > 0 && (previousUsage > 0 || previousPreviousUsage > 0)) {
           warningResult = calculateWarningFlag(usage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage);
+          Logger.log(`[updateMeterReadings] 警告フラグ計算結果: ${JSON.stringify(warningResult)}`);
+        } else {
+          warningResult = { warningFlag: '正常', standardDeviation: 0, reason: '履歴データ不足' };
+          Logger.log(`[updateMeterReadings] 履歴データ不足のため正常判定`);
         }
         
         data[existingRowIndex][colIndexes.date] = reading.date || '';
@@ -462,15 +470,18 @@ function updateMeterReadings(propertyId, roomId, readings) {
         // 警告フラグと標準偏差値を更新
         if (colIndexes.warningFlag >= 0) {
           data[existingRowIndex][colIndexes.warningFlag] = warningResult.warningFlag;
+          Logger.log(`[updateMeterReadings] 警告フラグ保存: 行${existingRowIndex}, 列${colIndexes.warningFlag}, 値=${warningResult.warningFlag}`);
         }
         if (colIndexes.standardDeviation >= 0) {
           data[existingRowIndex][colIndexes.standardDeviation] = warningResult.standardDeviation;
+          Logger.log(`[updateMeterReadings] 標準偏差値保存: 行${existingRowIndex}, 列${colIndexes.standardDeviation}, 値=${warningResult.standardDeviation}`);
         }
         
       } else {
         // 新規データ追加
         usage = currentValue; // 初回は指示数がそのまま使用量
-        warningResult = { warningFlag: '正常', standardDeviation: 0 }; // 初回は正常
+        warningResult = { warningFlag: '正常', standardDeviation: 0, reason: '初回検針' }; // 初回は正常
+        Logger.log(`[updateMeterReadings] 新規データ追加: 初回検針として正常判定`);
         
         const newRow = new Array(headers.length).fill('');
         newRow[colIndexes.propertyId] = propertyId;
@@ -482,9 +493,11 @@ function updateMeterReadings(propertyId, roomId, readings) {
         // 警告フラグと標準偏差値を設定
         if (colIndexes.warningFlag >= 0) {
           newRow[colIndexes.warningFlag] = warningResult.warningFlag;
+          Logger.log(`[updateMeterReadings] 新規警告フラグ設定: 列${colIndexes.warningFlag}, 値=${warningResult.warningFlag}`);
         }
         if (colIndexes.standardDeviation >= 0) {
           newRow[colIndexes.standardDeviation] = warningResult.standardDeviation;
+          Logger.log(`[updateMeterReadings] 新規標準偏差値設定: 列${colIndexes.standardDeviation}, 値=${warningResult.standardDeviation}`);
         }
         
         data.push(newRow);
@@ -495,6 +508,7 @@ function updateMeterReadings(propertyId, roomId, readings) {
     
     // 一括書き込み
     sheet.getRange(1, 1, data.length, headers.length).setValues(data);
+    Logger.log(`[updateMeterReadings] データを一括書き込み完了: ${data.length}行 × ${headers.length}列`);
     
     return {
       success: true,

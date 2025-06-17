@@ -557,7 +557,11 @@
                 }
               }
               
-              console.log(`[meter_reading] マッピング後 [${index}]:`, mapped);
+              console.log(`[meter_reading] マッピング後 [${index}]:`, {
+                ...mapped,
+                warningFlagSource: rawReading['警告フラグ'] ? 'backend' : 'frontend',
+                standardDeviationSource: rawReading['標準偏差値'] ? 'backend' : 'frontend'
+              });
               return mapped;
             });
             
@@ -826,7 +830,9 @@
           date: r.date,
           currentReading: r.currentReading,
           warningFlag: r.warningFlag,
-          standardDeviation: r.standardDeviation
+          standardDeviation: r.standardDeviation,
+          hasWarningFlag: !!r.warningFlag,
+          hasStandardDeviation: !!r.standardDeviation
         })));
         setUpdating(true);
         
@@ -997,7 +1003,29 @@
                                   } else {
                                     setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
                                     e.target.style.borderColor = '';
-                                    setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(currentValue, previousValue) }));
+                                    
+                                    // 使用量を計算してリアルタイムで警告フラグを更新
+                                    const usageDisplay = calculateUsageDisplay(currentValue, previousValue);
+                                    setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: usageDisplay }));
+                                    
+                                    // 警告フラグをリアルタイムで計算
+                                    const currentUsage = numericValue - (parseFloat(previousValue) || 0);
+                                    const previousUsage = (parseFloat(reading.previousReading) || 0) - (parseFloat(reading.previousPreviousReading) || 0);
+                                    const previousPreviousUsage = (parseFloat(reading.previousPreviousReading) || 0) - (parseFloat(reading.threeTimesPrevious) || 0);
+                                    const threeTimesPreviousUsage = (parseFloat(reading.threeTimesPrevious) || 0) - (parseFloat(reading.fourTimesPrevious) || 0);
+                                    
+                                    const warningResult = calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage);
+                                    
+                                    // 警告フラグの状態を更新
+                                    setMeterReadings(prevReadings => 
+                                      prevReadings.map((r, idx) => 
+                                        idx === index ? {
+                                          ...r,
+                                          warningFlag: warningResult.warningFlag,
+                                          standardDeviation: warningResult.standardDeviation
+                                        } : r
+                                      )
+                                    );
                                   }
                                 }} 
                               />
@@ -1035,11 +1063,14 @@
                                 borderRadius: 'var(--mantine-radius-sm)' 
                               }}>
                                 {getStatusDisplay(reading)}
-                                {reading.standardDeviation > 0 && (
-                                  <div style={{ fontSize: '0.7em', marginTop: '2px' }}>
-                                    σ: {reading.standardDeviation}
-                                  </div>
-                                )}
+                                {(() => {
+                                  const sigma = getStandardDeviationDisplay(reading);
+                                  return sigma ? (
+                                    <div style={{ fontSize: '0.7em', marginTop: '2px', opacity: 0.8 }}>
+                                      σ: {sigma}
+                                    </div>
+                                  ) : null;
+                                })()}
                               </span>
                             </td>
                             <td data-label="前回履歴">
@@ -1311,27 +1342,50 @@
     };
     
     // 状態表示の拡張
-      const getStatusDisplay = (reading) => {
-        if (!reading.currentReading || reading.currentReading === '') {
-          return 'N/A';
+    const getStatusDisplay = (reading) => {
+      if (!reading.currentReading || reading.currentReading === '') {
+        return 'N/A';
+      }
+      
+      // 警告フラグがある場合はそれを表示
+      if (reading.warningFlag && reading.warningFlag !== '') {
+        return reading.warningFlag;
+      }
+      
+      // 警告フラグがない場合は使用量から判定
+      const current = parseFloat(reading.currentReading) || 0;
+      const previous = parseFloat(reading.previousReading) || 0;
+      
+      if (current > 0 && previous > 0) {
+        const usage = current - previous;
+        return usage < 0 ? '要確認' : '正常';
+      }
+      
+      return '正常';
+    };
+
+    // σ値表示のヘルパー関数
+    const getStandardDeviationDisplay = (reading) => {
+      if (reading.standardDeviation && reading.standardDeviation > 0) {
+        return reading.standardDeviation.toFixed(2);
+      }
+      return null;
+    };
+    
+    // デバッグ用：警告フラグの詳細情報
+    const getWarningFlagDebugInfo = (reading) => {
+      const hasBackendFlag = reading._original && (reading._original['警告フラグ'] || reading._original['warningFlag']);
+      const hasBackendSigma = reading._original && (reading._original['標準偏差値'] || reading._original['standardDeviation']);
+      
+      return {
+        warningFlag: reading.warningFlag,
+        standardDeviation: reading.standardDeviation,
+        source: {
+          warningFlag: hasBackendFlag ? 'backend' : 'frontend',
+          standardDeviation: hasBackendSigma ? 'backend' : 'frontend'
         }
-        
-        // 警告フラグがある場合はそれを表示
-        if (reading.warningFlag && reading.warningFlag !== '') {
-          return reading.warningFlag;
-        }
-        
-        // 警告フラグがない場合は使用量から判定
-        const current = parseFloat(reading.currentReading) || 0;
-        const previous = parseFloat(reading.previousReading) || 0;
-        
-        if (current > 0 && previous > 0) {
-          const usage = current - previous;
-          return usage < 0 ? '要確認' : '正常';
-        }
-        
-        return '正常';
       };
+    };
   </script>
   
   <!-- PWA初期化スクリプト -->
