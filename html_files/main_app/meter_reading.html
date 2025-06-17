@@ -442,7 +442,17 @@
           const responseObject = await response.json();
           console.log('[meter_reading] Received responseObject from server:', responseObject);
           
-          // 統合版getMeterReadings APIの応答形式 {success: true, data: {propertyName, roomName, readings}}
+          // 詳細なレスポンス構造の確認
+          console.log('[meter_reading] 🔍 レスポンス詳細分析:');
+          console.log('[meter_reading] - success:', responseObject.success);
+          console.log('[meter_reading] - data type:', typeof responseObject.data);
+          console.log('[meter_reading] - data isArray:', Array.isArray(responseObject.data));
+          console.log('[meter_reading] - data content:', responseObject.data);
+          if (responseObject.data && typeof responseObject.data === 'object') {
+            console.log('[meter_reading] - data keys:', Object.keys(responseObject.data));
+          }
+          
+          // 統合版getMeterReadings APIの応答形式を確認
           if (!responseObject.success) {
             throw new Error(responseObject.error || '検針データの取得に失敗しました');
           }
@@ -452,15 +462,33 @@
             throw new Error('応答データが空です');
           }
 
-          // 物件名・部屋名をAPIレスポンスから取得してセット
-          const propertyName = data.propertyName || 'N/A';
-          const roomName = data.roomName || '部屋名不明';
-          const readings = data.readings || [];
+          let propertyName, roomName, readings;
 
-          console.log('[meter_reading] ✅ 統合API応答:');
+          // 新しい統合版の応答形式をチェック {propertyName, roomName, readings}
+          if (data.hasOwnProperty('propertyName') && data.hasOwnProperty('roomName') && data.hasOwnProperty('readings')) {
+            console.log('[meter_reading] ✅ 統合版形式を検出');
+            propertyName = data.propertyName || 'N/A';
+            roomName = data.roomName || '部屋名不明';
+            readings = data.readings || [];
+          }
+          // 古い形式への一時的な後方互換性対応 - data が配列の場合
+          else if (Array.isArray(data)) {
+            console.log('[meter_reading] ⚠️ 旧形式（配列）を検出 - 後方互換性モード');
+            propertyName = 'N/A'; // 旧形式では名称が含まれない
+            roomName = '部屋名不明';
+            readings = data;
+          }
+          // その他の形式
+          else {
+            console.warn('[meter_reading] ⚠️ 予期しないレスポンス形式:', data);
+            throw new Error('検針データの形式が認識できません');
+          }
+
+          console.log('[meter_reading] ✅ 最終的な解析結果:');
           console.log('[meter_reading] - 物件名:', propertyName);
           console.log('[meter_reading] - 部屋名:', roomName);
           console.log('[meter_reading] - 検針データ件数:', readings.length);
+          console.log('[meter_reading] - 検針データ:', readings);
 
           // 状態を更新
           setPropertyId(propId || 'N/A');

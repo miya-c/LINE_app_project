@@ -78,14 +78,32 @@ function doGet(e) {
         
         try {
           const result = getMeterReadings(e.parameter.propertyId, e.parameter.roomId);
-          return createCorsJsonResponse({
-            success: true,
-            data: {
-              propertyName: result.propertyName || '物件名不明',
-              roomName: result.roomName || '部屋名不明',
-              readings: Array.isArray(result.readings) ? result.readings : []
-            }
-          });
+          console.log('[web_app_api] getMeterReadings結果:', result);
+          console.log('[web_app_api] result type:', typeof result);
+          console.log('[web_app_api] result isArray:', Array.isArray(result));
+          
+          // 結果の形式を確認
+          if (result && typeof result === 'object' && result.hasOwnProperty('propertyName')) {
+            console.log('[web_app_api] ✅ 統合版の戻り値を検出');
+            return createCorsJsonResponse({
+              success: true,
+              data: {
+                propertyName: result.propertyName || '物件名不明',
+                roomName: result.roomName || '部屋名不明',
+                readings: Array.isArray(result.readings) ? result.readings : []
+              }
+            });
+          } else if (Array.isArray(result)) {
+            console.log('[web_app_api] ⚠️ 旧形式（配列）の戻り値を検出');
+            // 後方互換性: 旧形式への対応
+            return createCorsJsonResponse({
+              success: true,
+              data: result
+            });
+          } else {
+            console.error('[web_app_api] ❌ 予期しない戻り値形式:', result);
+            throw new Error('getMeterReadings関数の戻り値が予期しない形式です');
+          }
         } catch (error) {
           Logger.log(`[web_app_api] getMeterReadingsエラー: ${error.message}`);
           return createCorsJsonResponse({
