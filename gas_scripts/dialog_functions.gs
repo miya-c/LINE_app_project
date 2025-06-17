@@ -246,16 +246,7 @@ ${getWebAppUrl() || 'https://line-app-project.vercel.app'}
 }
 
 /**
- * UI利用可能性チェック
- */
-function isUiAvailable() {
-  try {
-    const ui = SpreadsheetApp.getUi();
-    return !!ui;
-  } catch (error) {
-    return false;
-  }
-}
+ * UI利用可能性チェック */
 
 /**
  * 実行案内表示（UI利用不可時）

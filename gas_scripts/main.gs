@@ -89,25 +89,6 @@ function showWaterMeterApp() {
 }
 
 /**
- * UI利用不可時の案内表示
- */
-function showExecutionGuidance() {
-  console.log('[showExecutionGuidance] Web App URL案内を表示');
-  
-  // Web App URLを直接表示
-  const webAppUrl = 'Apps Scriptエディタの「デプロイを管理」から確認してください';
-  console.log('[showExecutionGuidance] Web App URL:', webAppUrl);
-  
-  // ログに案内を出力
-  console.log('='.repeat(50));
-  console.log('💡 水道検針アプリの利用方法');
-  console.log('='.repeat(50));  console.log('スクリプトエディタからは直接実行できません。');
-  console.log('以下のWeb App URLにアクセスしてください:');
-  console.log(webAppUrl || 'Web App URLを取得できませんでした');
-  console.log('='.repeat(50));
-}
-
-/**
  * データインデックス作成（メニュー用）
  */
 function createDataIndexes() {

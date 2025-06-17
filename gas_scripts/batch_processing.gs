@@ -446,42 +446,8 @@ function checkDataTypeIntegrity() {
     
   } catch (error) {
     errors.push(`データ型整合性チェックエラー: ${error.message}`);
-  }
-  
+  }  
   return { errors };
-}
-
-/**
- * バッチ処理の実行状況を表示
- * @param {string} processName - 処理名
- * @param {Object} result - 処理結果
- */
-function showBatchProcessResult(processName, result) {
-  try {
-    const ui = SpreadsheetApp.getUi();
-    let message = `${processName}が完了しました。\n\n`;
-    
-    if (result.summary) {
-      Object.keys(result.summary).forEach(key => {
-        message += `${key}: ${result.summary[key]}\n`;
-      });
-    }
-    
-    if (result.errors && result.errors.length > 0) {
-      message += `\nエラー詳細:\n`;
-      result.errors.slice(0, 5).forEach(error => {
-        message += `- ${error}\n`;
-      });
-      if (result.errors.length > 5) {
-        message += `...他${result.errors.length - 5}件\n`;
-      }
-    }
-    
-    ui.alert('バッチ処理結果', message, ui.ButtonSet.OK);
-    
-  } catch (error) {
-    console.error('[showBatchProcessResult] エラー:', error);
-  }
 }
 
 /**
