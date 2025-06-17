@@ -114,7 +114,15 @@ function showExecutionGuidance() {
 function getWebAppUrl() {
   try {
     const scriptId = ScriptApp.getScriptId();
-    return `https://script.google.com/macros/s/${scriptId}/exec`;
+    const webAppUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
+    
+    // ログ出力
+    console.log('=== Web App URL 情報 ===');
+    console.log('Script ID:', scriptId);
+    console.log('Web App URL:', webAppUrl);
+    console.log('========================');
+    
+    return webAppUrl;
   } catch (error) {
     console.error('[getWebAppUrl] エラー:', error);
     return null;

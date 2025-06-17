@@ -241,25 +241,7 @@ ${getWebAppUrl() || 'https://line-app-project.vercel.app'}
       ui.alert('エラー', `検針入力でエラーが発生しました:\n${error.message}`, ui.ButtonSet.OK);
     } catch (uiError) {
       console.error('[openMeterReadingDialog] UI表示エラー:', uiError);
-      showExecutionGuidance();
-    }
-  }
-}
-
-/**
- * Web App URLを取得
- */
-function getWebAppUrl() {
-  try {
-    // 実際のWeb App URLを取得する場合
-    // const webAppUrl = ScriptApp.getService().getUrl();
-    // return webAppUrl;
-    
-    // 現在はVercel上のアプリを使用
-    return 'https://line-app-project.vercel.app';
-  } catch (error) {
-    console.error('[getWebAppUrl] エラー:', error);
-    return 'https://line-app-project.vercel.app';
+      showExecutionGuidance();    }
   }
 }
 

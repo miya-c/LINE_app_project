@@ -535,7 +535,7 @@ function debugSheetInfo() {
 /**
  * デバッグ用: 特定物件の部屋データを確認
  */
-function debugGetRooms(propertyId = 'P001') {
+function debugGetRooms(propertyId = 'P000001') {
   try {
     console.log(`デバッグ: 物件ID「${propertyId}」の部屋データ取得テスト`);
     const result = getRooms(propertyId);
