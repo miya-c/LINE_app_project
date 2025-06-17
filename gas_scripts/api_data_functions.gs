@@ -452,20 +452,21 @@ function updateMeterReadings(propertyId, roomId, readings) {
         const threePrevValue = colIndexes.threeTimesPreviousReading >= 0 ? 
           parseFloat(data[existingRowIndex][colIndexes.threeTimesPreviousReading]) || 0 : 0;
         
+        // 指示数履歴を取得（使用量ではなく指示数ベースで警告フラグを計算）
+        const currentReading = newReading;
+        const previousReading = prevValue;
+        const previousPreviousReading = prevPrevValue;
+        const threeTimesPreviousReading = threePrevValue;
+        
+        Logger.log(`[updateMeterReadings] 指示数履歴: 今回=${currentReading}, 前回=${previousReading}, 前々回=${previousPreviousReading}, 前々々回=${threeTimesPreviousReading}`);
+        
+        // 警告フラグを計算（指示数ベース）
+        warningResult = calculateWarningFlag(currentReading, previousReading, previousPreviousReading, threeTimesPreviousReading);
+        Logger.log(`[updateMeterReadings] 警告フラグ計算結果: ${JSON.stringify(warningResult)}`);
+
+        // 使用量は別途計算（表示・保存用）
         const previousUsage = prevPrevValue > 0 ? prevValue - prevPrevValue : 0;
         const previousPreviousUsage = threePrevValue > 0 ? prevPrevValue - threePrevValue : 0;
-        const threeTimesPreviousUsage = 0; // さらに前のデータは取得できないため0
-        
-        Logger.log(`[updateMeterReadings] 使用量計算: 今回=${usage}, 前回=${previousUsage}, 前々回=${previousPreviousUsage}, 前々々回=${threeTimesPreviousUsage}`);
-        
-        // 警告フラグを計算
-        if (usage > 0 && (previousUsage > 0 || previousPreviousUsage > 0)) {
-          warningResult = calculateWarningFlag(usage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage);
-          Logger.log(`[updateMeterReadings] 警告フラグ計算結果: ${JSON.stringify(warningResult)}`);
-        } else {
-          warningResult = { warningFlag: '正常', standardDeviation: 0, reason: '履歴データ不足' };
-          Logger.log(`[updateMeterReadings] 履歴データ不足のため正常判定`);
-        }
         
         // データ更新（JST日付を使用）
         data[existingRowIndex][colIndexes.date] = normalizedDate;
@@ -595,30 +596,53 @@ function getSpreadsheetInfo() {
 }
 
 /**
- * 使用量履歴から標準偏差を計算し、警告フラグを判定
- * @param {number} currentUsage - 今回使用量
- * @param {number} previousUsage - 前回使用量
- * @param {number} previousPreviousUsage - 前々回使用量
- * @param {number} threeTimesPreviousUsage - 前々々回使用量
+ * 警告フラグを計算する関数（指示数ベース・STDEV.S準拠）
+ * @param {number} currentReading - 今回指示数
+ * @param {number} previousReading - 前回指示数
+ * @param {number} previousPreviousReading - 前々回指示数
+ * @param {number} threeTimesPreviousReading - 前々々回指示数
  * @returns {Object} 標準偏差と警告フラグの結果
  */
-function calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage) {
+function calculateWarningFlag(currentReading, previousReading, previousPreviousReading, threeTimesPreviousReading) {
   try {
-    // 履歴使用量の配列を作成（有効な数値のみ）
-    const usageHistory = [];
-    
-    if (typeof previousUsage === 'number' && !isNaN(previousUsage) && previousUsage >= 0) {
-      usageHistory.push(previousUsage);
-    }
-    if (typeof previousPreviousUsage === 'number' && !isNaN(previousPreviousUsage) && previousPreviousUsage >= 0) {
-      usageHistory.push(previousPreviousUsage);
-    }
-    if (typeof threeTimesPreviousUsage === 'number' && !isNaN(threeTimesPreviousUsage) && threeTimesPreviousUsage >= 0) {
-      usageHistory.push(threeTimesPreviousUsage);
+    // 今回指示数の有効性チェック
+    if (typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
+      return {
+        warningFlag: '正常',
+        standardDeviation: 0,
+        threshold: 0,
+        reason: '今回指示数が無効'
+      };
     }
     
-    // 履歴データが2件未満の場合は判定不可
-    if (usageHistory.length < 2) {
+    // 前回指示数との比較：今回が前回未満の場合は即「要確認」
+    if (typeof previousReading === 'number' && !isNaN(previousReading) && previousReading >= 0) {
+      if (currentReading < previousReading) {
+        Logger.log(`[calculateWarningFlag] 今回指示数(${currentReading})が前回値(${previousReading})未満のため要確認`);
+        return {
+          warningFlag: '要確認',
+          standardDeviation: 0,
+          threshold: 0,
+          reason: '前回値未満'
+        };
+      }
+    }
+    
+    // 履歴指示数の配列を作成（有効な数値のみ）
+    const readingHistory = [];
+    
+    if (typeof previousReading === 'number' && !isNaN(previousReading) && previousReading >= 0) {
+      readingHistory.push(previousReading);
+    }
+    if (typeof previousPreviousReading === 'number' && !isNaN(previousPreviousReading) && previousPreviousReading >= 0) {
+      readingHistory.push(previousPreviousReading);
+    }
+    if (typeof threeTimesPreviousReading === 'number' && !isNaN(threeTimesPreviousReading) && threeTimesPreviousReading >= 0) {
+      readingHistory.push(threeTimesPreviousReading);
+    }
+    
+    // 履歴データが2件未満の場合は標準偏差計算不可のため「正常」
+    if (readingHistory.length < 2) {
       return {
         warningFlag: '正常',
         standardDeviation: 0,
@@ -627,28 +651,23 @@ function calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage
       };
     }
     
-    // 平均値を計算
-    const average = usageHistory.reduce((sum, usage) => sum + usage, 0) / usageHistory.length;
+    // STDEV.S準拠の標準偏差を計算
+    const average = calculateAVERAGE(readingHistory);
+    const standardDeviation = calculateSTDEV_S(readingHistory);
     
-    // 分散を計算
-    const variance = usageHistory.reduce((sum, usage) => sum + Math.pow(usage - average, 2), 0) / usageHistory.length;
+    // 閾値を計算（平均 + 標準偏差 + 10）
+    const threshold = average + standardDeviation + 10;
     
-    // 標準偏差を計算
-    const standardDeviation = Math.sqrt(variance);
+    // 警告フラグを判定：今回指示数が閾値を超えた場合のみ「要確認」
+    const warningFlag = (currentReading > threshold) ? '要確認' : '正常';
     
-    // 閾値を計算（標準偏差 + 10）
-    const threshold = standardDeviation + 10;
-    
-    // 警告フラグを判定
-    const warningFlag = (currentUsage > threshold) ? '要確認' : '正常';
-    
-    Logger.log(`[calculateWarningFlag] 今回使用量: ${currentUsage}, 履歴: [${usageHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
+    Logger.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
     
     return {
       warningFlag: warningFlag,
       standardDeviation: Math.round(standardDeviation * 100) / 100, // 小数点以下2桁で丸める
       threshold: Math.round(threshold * 100) / 100,
-      reason: `履歴${usageHistory.length}件より算出`
+      reason: `履歴${readingHistory.length}件より算出`
     };
     
   } catch (error) {
@@ -660,6 +679,29 @@ function calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage
       reason: 'エラー'
     };
   }
+}
+
+/**
+ * STDEV.S関数相当の標準偏差を計算（標本標準偏差：n-1で割る）
+ * @param {number[]} values - 数値の配列
+ * @returns {number} 標準偏差（STDEV.S相当）
+ */
+function calculateSTDEV_S(values) {
+  if (!values || values.length < 2) return 0;
+  
+  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (values.length - 1); // n-1で割る
+  return Math.sqrt(variance);
+}
+
+/**
+ * AVERAGE関数相当の平均値を計算
+ * @param {number[]} values - 数値の配列
+ * @returns {number} 平均値
+ */
+function calculateAVERAGE(values) {
+  if (!values || values.length === 0) return 0;
+  return values.reduce((sum, val) => sum + val, 0) / values.length;
 }
 
 /**
