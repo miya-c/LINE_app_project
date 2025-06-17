@@ -42,11 +42,9 @@ function getProperties() {
  * @returns {Object} {property: {...}, rooms: [...]} 形式
  */
 function getRooms(propertyId) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+  try {    const ss = SpreadsheetApp.getActiveSpreadsheet();
     const propertySheet = ss.getSheetByName('物件マスタ');
     const roomSheet = ss.getSheetByName('部屋マスタ');
-    const inspectionSheet = ss.getSheetByName('検針データ') || ss.getSheetByName('inspection_data');
     
     if (!propertySheet || !roomSheet) {
       throw new Error('必要なシートが見つかりません');
@@ -85,8 +83,8 @@ function getRooms(propertyId) {
         name: String(row[roomNameIndex] || '').trim(),
         hasReading: false // 初期値
       }));
-    
-    // 検針完了状況確認
+      // 検針完了状況確認（inspection_data.csvから）
+    const inspectionSheet = ss.getSheetByName('inspection_data');
     if (inspectionSheet) {
       try {
         const inspectionData = inspectionSheet.getDataRange().getValues();
@@ -95,8 +93,9 @@ function getRooms(propertyId) {
           const inspHeaders = inspectionData[0];
           const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');
           const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');
-          const inspValueIndex = inspHeaders.indexOf('今回の指示数') !== -1 ? 
-            inspHeaders.indexOf('今回の指示数') : inspHeaders.indexOf('検針値');
+          const inspValueIndex = inspHeaders.indexOf('今回の指示数');
+          
+          Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}`);
           
           if (inspPropertyIdIndex !== -1 && inspRoomIdIndex !== -1 && inspValueIndex !== -1) {
             const readingCompleted = new Set();
@@ -115,12 +114,17 @@ function getRooms(propertyId) {
                 room.hasReading = true;
               }
             });
+            
+            Logger.log(`[getRooms] 検針完了部屋数: ${readingCompleted.size}件`);
+          } else {
+            Logger.log('[getRooms] inspection_dataの必要な列が見つかりません');
           }
         }
       } catch (inspectionError) {
-        Logger.log(`検針データ読み込みエラー: ${inspectionError.message}`);
-        // 検針データが読み込めなくても部屋一覧は返す
+        Logger.log(`[getRooms] inspection_data読み込みエラー（部屋一覧は継続）: ${inspectionError.message}`);
       }
+    } else {
+      Logger.log('[getRooms] inspection_dataシートが見つかりません（部屋一覧は継続）');
     }
       // HTMLが期待する形式で返却
     return {
@@ -428,14 +432,13 @@ function debugSheetInfo() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheets = ss.getSheets().map(s => s.getName());
     console.log('存在するシート:', sheets);
-    
-    const propertySheet = ss.getSheetByName('物件マスタ');
+      const propertySheet = ss.getSheetByName('物件マスタ');
     const roomSheet = ss.getSheetByName('部屋マスタ');
-    const inspectionSheet = ss.getSheetByName('検針データ') || ss.getSheetByName('inspection_data');
+    const inspectionSheet = ss.getSheetByName('inspection_data');
     
     console.log('物件マスタ行数:', propertySheet ? propertySheet.getLastRow() : 'シートなし');
     console.log('部屋マスタ行数:', roomSheet ? roomSheet.getLastRow() : 'シートなし');
-    console.log('検針データ行数:', inspectionSheet ? inspectionSheet.getLastRow() : 'シートなし');
+    console.log('inspection_data行数:', inspectionSheet ? inspectionSheet.getLastRow() : 'シートなし');
     
     if (propertySheet && propertySheet.getLastRow() > 0) {
       const propertyHeaders = propertySheet.getRange(1, 1, 1, propertySheet.getLastColumn()).getValues()[0];
