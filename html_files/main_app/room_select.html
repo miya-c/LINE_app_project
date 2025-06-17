@@ -142,10 +142,17 @@
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.innerHTML = message;
-            errorDiv.style.display = 'block';        }
-
-        async function loadRoomData() {
+            errorDiv.style.display = 'block';        }        async function loadRoomData() {
             try {
+                // 関数内でURLとパラメータを再取得
+                const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+                const urlParams = new URLSearchParams(window.location.search);
+                const propertyId = urlParams.get('propertyId');
+                
+                if (!gasWebAppUrl || !propertyId) {
+                    throw new Error('必要なパラメータが不足しています');
+                }
+                
                 const response = await fetch(`${gasWebAppUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`);
                 
                 if (!response.ok) {
