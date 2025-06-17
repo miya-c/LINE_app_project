@@ -474,8 +474,19 @@
           // 古い形式への一時的な後方互換性対応 - data が配列の場合
           else if (Array.isArray(data)) {
             console.log('[meter_reading] ⚠️ 旧形式（配列）を検出 - 後方互換性モード');
-            propertyName = 'N/A'; // 旧形式では名称が含まれない
-            roomName = '部屋名不明';
+            
+            // 検針データから物件名・部屋名を抽出
+            if (data.length > 0 && data[0]) {
+              const firstRecord = data[0];
+              propertyName = firstRecord['物件名'] || firstRecord.propertyName || 'N/A';
+              roomName = firstRecord['部屋名'] || firstRecord.roomName || '部屋名不明';
+              console.log('[meter_reading] 🔍 データから抽出した名称:');
+              console.log('[meter_reading] - 物件名:', propertyName);
+              console.log('[meter_reading] - 部屋名:', roomName);
+            } else {
+              propertyName = 'N/A';
+              roomName = '部屋名不明';
+            }
             readings = data;
           }
           // その他の形式
