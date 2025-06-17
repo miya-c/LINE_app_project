@@ -36,33 +36,56 @@ function getProperties() {
 }
 
 /**
- * 指定された物件の部屋一覧と検針状況を取得する（軽量版）
+ * 指定された物件の部屋一覧と検針状況を取得する（CSV構造完全対応版）
  * room_select.html用の形式で返却
  * @param {string} propertyId - 物件ID
  * @returns {Object} {property: {...}, rooms: [...]} 形式
  */
 function getRooms(propertyId) {
   try {
+    Logger.log(`[getRooms] 開始 - propertyId: ${propertyId}`);
+    
+    if (!propertyId) {
+      throw new Error('物件IDが指定されていません');
+    }
+    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const propertySheet = ss.getSheetByName('物件マスタ');
     const roomSheet = ss.getSheetByName('部屋マスタ');
     
-    if (!propertySheet || !roomSheet) {
-      throw new Error('必要なシートが見つかりません');
+    if (!propertySheet) {
+      throw new Error('物件マスタシートが見つかりません');
     }
     
-    // 物件情報取得
-    const propertyData = propertySheet.getDataRange().getValues();
-    const propertyHeaders = propertyData[0];
-    const propertyIdIndex = propertyHeaders.indexOf('物件ID');
-    const propertyNameIndex = propertyHeaders.indexOf('物件名');
+    if (!roomSheet) {
+      throw new Error('部屋マスタシートが見つかりません');
+    }
     
+    Logger.log('[getRooms] シート取得完了');    // 物件情報取得（物件マスタ.csv: 物件ID,物件名,検針完了日）
+    const propertyData = propertySheet.getDataRange().getValues();
+    if (propertyData.length <= 1) {
+      throw new Error('物件マスタにデータがありません');
+    }
+    
+    const propertyHeaders = propertyData[0];
+    const propertyIdIndex = propertyHeaders.indexOf('物件ID');       // 列A (0)
+    const propertyNameIndex = propertyHeaders.indexOf('物件名');     // 列B (1)
+    
+    if (propertyIdIndex === -1) {
+      throw new Error('物件マスタに「物件ID」列が見つかりません');
+    }
+    
+    if (propertyNameIndex === -1) {
+      throw new Error('物件マスタに「物件名」列が見つかりません');
+    }
+    
+    // 指定された物件IDの物件情報を検索
     const propertyRow = propertyData.slice(1).find(row => 
       String(row[propertyIdIndex]).trim() === String(propertyId).trim()
     );
     
     if (!propertyRow) {
-      throw new Error('指定された物件が見つかりません');
+      throw new Error(`指定された物件ID「${propertyId}」が物件マスタに見つかりません`);
     }
     
     const propertyInfo = {
@@ -70,21 +93,39 @@ function getRooms(propertyId) {
       name: String(propertyRow[propertyNameIndex] || '物件名不明').trim()
     };
     
-    // 部屋情報取得
+    Logger.log(`[getRooms] 物件情報取得完了: ${JSON.stringify(propertyInfo)}`);    // 部屋情報取得（部屋マスタ.csv: 物件ID,部屋ID,部屋名）
     const roomData = roomSheet.getDataRange().getValues();
+    if (roomData.length <= 1) {
+      Logger.log('[getRooms] 部屋マスタにデータなし - 空配列を返却');
+      return {
+        property: propertyInfo,
+        rooms: []
+      };
+    }
+    
     const roomHeaders = roomData[0];
-    const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');
-    const roomIdIndex = roomHeaders.indexOf('部屋ID');
-    const roomNameIndex = roomHeaders.indexOf('部屋名');    const rooms = roomData.slice(1)
+    const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');  // 列A (0)
+    const roomIdIndex = roomHeaders.indexOf('部屋ID');          // 列B (1)
+    const roomNameIndex = roomHeaders.indexOf('部屋名');        // 列C (2)
+    
+    if (roomPropertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
+      throw new Error('部屋マスタに必要な列（物件ID、部屋ID、部屋名）が見つかりません');
+    }
+    
+    Logger.log(`[getRooms] 部屋マスタ列構成確認: 物件ID列:${roomPropertyIdIndex}, 部屋ID列:${roomIdIndex}, 部屋名列:${roomNameIndex}`);
+    
+    const rooms = roomData.slice(1)
       .filter(row => String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim())
       .map(row => ({
         id: String(row[roomIdIndex] || '').trim(),
         name: String(row[roomNameIndex] || '').trim(),
-        hasReading: false, // 初期値
-        readingStatus: 'not-completed', // HTMLが期待するフィールド（'completed' / 'not-completed'）
-        isCompleted: false, // HTMLが期待するフィールド
-        readingDateFormatted: null // HTMLが期待するフィールド
-      }));    // 検針完了状況確認（inspection_data.csvから）
+        readingStatus: 'not-completed', // HTMLが期待するフィールド
+        isCompleted: false,             // HTMLが期待するフィールド
+        readingDateFormatted: null      // HTMLが期待するフィールド
+      }));
+    
+    Logger.log(`[getRooms] 対象部屋数: ${rooms.length}件`);    // inspection_dataから検針完了状況確認
+    // inspection_data.csv: 記録ID,物件名,物件ID,部屋ID,部屋名,検針日時,警告フラグ,標準偏差値,今回使用量,今回の指示数,前回指示数,前々回指示数,前々々回指示数
     const inspectionSheet = ss.getSheetByName('inspection_data');
     if (inspectionSheet) {
       try {
@@ -92,36 +133,43 @@ function getRooms(propertyId) {
         
         if (inspectionData.length > 1) {
           const inspHeaders = inspectionData[0];
-          const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');
-          const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');
-          const inspValueIndex = inspHeaders.indexOf('今回の指示数');
-          const inspDateIndex = inspHeaders.indexOf('検針日時'); // 検針日時列を取得
+          const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');    // 列C (2)
+          const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');        // 列D (3)
+          const inspValueIndex = inspHeaders.indexOf('今回の指示数');   // 列J (9)
+          const inspDateIndex = inspHeaders.indexOf('検針日時');        // 列F (5)
           
           Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}, 検針日時列:${inspDateIndex}`);
           
           if (inspPropertyIdIndex !== -1 && inspRoomIdIndex !== -1 && inspValueIndex !== -1) {
             const readingMap = new Map(); // 部屋IDと検針日のマップ
-            
+              // 検針完了データを検索
             inspectionData.slice(1).forEach(row => {
+              // 物件IDが一致し、検針値が入力されている場合
               if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim() &&
-                  row[inspValueIndex] !== null && row[inspValueIndex] !== undefined && 
+                  row[inspValueIndex] !== null && 
+                  row[inspValueIndex] !== undefined && 
                   String(row[inspValueIndex]).trim() !== '') {
+                
                 const roomId = String(row[inspRoomIdIndex]).trim();
                 
-                // 検針日時を取得してフォーマット
+                // 検針日時をフォーマット（2025/05/31 → 5月31日）
                 let readingDateFormatted = null;
                 if (inspDateIndex !== -1 && row[inspDateIndex]) {
                   try {
-                    const date = new Date(row[inspDateIndex]);
-                    if (!isNaN(date.getTime())) {
-                      readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
+                    const dateStr = String(row[inspDateIndex]).trim();
+                    if (dateStr) {
+                      const date = new Date(dateStr);
+                      if (!isNaN(date.getTime())) {
+                        readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
+                      }
                     }
                   } catch (e) {
-                    // 日付変換エラーの場合は今日の日付を使用
-                    const today = new Date();
-                    readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
-                  }                } else {
-                  // 検針日時列がない場合は今日の日付を使用
+                    Logger.log(`[getRooms] 日付変換エラー: ${e.message}`);
+                  }
+                }
+                
+                // 日付がない場合のフォールバック
+                if (!readingDateFormatted) {
                   const today = new Date();
                   readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
                 }
@@ -130,17 +178,15 @@ function getRooms(propertyId) {
               }
             });
             
-            // 検針完了状況を更新
+            // 検針完了状況を部屋データに反映
             rooms.forEach(room => {
               if (readingMap.has(room.id)) {
-                room.hasReading = true;
                 room.readingStatus = 'completed';
                 room.isCompleted = true;
                 room.readingDateFormatted = readingMap.get(room.id);
               }
             });
-            
-            Logger.log(`[getRooms] 検針完了部屋数: ${readingMap.size}件`);
+              Logger.log(`[getRooms] 検針完了部屋数: ${readingMap.size}件`);
           } else {
             Logger.log('[getRooms] inspection_dataの必要な列が見つかりません');
           }
@@ -151,11 +197,15 @@ function getRooms(propertyId) {
     } else {
       Logger.log('[getRooms] inspection_dataシートが見つかりません（部屋一覧は継続）');
     }
-      // HTMLが期待する形式で返却
-    return {
+    
+    // HTMLが期待する形式で返却
+    const result = {
       property: propertyInfo,
       rooms: rooms
     };
+    
+    Logger.log(`[getRooms] 完了 - 結果サマリー: 物件名=${propertyInfo.name}, 部屋数=${rooms.length}件, 検針完了=${rooms.filter(r => r.isCompleted).length}件`);
+    return result;
     
   } catch (error) {
     Logger.log(`getRooms エラー: ${error.message}`);
