@@ -483,3 +483,88 @@ function showBatchProcessResult(processName, result) {
     console.error('[showBatchProcessResult] エラー:', error);
   }
 }
+
+/**
+ * 統合バッチ最適化処理
+ * main.gsから呼び出される統合処理関数
+ * @returns {Object} 処理結果
+ */
+function runBatchOptimization() {
+  try {
+    console.log('[runBatchOptimization] 統合バッチ最適化開始');
+    
+    const results = {
+      validation: null,
+      duplicates: null,
+      integrity: null,
+      indexes: null
+    };
+    
+    // 1. データバリデーション
+    try {
+      console.log('[runBatchOptimization] バリデーション実行中...');
+      results.validation = validateInspectionDataIntegrity();
+    } catch (error) {
+      console.error('[runBatchOptimization] バリデーションエラー:', error);
+    }
+    
+    // 2. 重複データ検出・クリーンアップ
+    try {
+      console.log('[runBatchOptimization] 重複データ処理中...');
+      results.duplicates = optimizedCleanupDuplicateInspectionData();
+    } catch (error) {
+      console.error('[runBatchOptimization] 重複処理エラー:', error);
+    }
+    
+    // 3. 整合性チェック
+    try {
+      console.log('[runBatchOptimization] 整合性チェック中...');
+      results.integrity = batchIntegrityCheck();
+    } catch (error) {
+      console.error('[runBatchOptimization] 整合性チェックエラー:', error);
+    }
+    
+    // 4. インデックス作成
+    try {
+      console.log('[runBatchOptimization] インデックス作成中...');
+      results.indexes = createAllIndexes();
+    } catch (error) {
+      console.error('[runBatchOptimization] インデックス作成エラー:', error);
+    }
+    
+    console.log('[runBatchOptimization] 統合バッチ最適化完了');
+    return results;
+    
+  } catch (error) {
+    console.error('[runBatchOptimization] エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * データバリデーションを実行（data_validation.gsの関数を呼び出し）
+ * @returns {Object} バリデーション結果
+ */
+function batchValidateData() {
+  try {
+    console.log('[batchValidateData] data_validation.gsの関数を呼び出し');
+    return validateInspectionDataIntegrity();
+  } catch (error) {
+    console.error('[batchValidateData] エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * データクリーンアップを実行（data_cleanup.gsの関数を呼び出し）
+ * @returns {Object} クリーンアップ結果
+ */
+function batchCleanupData() {
+  try {
+    console.log('[batchCleanupData] data_cleanup.gsの関数を呼び出し');
+    return optimizedCleanupDuplicateInspectionData();
+  } catch (error) {
+    console.error('[batchCleanupData] エラー:', error);
+    throw error;
+  }
+}

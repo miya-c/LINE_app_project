@@ -30,11 +30,10 @@ function onOpen() {
     dataManagementMenu.addSeparator();
     dataManagementMenu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
     
-    menu.addSubMenu(dataManagementMenu);
-      // データ品質管理メニュー
+    menu.addSubMenu(dataManagementMenu);      // データ品質管理メニュー
     const dataQualityMenu = ui.createMenu('🔍 データ品質管理');
-    dataQualityMenu.addItem('1. 重複データクリーンアップ', 'optimizedCleanupDuplicateInspectionData');
-    dataQualityMenu.addItem('2. データ整合性チェック', 'validateInspectionDataIntegrity');
+    dataQualityMenu.addItem('1. 重複データクリーンアップ', 'menuCleanupDuplicateData');
+    dataQualityMenu.addItem('2. データ整合性チェック', 'menuValidateDataIntegrity');
     dataQualityMenu.addItem('3. データ高速検索インデックス作成', 'createDataIndexes');
     dataQualityMenu.addSeparator();
     dataQualityMenu.addItem('4. 高速検索機能テスト', 'testSearchFunctions');
@@ -159,7 +158,7 @@ function createDataIndexes() {
  */
 function runComprehensiveDataOptimization() {
   try {
-    console.log('[runComprehensiveDataOptimization] 総合最適化開始');
+    console.log('[runComprehensiveDataOptimization] 最適化開始 - batch_processing.gsに委譲');
     
     const ui = SpreadsheetApp.getUi();
     const response = ui.alert(
@@ -177,54 +176,22 @@ function runComprehensiveDataOptimization() {
       return;
     }
     
-    const results = {
-      validation: null,
-      duplicates: null,
-      integrity: null,
-      indexes: null
-    };
-    
-    // 1. バリデーション
-    try {
-      results.validation = batchValidateMeterReadings();
-    } catch (error) {
-      console.error('[runComprehensiveDataOptimization] バリデーションエラー:', error);
-    }
-    
-    // 2. 重複検出
-    try {
-      results.duplicates = batchDetectDuplicates();
-    } catch (error) {
-      console.error('[runComprehensiveDataOptimization] 重複検出エラー:', error);
-    }
-    
-    // 3. 整合性チェック
-    try {
-      results.integrity = batchIntegrityCheck();
-    } catch (error) {
-      console.error('[runComprehensiveDataOptimization] 整合性チェックエラー:', error);
-    }
-    
-    // 4. インデックス作成
-    try {
-      results.indexes = createAllIndexes();
-    } catch (error) {
-      console.error('[runComprehensiveDataOptimization] インデックス作成エラー:', error);
-    }
+    // batch_processing.gsの統合バッチ処理を呼び出し
+    const results = runBatchOptimization();
     
     // 結果表示
     let message = '総合データ最適化が完了しました。\n\n';
     
     if (results.validation) {
-      message += `バリデーション: ${results.validation.summary.成功率}\n`;
+      message += `バリデーション: ${results.validation.summary ? results.validation.summary.成功率 : '完了'}\n`;
     }
     
     if (results.duplicates) {
-      message += `重複グループ数: ${results.duplicates.summary.重複グループ数}\n`;
+      message += `重複グループ数: ${results.duplicates.summary ? results.duplicates.summary.重複グループ数 : '処理完了'}\n`;
     }
     
     if (results.integrity) {
-      message += `整合性状態: ${results.integrity.summary.状態}\n`;
+      message += `整合性状態: ${results.integrity.summary ? results.integrity.summary.状態 : '完了'}\n`;
     }
     
     if (results.indexes) {
@@ -471,6 +438,68 @@ const rooms = fastSearch('propertyRooms', 'P001');
       ui.alert('エラー', `ガイド表示に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
     } catch (uiError) {
       console.error('[showSearchUsageGuide] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 重複データクリーンアップ（メニュー用プロキシ関数）
+ * data_cleanup.gsの関数を呼び出し
+ */
+function menuCleanupDuplicateData() {
+  try {
+    console.log('[menuCleanupDuplicateData] data_cleanup.gsの関数を呼び出し');
+    const result = optimizedCleanupDuplicateInspectionData();
+    
+    const ui = SpreadsheetApp.getUi();
+    let message = '重複データクリーンアップが完了しました。\n\n';
+    if (result && result.summary) {
+      Object.keys(result.summary).forEach(key => {
+        message += `${key}: ${result.summary[key]}\n`;
+      });
+    }
+    
+    ui.alert('クリーンアップ完了', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[menuCleanupDuplicateData] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `クリーンアップ処理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[menuCleanupDuplicateData] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * データ整合性チェック（メニュー用プロキシ関数）
+ * data_validation.gsの関数を呼び出し
+ */
+function menuValidateDataIntegrity() {
+  try {
+    console.log('[menuValidateDataIntegrity] data_validation.gsの関数を呼び出し');
+    const result = validateInspectionDataIntegrity();
+    
+    const ui = SpreadsheetApp.getUi();
+    let message = 'データ整合性チェックが完了しました。\n\n';
+    if (result && result.summary) {
+      Object.keys(result.summary).forEach(key => {
+        message += `${key}: ${result.summary[key]}\n`;
+      });
+    }
+    
+    ui.alert('整合性チェック完了', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[menuValidateDataIntegrity] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `整合性チェックに失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[menuValidateDataIntegrity] UI表示エラー:', uiError);
     }
   }
 }
