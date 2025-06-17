@@ -819,30 +819,24 @@
             
             console.log(`[meter_reading] JST日付設定: ${date} → ${inspectionDate}`);
 
-            // 警告フラグ計算のために、検針データから履歴使用量を取得
-            let previousUsage = 0;
-            let previousPreviousUsage = 0;
-            let threeTimesPreviousUsage = 0;
+            // ✅ 修正: 指示数履歴を取得するための変数初期化
+            let previousReading = 0;
+            let previousPreviousReading = 0;
+            let threeTimesPreviousReading = 0;
 
-            // meterReadingsから該当データを検索して履歴使用量を計算
-            const currentReading = meterReadings.find(reading => reading.date === date);
-            if (currentReading) {
-              const currentVal = parseFloat(currentValue) || 0;
-              const prevVal = parseFloat(currentReading.previousReading) || 0;
-              const prevPrevVal = parseFloat(currentReading.previousPreviousReading) || 0;
-              const threePrevVal = parseFloat(currentReading.threeTimesPrevious) || 0;
-
-              // 各期間の使用量を計算
-              if (prevVal > 0) previousUsage = currentVal - prevVal;
-              if (prevPrevVal > 0) previousPreviousUsage = prevVal - prevPrevVal;
-              if (threePrevVal > 0) threeTimesPreviousUsage = prevPrevVal - threePrevVal;
+            // meterReadingsから該当データを検索して指示数履歴を取得
+            const currentReadingData = meterReadings.find(reading => reading.date === date);
+            if (currentReadingData) {
+              // ✅ 修正: 変数名を明確に定義
+              previousReading = parseFloat(currentReadingData.previousReading) || 0;
+              previousPreviousReading = parseFloat(currentReadingData.previousPreviousReading) || 0;
+              threeTimesPreviousReading = parseFloat(currentReadingData.threeTimesPrevious) || 0;
+              
+              console.log(`[meter_reading] 指示数履歴取得: 前回=${previousReading}, 前々回=${previousPreviousReading}, 前々々回=${threeTimesPreviousReading}`);
             }
 
             // 警告フラグを計算（指示数ベース）
             const currentReadingValue = parseFloat(currentValue) || 0;
-            const previousReading = prevVal;
-            const previousPreviousReading = prevPrevVal;
-            const threeTimesPreviousReading = threePrevVal;
             const warningResult = calculateWarningFlag(currentReadingValue, previousReading, previousPreviousReading, threeTimesPreviousReading);
             
             updatedReadings.push({
@@ -852,7 +846,7 @@
               standardDeviation: warningResult.standardDeviation || 0
             });
             
-            console.log(`[meter_reading] JST正規化後の日付追加: ${inspectionDate}`);
+            console.log(`[meter_reading] 更新データ追加: 日付=${inspectionDate}, 指示数=${currentValue}, 警告フラグ=${warningResult.warningFlag}`);
           }
         });
 
