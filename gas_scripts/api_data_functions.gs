@@ -39,7 +39,7 @@ function getProperties() {
  * 指定された物件の部屋一覧と検針状況を取得する（軽量版）
  * room_select.html用の形式で返却
  * @param {string} propertyId - 物件ID
- * @returns {Array} 部屋データの配列
+ * @returns {Object} {property: {...}, rooms: [...]} 形式
  */
 function getRooms(propertyId) {
   try {
@@ -52,18 +52,24 @@ function getRooms(propertyId) {
       throw new Error('必要なシートが見つかりません');
     }
     
-    // 物件存在確認
+    // 物件情報取得
     const propertyData = propertySheet.getDataRange().getValues();
     const propertyHeaders = propertyData[0];
     const propertyIdIndex = propertyHeaders.indexOf('物件ID');
+    const propertyNameIndex = propertyHeaders.indexOf('物件名');
     
-    const propertyExists = propertyData.slice(1).some(row => 
+    const propertyRow = propertyData.slice(1).find(row => 
       String(row[propertyIdIndex]).trim() === String(propertyId).trim()
     );
     
-    if (!propertyExists) {
+    if (!propertyRow) {
       throw new Error('指定された物件が見つかりません');
     }
+    
+    const propertyInfo = {
+      id: String(propertyRow[propertyIdIndex]).trim(),
+      name: String(propertyRow[propertyNameIndex] || '物件名不明').trim()
+    };
     
     // 部屋情報取得
     const roomData = roomSheet.getDataRange().getValues();
@@ -89,14 +95,16 @@ function getRooms(propertyId) {
           const inspHeaders = inspectionData[0];
           const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');
           const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');
-          const inspValueIndex = inspHeaders.indexOf('今回の指示数') || inspHeaders.indexOf('検針値');
+          const inspValueIndex = inspHeaders.indexOf('今回の指示数') !== -1 ? 
+            inspHeaders.indexOf('今回の指示数') : inspHeaders.indexOf('検針値');
           
           if (inspPropertyIdIndex !== -1 && inspRoomIdIndex !== -1 && inspValueIndex !== -1) {
             const readingCompleted = new Set();
             
             inspectionData.slice(1).forEach(row => {
               if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim() &&
-                  row[inspValueIndex] !== null && row[inspValueIndex] !== undefined && row[inspValueIndex] !== '') {
+                  row[inspValueIndex] !== null && row[inspValueIndex] !== undefined && 
+                  String(row[inspValueIndex]).trim() !== '') {
                 readingCompleted.add(String(row[inspRoomIdIndex]).trim());
               }
             });
@@ -113,6 +121,18 @@ function getRooms(propertyId) {
         Logger.log(`検針データ読み込みエラー: ${inspectionError.message}`);
         // 検針データが読み込めなくても部屋一覧は返す
       }
+    }
+    
+    // HTMLが期待する形式で返却
+    return {
+      property: propertyInfo,
+      rooms: rooms
+    };
+      } catch (error) {
+    Logger.log(`getRooms エラー: ${error.message}`);
+    throw error;
+  }
+}
     }
     
     return rooms;
@@ -406,5 +426,54 @@ function getRoomName(propertyId, roomId) {
     
   } catch (error) {
     return '';
+  }
+}
+
+/**
+ * デバッグ用: スプレッドシートのシート名と基本情報を確認
+ */
+function debugSheetInfo() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = ss.getSheets().map(s => s.getName());
+    console.log('存在するシート:', sheets);
+    
+    const propertySheet = ss.getSheetByName('物件マスタ');
+    const roomSheet = ss.getSheetByName('部屋マスタ');
+    const inspectionSheet = ss.getSheetByName('検針データ') || ss.getSheetByName('inspection_data');
+    
+    console.log('物件マスタ行数:', propertySheet ? propertySheet.getLastRow() : 'シートなし');
+    console.log('部屋マスタ行数:', roomSheet ? roomSheet.getLastRow() : 'シートなし');
+    console.log('検針データ行数:', inspectionSheet ? inspectionSheet.getLastRow() : 'シートなし');
+    
+    if (propertySheet && propertySheet.getLastRow() > 0) {
+      const propertyHeaders = propertySheet.getRange(1, 1, 1, propertySheet.getLastColumn()).getValues()[0];
+      console.log('物件マスタ列名:', propertyHeaders);
+    }
+    
+    if (roomSheet && roomSheet.getLastRow() > 0) {
+      const roomHeaders = roomSheet.getRange(1, 1, 1, roomSheet.getLastColumn()).getValues()[0];
+      console.log('部屋マスタ列名:', roomHeaders);
+    }
+    
+    return 'デバッグ情報をコンソールに出力しました';
+  } catch (error) {
+    console.error('デバッグエラー:', error);
+    return `エラー: ${error.message}`;
+  }
+}
+
+/**
+ * デバッグ用: 特定物件の部屋データを確認
+ */
+function debugGetRooms(propertyId = 'P001') {
+  try {
+    console.log(`デバッグ: 物件ID「${propertyId}」の部屋データ取得テスト`);
+    const result = getRooms(propertyId);
+    console.log('結果:', JSON.stringify(result, null, 2));
+    return result;
+  } catch (error) {
+    console.error('デバッグエラー:', error);
+    return { error: error.message };
   }
 }

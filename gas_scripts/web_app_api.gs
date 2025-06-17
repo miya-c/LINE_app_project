@@ -45,21 +45,20 @@ function doGet(e) {
           success: true,
           data: Array.isArray(properties) ? properties : [],
           count: Array.isArray(properties) ? properties.length : 0
-        });
-          case 'getRooms':
-        if (!e.parameter.propertyId) {
-          return createCorsJsonResponse({ 
-            success: false,
-            error: 'propertyIdが必要です'
-          });
-        }
-        
+        });      case 'getRooms':
         try {
-          const roomData = getRooms(e.parameter.propertyId);
+          if (!e.parameter.propertyId) {
+            return createCorsJsonResponse({ 
+              success: false,
+              error: 'propertyIdが必要です'
+            });
+          }
+          
+          const roomsResult = getRooms(e.parameter.propertyId);
           return createCorsJsonResponse({
             success: true,
-            data: Array.isArray(roomData) ? roomData : [],
-            message: `${Array.isArray(roomData) ? roomData.length : 0}件の部屋データを取得しました`
+            data: roomsResult, // {property: {...}, rooms: [...]} 形式
+            message: `${roomsResult.rooms ? roomsResult.rooms.length : 0}件の部屋データを取得しました`
           });
         } catch (error) {
           Logger.log(`getRooms API エラー: ${error.message}`);
