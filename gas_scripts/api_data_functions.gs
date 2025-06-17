@@ -596,41 +596,18 @@ function getSpreadsheetInfo() {
 }
 
 /**
- * 警告フラグを計算する関数（指示数ベース・STDEV.S準拠）
- * @param {number} currentReading - 今回指示数
+ * 閾値情報を履歴データのみで計算する関数（今回指示数不要）
  * @param {number} previousReading - 前回指示数
  * @param {number} previousPreviousReading - 前々回指示数
  * @param {number} threeTimesPreviousReading - 前々々回指示数
- * @returns {Object} 標準偏差と警告フラグの結果
+ * @returns {Object} 閾値と標準偏差の情報
  */
-function calculateWarningFlag(currentReading, previousReading, previousPreviousReading, threeTimesPreviousReading) {
+function calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading) {
   try {
-    // 今回指示数の有効性チェック
-    if (typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
-      return {
-        warningFlag: '正常',
-        standardDeviation: 0,
-        threshold: 0,
-        reason: '今回指示数が無効'
-      };
-    }
-    
-    // 前回指示数との比較：今回が前回未満の場合は即「要確認」
-    if (typeof previousReading === 'number' && !isNaN(previousReading) && previousReading >= 0) {
-      if (currentReading < previousReading) {
-        Logger.log(`[calculateWarningFlag] 今回指示数(${currentReading})が前回値(${previousReading})未満のため要確認`);
-        return {
-          warningFlag: '要確認',
-          standardDeviation: 0,
-          threshold: 0,
-          reason: '前回値未満'
-        };
-      }
-    }
-    
-    // 履歴指示数の配列を作成（有効な数値のみ）
+    // 履歴データの準備（指示数ベース）
     const readingHistory = [];
     
+    // 前回、前々回、前々々回の指示数を履歴に追加
     if (typeof previousReading === 'number' && !isNaN(previousReading) && previousReading >= 0) {
       readingHistory.push(previousReading);
     }
@@ -641,10 +618,9 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
       readingHistory.push(threeTimesPreviousReading);
     }
     
-    // 履歴データが2件未満の場合は標準偏差計算不可のため「正常」
+    // 履歴データが2件未満の場合は標準偏差計算不可
     if (readingHistory.length < 2) {
       return {
-        warningFlag: '正常',
         standardDeviation: 0,
         threshold: 0,
         reason: '履歴データ不足'
@@ -655,25 +631,89 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
     const average = calculateAVERAGE(readingHistory);
     const standardDeviation = calculateSTDEV_S(readingHistory);
     
-    // ✅ 修正：前回値を基準にした閾値計算（前回値 + 標準偏差 + 10）
-    const threshold = previousReading + standardDeviation + 10;
+    // 閾値計算：前回値 + 標準偏差（切り捨て） + 10
+    const threshold = previousReading + Math.floor(standardDeviation) + 10;
+    
+    Logger.log(`[calculateThreshold] 前回値: ${previousReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold}`);
+    
+    return {
+      standardDeviation: Math.floor(standardDeviation), // 整数化（切り捨て）
+      threshold: threshold, // 整数値
+      reason: `前回値${previousReading} + σ${Math.floor(standardDeviation)} + 10`
+    };
+    
+  } catch (error) {
+    Logger.log(`[calculateThreshold] エラー: ${error.message}`);
+    return {
+      standardDeviation: 0,
+      threshold: 0,
+      reason: 'エラー'
+    };
+  }
+}
+
+/**
+ * 警告フラグを計算する関数（指示数ベース・STDEV.S準拠）
+ * @param {number} currentReading - 今回指示数
+ * @param {number} previousReading - 前回指示数
+ * @param {number} previousPreviousReading - 前々回指示数
+ * @param {number} threeTimesPreviousReading - 前々々回指示数
+ * @returns {Object} 標準偏差と警告フラグの結果
+ */
+function calculateWarningFlag(currentReading, previousReading, previousPreviousReading, threeTimesPreviousReading) {
+  try {
+    // まず閾値情報を履歴データのみで計算（今回指示数不要）
+    const thresholdInfo = calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading);
+    
+    // 今回指示数が無効な場合は閾値情報のみ返却（判定なし）
+    if (typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
+      return {
+        warningFlag: 'N/A',
+        standardDeviation: thresholdInfo.standardDeviation,
+        threshold: thresholdInfo.threshold,
+        reason: '今回指示数が無効'
+      };
+    }
+    
+    // 前回指示数との比較：今回が前回未満の場合は即「要確認」
+    if (typeof previousReading === 'number' && !isNaN(previousReading) && previousReading >= 0) {
+      if (currentReading < previousReading) {
+        Logger.log(`[calculateWarningFlag] 今回指示数(${currentReading})が前回値(${previousReading})未満のため要確認`);
+        return {
+          warningFlag: '要確認',
+          standardDeviation: thresholdInfo.standardDeviation,
+          threshold: thresholdInfo.threshold,
+          reason: '前回値未満'
+        };
+      }
+    }
+    
+    // 履歴データ不足の場合
+    if (thresholdInfo.reason === '履歴データ不足') {
+      return {
+        warningFlag: '正常',
+        standardDeviation: 0,
+        threshold: 0,
+        reason: '履歴データ不足'
+      };
+    }
     
     // 警告フラグを判定：今回指示数が閾値を超えた場合のみ「要確認」
-    const warningFlag = (currentReading > threshold) ? '要確認' : '正常';
+    const warningFlag = (currentReading > thresholdInfo.threshold) ? '要確認' : '正常';
     
-    Logger.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 前回値: ${previousReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
+    Logger.log(`[calculateWarningFlag] 今回指示数: ${currentReading}, 前回値: ${previousReading}, 標準偏差: ${thresholdInfo.standardDeviation}, 閾値: ${thresholdInfo.threshold}, 判定: ${warningFlag}`);
     
     return {
       warningFlag: warningFlag,
-      standardDeviation: Math.round(standardDeviation * 100) / 100, // 小数点以下2桁で丸める
-      threshold: Math.round(threshold * 100) / 100,
-      reason: `前回値${previousReading} + σ${standardDeviation.toFixed(1)} + 10`
+      standardDeviation: thresholdInfo.standardDeviation,
+      threshold: thresholdInfo.threshold,
+      reason: thresholdInfo.reason
     };
     
   } catch (error) {
     Logger.log(`[calculateWarningFlag] エラー: ${error.message}`);
     return {
-      warningFlag: '正常',
+      warningFlag: 'N/A',
       standardDeviation: 0,
       threshold: 0,
       reason: 'エラー'
