@@ -519,12 +519,15 @@
               // inspection_dataシートの列名を想定したマッピング
               const mapped = {
                 // 基本情報
+                id: rawReading['記録ID'] || rawReading['recordId'] || rawReading['ID'] || `reading-${index}`,
                 date: rawReading['検針日時'] || rawReading['date'] || rawReading['記録日'] || '',
                 currentReading: rawReading['今回の指示数'] || rawReading['今回指示数'] || rawReading['今回指示数（水道）'] || rawReading['currentReading'] || rawReading['指示数'] || '',
                 previousReading: rawReading['前回指示数'] || rawReading['previousReading'] || rawReading['前回'] || '',
                 previousPreviousReading: rawReading['前々回指示数'] || rawReading['previousPreviousReading'] || rawReading['前々回'] || '',
                 threeTimesPrevious: rawReading['前々々回指示数'] || rawReading['threeTimesPrevious'] || rawReading['前々々回'] || '',
                 usage: rawReading['今回使用量'] || rawReading['usage'] || rawReading['使用量'] || '',
+                warningFlag: rawReading['警告フラグ'] || rawReading['warningFlag'] || '正常',
+                standardDeviation: rawReading['標準偏差値'] || rawReading['standardDeviation'] || '',
                 status: rawReading['警告フラグ'] || rawReading['status'] || rawReading['状態'] || '正常',
                 // 追加の可能性のあるフィールド
                 recordId: rawReading['記録ID'] || rawReading['recordId'] || rawReading['ID'] || '',
@@ -535,6 +538,24 @@
                 // 元データも保持
                 _original: rawReading
               };
+              
+              // フロントエンドでも警告フラグを再計算（表示用）
+              if (mapped.currentReading && mapped.previousReading) {
+                const warningResult = calculateUsageWithWarning(
+                  mapped.currentReading,
+                  mapped.previousReading,
+                  mapped.previousPreviousReading,
+                  mapped.threeTimesPrevious
+                );
+                
+                // バックエンドの値を優先し、なければフロントエンドで計算した値を使用
+                if (!mapped.warningFlag || mapped.warningFlag === '' || mapped.warningFlag === '正常') {
+                  mapped.warningFlag = warningResult.warningFlag;
+                }
+                if (!mapped.standardDeviation || mapped.standardDeviation === '') {
+                  mapped.standardDeviation = warningResult.standardDeviation;
+                }
+              }
               
               console.log(`[meter_reading] マッピング後 [${index}]:`, mapped);
               return mapped;
@@ -756,9 +777,18 @@
             } else {
               inspectionDate = currentValue && currentValue.trim() !== '' ? getCurrentJSTDateString() : '';
             }
+            const warningResult = calculateUsageWithWarning(
+              currentValue,
+              previousValue,
+              0, // 前々回は取得できないため0
+              0  // 前々々回も取得できないため0
+            );
+            
             updatedReadings.push({
               date: inspectionDate,
-              currentReading: currentValue
+              currentReading: currentValue,
+              warningFlag: warningResult.warningFlag || '正常',
+              standardDeviation: warningResult.standardDeviation || 0
             });
           }
         });
@@ -774,6 +804,12 @@
         }
 
         console.log('[meter_reading] 更新する指示数:', updatedReadings);
+        console.log('[meter_reading] 警告フラグ確認:', updatedReadings.map(r => ({
+          date: r.date,
+          currentReading: r.currentReading,
+          warningFlag: r.warningFlag,
+          standardDeviation: r.standardDeviation
+        })));
         setUpdating(true);
         
         try {
@@ -966,11 +1002,26 @@
                                 padding: '3px 9px', 
                                 fontSize: '0.9em', 
                                 fontWeight: 500, 
-                                backgroundColor: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-2)' : 'var(--mantine-color-blue-light)', 
-                                color: statusDisplay === 'N/A' ? 'var(--mantine-color-gray-7)' : 'var(--mantine-color-blue-8)', 
+                                backgroundColor: (() => {
+                                  const status = getStatusDisplay(reading);
+                                  if (status === '要確認') return 'var(--mantine-color-red-light)';
+                                  if (status === '正常') return 'var(--mantine-color-green-light)';
+                                  return 'var(--mantine-color-gray-2)';
+                                })(),
+                                color: (() => {
+                                  const status = getStatusDisplay(reading);
+                                  if (status === '要確認') return 'var(--mantine-color-red-8)';
+                                  if (status === '正常') return 'var(--mantine-color-green-8)';
+                                  return 'var(--mantine-color-gray-7)';
+                                })(),
                                 borderRadius: 'var(--mantine-radius-sm)' 
                               }}>
-                                {statusDisplay}
+                                {getStatusDisplay(reading)}
+                                {reading.standardDeviation > 0 && (
+                                  <div style={{ fontSize: '0.7em', marginTop: '2px' }}>
+                                    σ: {reading.standardDeviation}
+                                  </div>
+                                )}
                               </span>
                             </td>
                             <td data-label="前回履歴">
@@ -1149,6 +1200,120 @@
       ReactDOM.createRoot(document.getElementById('root')).render(<MeterReadingApp />);
       console.log('🎨 メーター読み取りアプリ起動: CSS読み込み完了後に実行');
     });
+    
+    // 警告フラグを計算する関数
+    const calculateWarningFlag = (currentUsage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage) => {
+      try {
+        // 履歴使用量の配列を作成（有効な数値のみ）
+        const usageHistory = [];
+        
+        if (typeof previousUsage === 'number' && !isNaN(previousUsage) && previousUsage >= 0) {
+          usageHistory.push(previousUsage);
+        }
+        if (typeof previousPreviousUsage === 'number' && !isNaN(previousPreviousUsage) && previousPreviousUsage >= 0) {
+          usageHistory.push(previousPreviousUsage);
+        }
+        if (typeof threeTimesPreviousUsage === 'number' && !isNaN(threeTimesPreviousUsage) && threeTimesPreviousUsage >= 0) {
+          usageHistory.push(threeTimesPreviousUsage);
+        }
+        
+        // 履歴データが2件未満の場合は判定不可
+        if (usageHistory.length < 2) {
+          return {
+            warningFlag: '正常',
+            standardDeviation: 0,
+            reason: '履歴データ不足'
+          };
+        }
+        
+        // 平均値を計算
+        const average = usageHistory.reduce((sum, usage) => sum + usage, 0) / usageHistory.length;
+        
+        // 分散を計算
+        const variance = usageHistory.reduce((sum, usage) => sum + Math.pow(usage - average, 2), 0) / usageHistory.length;
+        
+        // 標準偏差を計算
+        const standardDeviation = Math.sqrt(variance);
+        
+        // 閾値を計算（標準偏差 + 10）
+        const threshold = standardDeviation + 10;
+        
+        // 警告フラグを判定
+        const warningFlag = (currentUsage > threshold) ? '要確認' : '正常';
+        
+        console.log(`[calculateWarningFlag] 今回使用量: ${currentUsage}, 履歴: [${usageHistory.join(', ')}], 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
+        
+        return {
+          warningFlag: warningFlag,
+          standardDeviation: Math.round(standardDeviation * 100) / 100,
+          reason: `履歴${usageHistory.length}件より算出`
+        };
+        
+      } catch (error) {
+        console.warn('[calculateWarningFlag] エラー:', error);
+        return {
+          warningFlag: '正常',
+          standardDeviation: 0,
+          reason: 'エラー'
+        };
+      }
+    };
+
+    // 使用量計算と警告フラグ判定を含む関数
+    const calculateUsageWithWarning = (currentReading, previousReading, previousPreviousReading, threeTimesPreviousReading) => {
+      const current = parseFloat(currentReading) || 0;
+      const previous = parseFloat(previousReading) || 0;
+      
+      if (current === 0 || isNaN(current)) {
+        return { usage: '-', warningFlag: '正常', standardDeviation: 0 };
+      }
+      
+      const usage = previous > 0 ? current - previous : current;
+      
+      if (usage < 0) {
+        return { usage: `${usage}㎥`, warningFlag: '要確認', standardDeviation: 0 };
+      }
+      
+      // 履歴使用量を計算
+      const prevPrevious = parseFloat(previousPreviousReading) || 0;
+      const threePrevious = parseFloat(threeTimesPreviousReading) || 0;
+      
+      const previousUsage = prevPrevious > 0 ? previous - prevPrevious : 0;
+      const previousPreviousUsage = threePrevious > 0 ? prevPrevious - threePrevious : 0;
+      const threeTimesPreviousUsage = 0; // さらに前のデータは取得できないため0
+      
+      // 警告フラグを計算
+      const warningResult = calculateWarningFlag(usage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage);
+      
+      return {
+        usage: `${usage}㎥`,
+        warningFlag: warningResult.warningFlag,
+        standardDeviation: warningResult.standardDeviation
+      };
+    };
+    
+    // 状態表示の拡張
+      const getStatusDisplay = (reading) => {
+        if (!reading.currentReading || reading.currentReading === '') {
+          return 'N/A';
+        }
+        
+        // 警告フラグがある場合はそれを表示
+        if (reading.warningFlag && reading.warningFlag !== '') {
+          return reading.warningFlag;
+        }
+        
+        // 警告フラグがない場合は使用量から判定
+        const current = parseFloat(reading.currentReading) || 0;
+        const previous = parseFloat(reading.previousReading) || 0;
+        
+        if (current > 0 && previous > 0) {
+          const usage = current - previous;
+          return usage < 0 ? '要確認' : '正常';
+        }
+        
+        return '正常';
+      };
   </script>
   
   <!-- PWA初期化スクリプト -->

@@ -392,7 +392,7 @@ function updateMeterReadings(propertyId, roomId, readings) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     
-    // 必要な列インデックスのみ取得
+    // 必要な列インデックスを取得（警告フラグと標準偏差値を追加）
     const colIndexes = {
       propertyId: headers.indexOf('物件ID'),
       roomId: headers.indexOf('部屋ID'),
@@ -400,7 +400,11 @@ function updateMeterReadings(propertyId, roomId, readings) {
       currentReading: headers.indexOf('今回の指示数') >= 0 ? 
         headers.indexOf('今回の指示数') : headers.indexOf('今回指示数（水道）'),
       previousReading: headers.indexOf('前回指示数'),
-      usage: headers.indexOf('今回使用量')
+      previousPreviousReading: headers.indexOf('前々回指示数'),
+      threeTimesPreviousReading: headers.indexOf('前々々回指示数'),
+      usage: headers.indexOf('今回使用量'),
+      warningFlag: headers.indexOf('警告フラグ'),
+      standardDeviation: headers.indexOf('標準偏差値')
     };
     
     // 必須列チェック
@@ -429,23 +433,59 @@ function updateMeterReadings(propertyId, roomId, readings) {
       }
       
       let usage = 0;
+      let warningResult = { warningFlag: '正常', standardDeviation: 0 };
+      
       if (existingRowIndex >= 0) {
         // 既存データ更新
         const prevValue = parseFloat(data[existingRowIndex][colIndexes.previousReading]) || 0;
         usage = prevValue > 0 ? currentValue - prevValue : currentValue;
         
+        // 履歴使用量を取得して警告フラグを計算
+        const prevPrevValue = colIndexes.previousPreviousReading >= 0 ? 
+          parseFloat(data[existingRowIndex][colIndexes.previousPreviousReading]) || 0 : 0;
+        const threePrevValue = colIndexes.threeTimesPreviousReading >= 0 ? 
+          parseFloat(data[existingRowIndex][colIndexes.threeTimesPreviousReading]) || 0 : 0;
+        
+        const previousUsage = prevPrevValue > 0 ? prevValue - prevPrevValue : 0;
+        const previousPreviousUsage = threePrevValue > 0 ? prevPrevValue - threePrevValue : 0;
+        const threeTimesPreviousUsage = 0; // さらに前のデータは取得できないため0
+        
+        // 警告フラグを計算
+        if (usage > 0 && (previousUsage > 0 || previousPreviousUsage > 0)) {
+          warningResult = calculateWarningFlag(usage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage);
+        }
+        
         data[existingRowIndex][colIndexes.date] = reading.date || '';
         data[existingRowIndex][colIndexes.currentReading] = currentValue;
         if (colIndexes.usage >= 0) data[existingRowIndex][colIndexes.usage] = usage;
         
+        // 警告フラグと標準偏差値を更新
+        if (colIndexes.warningFlag >= 0) {
+          data[existingRowIndex][colIndexes.warningFlag] = warningResult.warningFlag;
+        }
+        if (colIndexes.standardDeviation >= 0) {
+          data[existingRowIndex][colIndexes.standardDeviation] = warningResult.standardDeviation;
+        }
+        
       } else {
         // 新規データ追加
+        usage = currentValue; // 初回は指示数がそのまま使用量
+        warningResult = { warningFlag: '正常', standardDeviation: 0 }; // 初回は正常
+        
         const newRow = new Array(headers.length).fill('');
         newRow[colIndexes.propertyId] = propertyId;
         newRow[colIndexes.roomId] = roomId;
         newRow[colIndexes.date] = reading.date || '';
         newRow[colIndexes.currentReading] = currentValue;
-        if (colIndexes.usage >= 0) newRow[colIndexes.usage] = currentValue;
+        if (colIndexes.usage >= 0) newRow[colIndexes.usage] = usage;
+        
+        // 警告フラグと標準偏差値を設定
+        if (colIndexes.warningFlag >= 0) {
+          newRow[colIndexes.warningFlag] = warningResult.warningFlag;
+        }
+        if (colIndexes.standardDeviation >= 0) {
+          newRow[colIndexes.standardDeviation] = warningResult.standardDeviation;
+        }
         
         data.push(newRow);
       }
@@ -531,6 +571,74 @@ function getSpreadsheetInfo() {
     return {
       success: false,
       error: error.message
+    };
+  }
+}
+
+/**
+ * 使用量履歴から標準偏差を計算し、警告フラグを判定
+ * @param {number} currentUsage - 今回使用量
+ * @param {number} previousUsage - 前回使用量
+ * @param {number} previousPreviousUsage - 前々回使用量
+ * @param {number} threeTimesPreviousUsage - 前々々回使用量
+ * @returns {Object} 標準偏差と警告フラグの結果
+ */
+function calculateWarningFlag(currentUsage, previousUsage, previousPreviousUsage, threeTimesPreviousUsage) {
+  try {
+    // 履歴使用量の配列を作成（有効な数値のみ）
+    const usageHistory = [];
+    
+    if (typeof previousUsage === 'number' && !isNaN(previousUsage) && previousUsage >= 0) {
+      usageHistory.push(previousUsage);
+    }
+    if (typeof previousPreviousUsage === 'number' && !isNaN(previousPreviousUsage) && previousPreviousUsage >= 0) {
+      usageHistory.push(previousPreviousUsage);
+    }
+    if (typeof threeTimesPreviousUsage === 'number' && !isNaN(threeTimesPreviousUsage) && threeTimesPreviousUsage >= 0) {
+      usageHistory.push(threeTimesPreviousUsage);
+    }
+    
+    // 履歴データが2件未満の場合は判定不可
+    if (usageHistory.length < 2) {
+      return {
+        warningFlag: '正常',
+        standardDeviation: 0,
+        threshold: 0,
+        reason: '履歴データ不足'
+      };
+    }
+    
+    // 平均値を計算
+    const average = usageHistory.reduce((sum, usage) => sum + usage, 0) / usageHistory.length;
+    
+    // 分散を計算
+    const variance = usageHistory.reduce((sum, usage) => sum + Math.pow(usage - average, 2), 0) / usageHistory.length;
+    
+    // 標準偏差を計算
+    const standardDeviation = Math.sqrt(variance);
+    
+    // 閾値を計算（標準偏差 + 10）
+    const threshold = standardDeviation + 10;
+    
+    // 警告フラグを判定
+    const warningFlag = (currentUsage > threshold) ? '要確認' : '正常';
+    
+    Logger.log(`[calculateWarningFlag] 今回使用量: ${currentUsage}, 履歴: [${usageHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold.toFixed(2)}, 判定: ${warningFlag}`);
+    
+    return {
+      warningFlag: warningFlag,
+      standardDeviation: Math.round(standardDeviation * 100) / 100, // 小数点以下2桁で丸める
+      threshold: Math.round(threshold * 100) / 100,
+      reason: `履歴${usageHistory.length}件より算出`
+    };
+    
+  } catch (error) {
+    Logger.log(`[calculateWarningFlag] エラー: ${error.message}`);
+    return {
+      warningFlag: '正常',
+      standardDeviation: 0,
+      threshold: 0,
+      reason: 'エラー'
     };
   }
 }
