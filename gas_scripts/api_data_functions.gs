@@ -453,7 +453,7 @@ function updateMeterReadings(propertyId, roomId, readings) {
           parseFloat(data[existingRowIndex][colIndexes.threeTimesPreviousReading]) || 0 : 0;
         
         // 指示数履歴を取得（使用量ではなく指示数ベースで警告フラグを計算）
-        const currentReading = newReading;
+        const currentReading = currentValue;
         const previousReading = prevValue;
         const previousPreviousReading = prevPrevValue;
         const threeTimesPreviousReading = threePrevValue;
