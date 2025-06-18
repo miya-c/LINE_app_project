@@ -1325,7 +1325,8 @@
           return {
             standardDeviation: 0,
             threshold: 0,
-            reason: '履歴データ不足'
+            reason: '履歴データ不足',
+            isCalculable: false
           };
         }
         
@@ -1341,7 +1342,8 @@
         return {
           standardDeviation: Math.floor(standardDeviation), // 整数化（切り捨て）
           threshold: threshold, // 整数値
-          reason: `前回値${previousReading} + σ${Math.floor(standardDeviation)} + 10`
+          reason: `前回値${previousReading} + σ${Math.floor(standardDeviation)} + 10`,
+          isCalculable: true
         };
         
       } catch (error) {
@@ -1349,7 +1351,8 @@
         return {
           standardDeviation: 0,
           threshold: 0,
-          reason: 'エラー'
+          reason: 'エラー',
+          isCalculable: false
         };
       }
     };
@@ -1360,14 +1363,14 @@
         // まず閾値情報を履歴データのみで計算（今回指示数不要）
         const thresholdInfo = calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading);
         
-        // 今回指示数が無効な場合は閾値情報を表示（N/A判定を削除）
+        // 今回指示数が無効な場合は入力待ち状態を表示
         if (currentReading === null || currentReading === undefined || currentReading === '' || 
             typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
           return {
-            warningFlag: `閾値: ${thresholdInfo.threshold}`,
+            warningFlag: thresholdInfo.isCalculable ? '入力待ち' : '判定不可',
             standardDeviation: thresholdInfo.standardDeviation,
             threshold: thresholdInfo.threshold,
-            reason: '閾値表示（未入力）'
+            reason: thresholdInfo.reason
           };
         }
         
@@ -1385,12 +1388,12 @@
         }
         
         // 履歴データ不足の場合
-        if (thresholdInfo.reason === '履歴データ不足') {
+        if (!thresholdInfo.isCalculable) {
           return {
             warningFlag: '正常',
             standardDeviation: 0,
             threshold: 0,
-            reason: '履歴データ不足'
+            reason: thresholdInfo.reason
           };
         }
         
@@ -1409,7 +1412,7 @@
       } catch (error) {
         console.warn('[calculateWarningFlag] エラー:', error);
         return {
-          warningFlag: '閾値: 0',
+          warningFlag: 'エラー',
           standardDeviation: 0,
           threshold: 0,
           reason: 'エラー'
@@ -1454,12 +1457,12 @@
     // 状態表示の拡張
     const getStatusDisplay = (reading) => {
       if (!reading.currentReading || reading.currentReading === '') {
-        // 未入力時は警告フラグから閾値情報を表示
-        if (reading.warningFlag && reading.warningFlag.startsWith('閾値:')) {
+        // 未入力時は警告フラグ判定を表示
+        if (reading.warningFlag && reading.warningFlag !== '') {
           return reading.warningFlag;
         }
         
-        // 警告フラグが計算されていない場合は履歴データから閾値を計算
+        // 警告フラグが計算されていない場合は履歴データから計算
         const previousReading = parseFloat(reading.previousReading) || 0;
         const previousPreviousReading = parseFloat(reading.previousPreviousReading) || 0;
         const threeTimesPreviousReading = parseFloat(reading.threeTimesPrevious) || 0;
@@ -1485,12 +1488,9 @@
       return '正常';
     };
 
-    // σ値表示のヘルパー関数
+    // σ値表示のヘルパー関数（表示しない）
     const getStandardDeviationDisplay = (reading) => {
-      if (reading.standardDeviation && reading.standardDeviation > 0) {
-        return reading.standardDeviation.toFixed(2);
-      }
-      return null;
+      return null; // 常にnullを返して表示しない
     };
     
     // デバッグ用：警告フラグの詳細情報

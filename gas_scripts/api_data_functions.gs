@@ -623,7 +623,8 @@ function calculateThreshold(previousReading, previousPreviousReading, threeTimes
       return {
         standardDeviation: 0,
         threshold: 0,
-        reason: '履歴データ不足'
+        reason: '履歴データ不足',
+        isCalculable: false
       };
     }
     
@@ -639,7 +640,8 @@ function calculateThreshold(previousReading, previousPreviousReading, threeTimes
     return {
       standardDeviation: Math.floor(standardDeviation), // 整数化（切り捨て）
       threshold: threshold, // 整数値
-      reason: `前回値${previousReading} + σ${Math.floor(standardDeviation)} + 10`
+      reason: `前回値${previousReading} + σ${Math.floor(standardDeviation)} + 10`,
+      isCalculable: true
     };
     
   } catch (error) {
@@ -647,7 +649,8 @@ function calculateThreshold(previousReading, previousPreviousReading, threeTimes
     return {
       standardDeviation: 0,
       threshold: 0,
-      reason: 'エラー'
+      reason: 'エラー',
+      isCalculable: false
     };
   }
 }
@@ -665,13 +668,13 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
     // まず閾値情報を履歴データのみで計算（今回指示数不要）
     const thresholdInfo = calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading);
     
-    // 今回指示数が無効な場合は閾値情報を表示（N/A判定を削除）
+    // 今回指示数が無効な場合は入力待ち状態を表示
     if (typeof currentReading !== 'number' || isNaN(currentReading) || currentReading < 0) {
       return {
-        warningFlag: `閾値: ${thresholdInfo.threshold}`,
+        warningFlag: thresholdInfo.isCalculable ? '入力待ち' : '判定不可',
         standardDeviation: thresholdInfo.standardDeviation,
         threshold: thresholdInfo.threshold,
-        reason: '閾値表示（未入力）'
+        reason: thresholdInfo.reason
       };
     }
     
@@ -689,12 +692,12 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
     }
     
     // 履歴データ不足の場合
-    if (thresholdInfo.reason === '履歴データ不足') {
+    if (!thresholdInfo.isCalculable) {
       return {
         warningFlag: '正常',
         standardDeviation: 0,
         threshold: 0,
-        reason: '履歴データ不足'
+        reason: thresholdInfo.reason
       };
     }
     
@@ -713,7 +716,7 @@ function calculateWarningFlag(currentReading, previousReading, previousPreviousR
   } catch (error) {
     Logger.log(`[calculateWarningFlag] エラー: ${error.message}`);
     return {
-      warningFlag: '閾値: 0',
+      warningFlag: 'エラー',
       standardDeviation: 0,
       threshold: 0,
       reason: 'エラー'
