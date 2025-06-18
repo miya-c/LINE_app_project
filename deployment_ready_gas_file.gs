@@ -473,7 +473,7 @@ function getMeterReadings(propertyId, roomId) {
 }
 
 /**
- * 検針データを更新
+ * 検針データを更新（警告フラグ保存対応版）
  * @param {string} propertyId - 物件ID
  * @param {string} roomId - 部屋ID
  * @param {Array} readings - 更新する検針データ配列
@@ -481,23 +481,223 @@ function getMeterReadings(propertyId, roomId) {
  */
 function updateMeterReadings(propertyId, roomId, readings) {
   try {
-    console.log('[updateMeterReadings] 更新開始 - 物件ID:', propertyId, '部屋ID:', roomId);
+    if (!propertyId || !roomId || !Array.isArray(readings) || readings.length === 0) {
+      throw new Error('無効なパラメータ');
+    }
     
-    // 簡単な実装例（実際の業務ロジックに合わせて調整）
-    const result = {
-      success: true,
-      message: `検針データ更新完了: ${readings.length}件`,
-      propertyId: propertyId,
-      roomId: roomId,
-      updatedCount: readings.length,
-      timestamp: new Date().toISOString()
+    console.log(`[updateMeterReadings] 🚀 開始: 物件=${propertyId}, 部屋=${roomId}, データ数=${readings.length}`);
+    console.log(`[updateMeterReadings] 📥 受信データ:`, readings);
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('inspection_data');
+    
+    if (!sheet) {
+      throw new Error('inspection_dataシートが見つかりません');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // 必要な列インデックスを取得
+    const colIndexes = {
+      propertyId: headers.indexOf('物件ID'),
+      roomId: headers.indexOf('部屋ID'),
+      date: headers.indexOf('検針日時'),
+      currentReading: headers.indexOf('今回の指示数') >= 0 ? 
+        headers.indexOf('今回の指示数') : headers.indexOf('今回指示数（水道）'),
+      previousReading: headers.indexOf('前回指示数'),
+      usage: headers.indexOf('今回使用量'),
+      warningFlag: headers.indexOf('警告フラグ')
     };
     
-    console.log('[updateMeterReadings] 更新完了:', result);
-    return result;
+    console.log(`[updateMeterReadings] 📊 列インデックス:`, colIndexes);
+    console.log(`[updateMeterReadings] 🎯 警告フラグ列インデックス: ${colIndexes.warningFlag}`);
+    
+    // 警告フラグ列が存在しない場合のエラーハンドリング
+    if (colIndexes.warningFlag === -1) {
+      console.log(`[updateMeterReadings] ❌ 警告フラグ列が見つかりません！`);
+      throw new Error('警告フラグ列が見つかりません');
+    }
+    
+    // 必須列の存在確認
+    if (colIndexes.propertyId === -1 || colIndexes.roomId === -1 || 
+        colIndexes.date === -1 || colIndexes.currentReading === -1) {
+      throw new Error(`必要な列が見つかりません。利用可能な列: ${headers.join(', ')}`);
+    }
+    
+    let updatedRowCount = 0;
+    const now = new Date();
+    
+    readings.forEach((reading, readingIndex) => {
+      console.log(`[updateMeterReadings] 🔄 処理中[${readingIndex}]:`, reading);
+      
+      const currentValue = parseFloat(reading.currentReading) || 0;
+      
+      // ✅ 警告フラグを確実に受信・ログ出力
+      const receivedWarningFlag = reading.warningFlag || '正常';
+      console.log(`[updateMeterReadings] 🚨 受信した警告フラグ[${readingIndex}]: "${receivedWarningFlag}" (型: ${typeof receivedWarningFlag})`);
+      
+      // 現在日時をJSTで設定
+      const jstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+      const normalizedDate = jstDate.toISOString().split('T')[0]; // YYYY-MM-DD形式
+      
+      // 既存データを検索
+      const existingRowIndex = data.findIndex((row, index) => 
+        index > 0 && 
+        String(row[colIndexes.propertyId]).trim() === String(propertyId).trim() &&
+        String(row[colIndexes.roomId]).trim() === String(roomId).trim()
+      );
+      
+      console.log(`[updateMeterReadings] 🔍 既存データ検索結果[${readingIndex}]: インデックス=${existingRowIndex}`);
+      
+      if (existingRowIndex >= 0) {
+        // 既存データ更新
+        console.log(`[updateMeterReadings] 📝 既存データ更新モード[${readingIndex}]`);
+        
+        const previousReading = parseFloat(data[existingRowIndex][colIndexes.previousReading]) || 0;
+        const usage = previousReading > 0 ? Math.max(0, currentValue - previousReading) : currentValue;
+        
+        // データ更新
+        data[existingRowIndex][colIndexes.date] = normalizedDate;
+        data[existingRowIndex][colIndexes.currentReading] = currentValue;
+        if (colIndexes.usage >= 0) data[existingRowIndex][colIndexes.usage] = usage;
+        
+        // ✅ 警告フラグを確実にG列に保存
+        console.log(`[updateMeterReadings] 💾 警告フラグ保存前[${readingIndex}]: 列${colIndexes.warningFlag + 1} = "${data[existingRowIndex][colIndexes.warningFlag]}"`);
+        data[existingRowIndex][colIndexes.warningFlag] = receivedWarningFlag;
+        console.log(`[updateMeterReadings] ✅ 警告フラグ保存後[${readingIndex}]: 列${colIndexes.warningFlag + 1} = "${data[existingRowIndex][colIndexes.warningFlag]}"`);
+        
+      } else {
+        // 新規データ作成
+        console.log(`[updateMeterReadings] 🆕 新規データ作成モード[${readingIndex}]`);
+        
+        const newRow = new Array(headers.length).fill('');
+        
+        newRow[colIndexes.propertyId] = propertyId;
+        newRow[colIndexes.roomId] = roomId;
+        newRow[colIndexes.date] = normalizedDate;
+        newRow[colIndexes.currentReading] = currentValue;
+        if (colIndexes.usage >= 0) newRow[colIndexes.usage] = currentValue;
+        
+        // ✅ 警告フラグを確実にG列に設定
+        console.log(`[updateMeterReadings] 🆕 新規警告フラグ設定[${readingIndex}]: 列${colIndexes.warningFlag + 1} = "${receivedWarningFlag}"`);
+        newRow[colIndexes.warningFlag] = receivedWarningFlag;
+        
+        data.push(newRow);
+      }
+      
+      updatedRowCount++;
+    });
+    
+    // シートに一括書き込み
+    if (updatedRowCount > 0) {
+      console.log(`[updateMeterReadings] 💾 シートへの書き込み開始: ${updatedRowCount}件`);
+      
+      sheet.clear();
+      sheet.getRange(1, 1, data.length, headers.length).setValues(data);
+      
+      console.log(`[updateMeterReadings] ✅ ${updatedRowCount}件のデータをシートに書き込み完了`);
+    }
+    
+    return {
+      success: true,
+      message: `${updatedRowCount}件の検針データを正常に更新しました`,
+      timestamp: new Date().toISOString(),
+      updatedRows: updatedRowCount,
+      details: readings.map(r => ({
+        date: r.date,
+        currentReading: r.currentReading,
+        warningFlag: r.warningFlag || '正常'
+      }))
+    };
     
   } catch (error) {
-    console.error('[updateMeterReadings] エラー:', error);
-    throw new Error(`検針データ更新エラー: ${error.message}`);
+    console.error(`[updateMeterReadings] ❌ エラー: ${error.message}`);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * 標準偏差計算用ヘルパー関数群
+ */
+
+/**
+ * STDEV.S相当の標準偏差を計算（標本標準偏差：n-1で割る）
+ * @param {Array} values - 数値配列
+ * @returns {number} 標準偏差
+ */
+function calculateSTDEV_S(values) {
+  if (!values || values.length < 2) return 0;
+  
+  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+/**
+ * AVERAGE関数相当の平均値を計算
+ * @param {Array} values - 数値配列
+ * @returns {number} 平均値
+ */
+function calculateAVERAGE(values) {
+  if (!values || values.length === 0) return 0;
+  return values.reduce((sum, val) => sum + val, 0) / values.length;
+}
+
+/**
+ * 閾値情報を履歴データのみで計算する関数（警告フラグ計算用）
+ * @param {number} previousReading - 前回指示数
+ * @param {number} previousPreviousReading - 前々回指示数  
+ * @param {number} threeTimesPreviousReading - 前々々回指示数
+ * @returns {Object} 閾値と標準偏差の情報
+ */
+function calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading) {
+  try {
+    const readingHistory = [];
+    
+    if (typeof previousReading === 'number' && !isNaN(previousReading) && previousReading >= 0) {
+      readingHistory.push(previousReading);
+    }
+    if (typeof previousPreviousReading === 'number' && !isNaN(previousPreviousReading) && previousPreviousReading >= 0) {
+      readingHistory.push(previousPreviousReading);
+    }
+    if (typeof threeTimesPreviousReading === 'number' && !isNaN(threeTimesPreviousReading) && threeTimesPreviousReading >= 0) {
+      readingHistory.push(threeTimesPreviousReading);
+    }
+    
+    if (readingHistory.length < 2) {
+      return {
+        standardDeviation: 0,
+        threshold: 0,
+        reason: '履歴データ不足',
+        isCalculable: false
+      };
+    }
+    
+    const average = calculateAVERAGE(readingHistory);
+    const standardDeviation = calculateSTDEV_S(readingHistory);
+    const threshold = previousReading + Math.floor(standardDeviation) + 10;
+    
+    console.log(`[calculateThreshold] 前回値: ${previousReading}, 履歴: [${readingHistory.join(', ')}], 平均: ${average.toFixed(2)}, 標準偏差: ${standardDeviation.toFixed(2)}, 閾値: ${threshold}`);
+    
+    return {
+      standardDeviation: Math.floor(standardDeviation),
+      threshold: threshold,
+      reason: `前回値${previousReading} + σ${Math.floor(standardDeviation)} + 10`,
+      isCalculable: true
+    };
+    
+  } catch (error) {
+    console.log(`[calculateThreshold] エラー: ${error.message}`);
+    return {
+      standardDeviation: 0,
+      threshold: 0,
+      reason: 'エラー',
+      isCalculable: false
+    };
   }
 }
