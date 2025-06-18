@@ -377,10 +377,12 @@ function getFallbackNames(propertyId, roomId) {
  */
 function updateMeterReadings(propertyId, roomId, readings) {
   try {
-    // 基本検証のみ
     if (!propertyId || !roomId || !Array.isArray(readings) || readings.length === 0) {
       throw new Error('無効なパラメータ');
     }
+    
+    Logger.log(`[updateMeterReadings] 🚀 開始: 物件=${propertyId}, 部屋=${roomId}, データ数=${readings.length}`);
+    Logger.log(`[updateMeterReadings] 📥 受信データ:`, readings);
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('inspection_data');
@@ -407,11 +409,14 @@ function updateMeterReadings(propertyId, roomId, readings) {
       standardDeviation: headers.indexOf('標準偏差値')
     };
     
-    Logger.log(`[updateMeterReadings] 列インデックス確認:`, colIndexes);
+    Logger.log(`[updateMeterReadings] 📊 列インデックス:`, colIndexes);
+    Logger.log(`[updateMeterReadings] 🎯 警告フラグ列インデックス: ${colIndexes.warningFlag}`);
+    Logger.log(`[updateMeterReadings] 📋 利用可能な列: ${headers.join(', ')}`);
     
     // 警告フラグ列が存在しない場合のエラーハンドリング
     if (colIndexes.warningFlag === -1) {
-      Logger.log(`[updateMeterReadings] ⚠️ 警告フラグ列が見つかりません。利用可能な列: ${headers.join(', ')}`);
+      Logger.log(`[updateMeterReadings] ❌ 警告フラグ列が見つかりません！`);
+      throw new Error('警告フラグ列が見つかりません');
     }
     
     // 必須列の存在確認
@@ -424,12 +429,13 @@ function updateMeterReadings(propertyId, roomId, readings) {
     const now = new Date();
     
     readings.forEach((reading, readingIndex) => {
-      Logger.log(`[updateMeterReadings] 処理中の読み取りデータ[${readingIndex}]:`, reading);
+      Logger.log(`[updateMeterReadings] 🔄 処理中[${readingIndex}]:`, reading);
       
       const currentValue = parseFloat(reading.currentReading) || 0;
       
-      // ✅ 警告フラグを受信
-      const warningFlag = reading.warningFlag || '正常';
+      // ✅ 警告フラグを確実に受信・ログ出力
+      const receivedWarningFlag = reading.warningFlag || '正常';
+      Logger.log(`[updateMeterReadings] 🚨 受信した警告フラグ[${readingIndex}]: "${receivedWarningFlag}" (型: ${typeof receivedWarningFlag})`);
       
       // JST日付を正規化
       const normalizedDate = reading.date ? normalizeToJSTDate(reading.date) : getCurrentJSTDate();
@@ -441,8 +447,12 @@ function updateMeterReadings(propertyId, roomId, readings) {
         String(row[colIndexes.roomId]).trim() === String(roomId).trim()
       );
       
+      Logger.log(`[updateMeterReadings] 🔍 既存データ検索結果[${readingIndex}]: インデックス=${existingRowIndex}`);
+      
       if (existingRowIndex >= 0) {
         // 既存データ更新
+        Logger.log(`[updateMeterReadings] 📝 既存データ更新モード[${readingIndex}]`);
+        
         const previousReading = parseFloat(data[existingRowIndex][colIndexes.previousReading]) || 0;
         const usage = previousReading > 0 ? Math.max(0, currentValue - previousReading) : currentValue;
         
@@ -460,10 +470,10 @@ function updateMeterReadings(propertyId, roomId, readings) {
         data[existingRowIndex][colIndexes.currentReading] = currentValue;
         if (colIndexes.usage >= 0) data[existingRowIndex][colIndexes.usage] = usage;
         
-        // ✅ 警告フラグをG列に保存
-        if (colIndexes.warningFlag >= 0) {
-          data[existingRowIndex][colIndexes.warningFlag] = warningFlag;
-        }
+        // ✅ 警告フラグを確実にG列に保存
+        Logger.log(`[updateMeterReadings] 💾 警告フラグ保存前[${readingIndex}]: 列${colIndexes.warningFlag + 1} = "${data[existingRowIndex][colIndexes.warningFlag]}"`);
+        data[existingRowIndex][colIndexes.warningFlag] = receivedWarningFlag;
+        Logger.log(`[updateMeterReadings] ✅ 警告フラグ保存後[${readingIndex}]: 列${colIndexes.warningFlag + 1} = "${data[existingRowIndex][colIndexes.warningFlag]}"`);
         
         // 標準偏差を保存
         if (colIndexes.standardDeviation >= 0) {
@@ -472,6 +482,8 @@ function updateMeterReadings(propertyId, roomId, readings) {
         
       } else {
         // 新規データ作成
+        Logger.log(`[updateMeterReadings] 🆕 新規データ作成モード[${readingIndex}]`);
+        
         const newRow = new Array(headers.length).fill('');
         
         newRow[colIndexes.propertyId] = propertyId;
@@ -480,10 +492,9 @@ function updateMeterReadings(propertyId, roomId, readings) {
         newRow[colIndexes.currentReading] = currentValue;
         if (colIndexes.usage >= 0) newRow[colIndexes.usage] = currentValue;
         
-        // ✅ 警告フラグをG列に保存
-        if (colIndexes.warningFlag >= 0) {
-          newRow[colIndexes.warningFlag] = warningFlag;
-        }
+        // ✅ 警告フラグを確実にG列に設定
+        Logger.log(`[updateMeterReadings] 🆕 新規警告フラグ設定[${readingIndex}]: 列${colIndexes.warningFlag + 1} = "${receivedWarningFlag}"`);
+        newRow[colIndexes.warningFlag] = receivedWarningFlag;
         
         // 新規データの標準偏差は0
         if (colIndexes.standardDeviation >= 0) {
@@ -498,28 +509,37 @@ function updateMeterReadings(propertyId, roomId, readings) {
     
     // シートに一括書き込み
     if (updatedRowCount > 0) {
+      Logger.log(`[updateMeterReadings] 💾 シートへの書き込み開始: ${updatedRowCount}件`);
+      
       sheet.clear();
       sheet.getRange(1, 1, data.length, headers.length).setValues(data);
+      
       Logger.log(`[updateMeterReadings] ✅ ${updatedRowCount}件のデータをシートに書き込み完了`);
       
-      // ✅ 書き込み後の確認
-      if (colIndexes.warningFlag >= 0) {
-        Logger.log(`[updateMeterReadings] 書き込み後確認: 警告フラグ列=${colIndexes.warningFlag + 1}列目`);
+      // ✅ 書き込み後の確認強化
+      Logger.log(`[updateMeterReadings] 🔍 書き込み後確認: 警告フラグ列=${colIndexes.warningFlag + 1}列目`);
+      
+      // 実際のシートから読み戻して確認
+      const verificationData = sheet.getDataRange().getValues();
+      readings.forEach((reading, readingIndex) => {
+        const verificationRow = verificationData.find((row, index) => 
+          index > 0 && 
+          String(row[colIndexes.propertyId]).trim() === String(propertyId).trim() &&
+          String(row[colIndexes.roomId]).trim() === String(roomId).trim()
+        );
         
-        // 実際のシートから読み戻して確認
-        const verificationData = sheet.getDataRange().getValues();
-        readings.forEach((reading, readingIndex) => {
-          const verificationRow = verificationData.find((row, index) => 
-            index > 0 && 
-            String(row[colIndexes.propertyId]).trim() === String(propertyId).trim() &&
-            String(row[colIndexes.roomId]).trim() === String(roomId).trim()
-          );
+        if (verificationRow) {
+          const actualWarningFlag = verificationRow[colIndexes.warningFlag];
+          const expectedWarningFlag = reading.warningFlag || '正常';
           
-          if (verificationRow) {
-            Logger.log(`[updateMeterReadings] 📋 書き込み確認[${readingIndex}]: 警告フラグ="${verificationRow[colIndexes.warningFlag]}" (${typeof verificationRow[colIndexes.warningFlag]})`);
-          }
-        });
-      }
+          Logger.log(`[updateMeterReadings] 📋 書き込み確認[${readingIndex}]:`);
+          Logger.log(`[updateMeterReadings]   - 期待値: "${expectedWarningFlag}"`);
+          Logger.log(`[updateMeterReadings]   - 実際値: "${actualWarningFlag}" (型: ${typeof actualWarningFlag})`);
+          Logger.log(`[updateMeterReadings]   - 一致: ${expectedWarningFlag === actualWarningFlag ? '✅ YES' : '❌ NO'}`);
+        } else {
+          Logger.log(`[updateMeterReadings] ❌ 確認用データが見つかりません[${readingIndex}]`);
+        }
+      });
     }
     
     return {
@@ -538,12 +558,18 @@ function updateMeterReadings(propertyId, roomId, readings) {
         standardDeviationColumnExists: colIndexes.standardDeviation >= 0,
         standardDeviationColumnIndex: colIndexes.standardDeviation,
         totalColumns: headers.length,
-        headers: headers
+        headers: headers,
+        processedData: readings.map((r, i) => ({
+          index: i,
+          receivedWarningFlag: r.warningFlag || '正常',
+          processedSuccessfully: true
+        }))
       }
     };
     
   } catch (error) {
     Logger.log(`[updateMeterReadings] ❌ エラー: ${error.message}`);
+    Logger.log(`[updateMeterReadings] ❌ エラースタック:`, error.stack);
     return {
       success: false,
       error: error.message,
