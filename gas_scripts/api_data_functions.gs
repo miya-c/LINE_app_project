@@ -428,14 +428,11 @@ function updateMeterReadings(propertyId, roomId, readings) {
       
       const currentValue = parseFloat(reading.currentReading) || 0;
       
-      // ✅ フロントエンドから受信した警告フラグをそのまま使用
-      const receivedWarningFlag = reading.warningFlag || '正常';
-      
-      Logger.log(`[updateMeterReadings] フロントエンドから受信[${readingIndex}]: 警告フラグ="${receivedWarningFlag}"`);
+      // ✅ 警告フラグを受信
+      const warningFlag = reading.warningFlag || '正常';
       
       // JST日付を正規化
       const normalizedDate = reading.date ? normalizeToJSTDate(reading.date) : getCurrentJSTDate();
-      Logger.log(`[updateMeterReadings] 日付正規化: ${reading.date} → ${normalizedDate}`);
       
       // 既存データを検索
       const existingRowIndex = data.findIndex((row, index) => 
@@ -444,28 +441,18 @@ function updateMeterReadings(propertyId, roomId, readings) {
         String(row[colIndexes.roomId]).trim() === String(roomId).trim()
       );
       
-      Logger.log(`[updateMeterReadings] 既存データ検索結果[${readingIndex}]: インデックス=${existingRowIndex}`);
-      
       if (existingRowIndex >= 0) {
-        // 既存データ更新の場合
-        Logger.log(`[updateMeterReadings] 既存データ更新開始[${readingIndex}]`);
-        
-        // 使用量計算（表示用）
+        // 既存データ更新
         const previousReading = parseFloat(data[existingRowIndex][colIndexes.previousReading]) || 0;
         const usage = previousReading > 0 ? Math.max(0, currentValue - previousReading) : currentValue;
         
-        // ✅ 標準偏差はバックエンドで計算
+        // 標準偏差をバックエンドで計算
         let calculatedStandardDeviation = 0;
         if (colIndexes.standardDeviation >= 0) {
-          // 履歴データを取得
           const previousPreviousReading = parseFloat(data[existingRowIndex][colIndexes.previousPreviousReading]) || 0;
           const threeTimesPreviousReading = parseFloat(data[existingRowIndex][colIndexes.threeTimesPreviousReading]) || 0;
-          
-          // 標準偏差を計算
           const thresholdInfo = calculateThreshold(previousReading, previousPreviousReading, threeTimesPreviousReading);
           calculatedStandardDeviation = thresholdInfo.standardDeviation;
-          
-          Logger.log(`[updateMeterReadings] バックエンド標準偏差計算[${readingIndex}]: ${calculatedStandardDeviation}`);
         }
         
         // データ更新
@@ -473,47 +460,37 @@ function updateMeterReadings(propertyId, roomId, readings) {
         data[existingRowIndex][colIndexes.currentReading] = currentValue;
         if (colIndexes.usage >= 0) data[existingRowIndex][colIndexes.usage] = usage;
         
-        // ✅ フロントエンドから受信した警告フラグを保存
+        // ✅ 警告フラグをG列に保存
         if (colIndexes.warningFlag >= 0) {
-          data[existingRowIndex][colIndexes.warningFlag] = receivedWarningFlag;
-          Logger.log(`[updateMeterReadings] ✅ 警告フラグ保存[${readingIndex}]: 行${existingRowIndex + 1}, 列${colIndexes.warningFlag + 1}, 値="${receivedWarningFlag}"`);
-        } else {
-          Logger.log(`[updateMeterReadings] ⚠️ 警告フラグ列が存在しないため保存スキップ[${readingIndex}]`);
+          data[existingRowIndex][colIndexes.warningFlag] = warningFlag;
         }
         
-        // ✅ バックエンドで計算した標準偏差を保存
+        // 標準偏差を保存
         if (colIndexes.standardDeviation >= 0) {
           data[existingRowIndex][colIndexes.standardDeviation] = calculatedStandardDeviation;
-          Logger.log(`[updateMeterReadings] ✅ 標準偏差値保存[${readingIndex}]: 行${existingRowIndex + 1}, 列${colIndexes.standardDeviation + 1}, 値=${calculatedStandardDeviation}`);
         }
         
       } else {
-        // 新規データ作成の場合
-        Logger.log(`[updateMeterReadings] 新規データ作成開始[${readingIndex}]`);
-        
+        // 新規データ作成
         const newRow = new Array(headers.length).fill('');
         
-        // 基本情報設定
         newRow[colIndexes.propertyId] = propertyId;
         newRow[colIndexes.roomId] = roomId;
         newRow[colIndexes.date] = normalizedDate;
         newRow[colIndexes.currentReading] = currentValue;
-        if (colIndexes.usage >= 0) newRow[colIndexes.usage] = currentValue; // 初回は指示数がそのまま使用量
+        if (colIndexes.usage >= 0) newRow[colIndexes.usage] = currentValue;
         
-        // ✅ フロントエンドから受信した警告フラグを設定
+        // ✅ 警告フラグをG列に保存
         if (colIndexes.warningFlag >= 0) {
-          newRow[colIndexes.warningFlag] = receivedWarningFlag;
-          Logger.log(`[updateMeterReadings] ✅ 新規警告フラグ設定[${readingIndex}]: 列${colIndexes.warningFlag + 1}, 値="${receivedWarningFlag}"`);
+          newRow[colIndexes.warningFlag] = warningFlag;
         }
         
-        // ✅ 新規データの場合、標準偏差は基本的に0（履歴がないため）
+        // 新規データの標準偏差は0
         if (colIndexes.standardDeviation >= 0) {
           newRow[colIndexes.standardDeviation] = 0;
-          Logger.log(`[updateMeterReadings] ✅ 新規標準偏差値設定[${readingIndex}]: 列${colIndexes.standardDeviation + 1}, 値=0`);
         }
         
         data.push(newRow);
-        Logger.log(`[updateMeterReadings] 新規行をデータ配列に追加[${readingIndex}]: 行番号${data.length}`);
       }
       
       updatedRowCount++;
