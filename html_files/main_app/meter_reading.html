@@ -857,11 +857,12 @@
             const currentReadingValue = parseFloat(currentValue) || 0;
             const warningResult = calculateWarningFlag(currentReadingValue, previousReading, previousPreviousReading, threeTimesPreviousReading);
             
+            // ✅ 修正: 警告フラグのみ送信、標準偏差は送信しない
             updatedReadings.push({
               date: inspectionDate, // JST正規化された日付
               currentReading: currentValue,
-              warningFlag: warningResult.warningFlag || '正常',
-              standardDeviation: warningResult.standardDeviation || 0
+              warningFlag: warningResult.warningFlag || '正常'
+              // standardDeviation: warningResult.standardDeviation || 0  ← 削除
             });
             
             console.log(`[meter_reading] 更新データ追加: 日付=${inspectionDate}, 指示数=${currentValue}, 警告フラグ=${warningResult.warningFlag}`);
@@ -883,9 +884,8 @@
           date: r.date,
           currentReading: r.currentReading,
           warningFlag: r.warningFlag,
-          standardDeviation: r.standardDeviation,
-          hasWarningFlag: !!r.warningFlag,
-          hasStandardDeviation: !!r.standardDeviation
+          hasWarningFlag: !!r.warningFlag
+          // hasStandardDeviation: !!r.standardDeviation  ← 削除
         })));
         setUpdating(true);
         
