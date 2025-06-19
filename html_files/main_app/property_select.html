@@ -147,7 +147,7 @@
       min-height: 28px;
     }
     .property-name { 
-      font-size: clamp(14px, 4vw, 18px); font-weight: 600; color: #212529; 
+      font-size: clamp(16px, 5vw, 22px); font-weight: 600; color: #212529; 
       line-height: 1.3; 
       white-space: nowrap;
       overflow: hidden;
@@ -186,7 +186,7 @@
       .mantine-container { padding: 16px; } 
       .mantine-title { font-size: 28px; margin-bottom: 24px; }
       .mantine-paper { padding: 16px; }
-      .property-name { font-size: clamp(12px, 3.5vw, 16px); }
+      .property-name { font-size: clamp(14px, 4vw, 18px); }
       .property-name-row { flex-direction: column; align-items: flex-start; }
       .completion-date { font-size: 11px; padding: 4px 8px; }
       .mantine-text-input input { padding: 16px 18px; }
@@ -195,7 +195,7 @@
     /* Extra small devices - very long property names */
     @media (max-width: 480px) {
       .property-name {
-        font-size: clamp(11px, 3vw, 14px) !important;
+        font-size: clamp(13px, 3.5vw, 16px) !important;
         line-height: 1.2;
       }
       .mantine-paper { padding: 12px; }
@@ -364,20 +364,20 @@
         }
       };
 
-      // 物件名の動的フォントサイズ計算
+      // 物件名の動的フォントサイズ計算（アクセシビリティ重視）
       const calculatePropertyNameFontSize = (propertyName) => {
-        if (!propertyName) return '18px';
+        if (!propertyName) return '20px';
         
         const length = propertyName.length;
         
-        // 文字数に応じてフォントサイズを調整（より細かく）
-        if (length <= 6) return '18px';      // 非常に短い名前：最大サイズ
-        if (length <= 10) return '17px';     // 短い名前：大サイズ
-        if (length <= 14) return '16px';     // 中程度：中サイズ
-        if (length <= 18) return '15px';     // 長め：小サイズ
-        if (length <= 22) return '14px';     // 更に長い：更に小サイズ
-        if (length <= 26) return '13px';     // 非常に長い：最小サイズ
-        return '12px';                       // 極端に長い：最小限サイズ
+        // 短い名前は大きく、長い名前でも最低14pxを確保
+        if (length <= 4) return '22px';      // 非常に短い名前：最大サイズ（老眼対応）
+        if (length <= 8) return '20px';      // 短い名前：大サイズ
+        if (length <= 12) return '18px';     // 中程度：中サイズ
+        if (length <= 16) return '17px';     // やや長め：やや小サイズ
+        if (length <= 20) return '16px';     // 長め：小サイズ
+        if (length <= 24) return '15px';     // 更に長い：更に小サイズ
+        return '14px';                       // 極端に長い：最小限サイズ（可読性確保）
       };
 
       React.useEffect(() => {
