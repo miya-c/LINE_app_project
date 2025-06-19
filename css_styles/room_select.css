@@ -574,3 +574,9 @@ body {
 .property-id {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
+
+.header-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
