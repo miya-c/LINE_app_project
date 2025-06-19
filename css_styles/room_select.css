@@ -11,7 +11,7 @@ body {
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     background-color: #f5f5f5;
     color: rgba(0, 0, 0, 0.87);
-    font-size: 14px;
+    font-size: 18px;
     line-height: 1.43;
     letter-spacing: 0.01071em;
 }
@@ -70,7 +70,7 @@ body {
 .mui-typography-h6 {
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     font-weight: 500;
-    font-size: 1.25rem;
+    font-size: 1.7rem;
     line-height: 1.6;
     letter-spacing: 0.0075em;
     margin: 0;
@@ -130,7 +130,7 @@ body {
 .mui-typography-h5 {
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     font-weight: 400;
-    font-size: 1.5rem;
+    font-size: 2rem;
     line-height: 1.334;
     letter-spacing: 0em;
     margin: 0;
@@ -156,7 +156,7 @@ body {
     color: inherit;
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: 1.15rem;
     line-height: 1.75;
     letter-spacing: 0.02857em;
     text-transform: uppercase;
@@ -184,7 +184,7 @@ body {
 
 .complete-inspection-btn {
     padding: 12px 24px;
-    font-size: 1rem;
+    font-size: 1.15rem;
     gap: 8px;
     background-color: #2e7d32;
     min-width: 280px;
@@ -259,17 +259,26 @@ body {
 .room-name {
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     font-weight: 500;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     line-height: 1.6;
     letter-spacing: 0.0075em;
     margin: 0;
     flex-grow: 1;
 }
 
+.mui-typography-body1 {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 400;
+    font-size: 1.15rem;
+    line-height: 1.5;
+    letter-spacing: 0.00938em;
+    margin: 0;
+}
+
 .mui-typography-body2 {
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     font-weight: 400;
-    font-size: 0.875rem;
+    font-size: 1.15rem;
     line-height: 1.43;
     letter-spacing: 0.01071em;
     margin: 0;
@@ -347,15 +356,6 @@ body {
     }
 }
 
-.mui-typography-body1 {
-    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-    font-weight: 400;
-    font-size: 1rem;
-    line-height: 1.5;
-    letter-spacing: 0.00938em;
-    margin: 0;
-}
-
 .no-rooms {
     text-align: center;
     color: rgba(0, 0, 0, 0.6);
@@ -371,6 +371,9 @@ body {
 }
 
 @media (max-width: 600px) {
+    body {
+        font-size: 22px;
+    }
     .mui-container {
         padding: 16px 8px;
     }
@@ -381,8 +384,12 @@ body {
     }
     
     .mui-typography-h6 {
-        font-size: 1.1rem;
+        font-size: 1.3rem;
         margin-right: 40px;
+    }
+    
+    .mui-typography-h5 {
+        font-size: 1.5rem;
     }
     
     .mui-grid-container {
@@ -392,7 +399,7 @@ body {
     
     .complete-inspection-btn {
         min-width: 250px;
-        font-size: 0.9rem;
+        font-size: 1.05rem;
         padding: 10px 20px;
     }
     
@@ -406,6 +413,9 @@ body {
 }
 
 @media (max-width: 480px) {
+    body {
+        font-size: 24px;
+    }
     .mui-container {
         padding: 12px 4px;
     }
@@ -421,11 +431,15 @@ body {
     
     .complete-inspection-btn {
         min-width: 200px;
-        font-size: 0.85rem;
+        font-size: 1rem;
         padding: 8px 16px;
     }
     
-    .property-card .mui-typography-h5 {
+    .mui-typography-h6 {
+        font-size: 1.1rem;
+    }
+    
+    .mui-typography-h5 {
         font-size: 1.2rem;
     }
 }
