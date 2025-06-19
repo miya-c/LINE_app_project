@@ -94,6 +94,38 @@
         .back-button:hover {
             background-color: #5a6268;
         }
+        .complete-inspection-button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255,255,255,0.3);
+            min-width: 200px;
+        }
+        .complete-inspection-button:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ea472 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(40, 167, 69, 0.35);
+        }
+        .complete-inspection-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+        .button-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+        }
         .loading {
             text-align: center;
             padding: 20px;
@@ -113,6 +145,17 @@
 <body>
     <div class="container">
         <div class="property-name" id="propertyName">物件名読み込み中...</div>
+        
+        <div class="button-container">
+            <button 
+                class="complete-inspection-button" 
+                id="completeInspectionBtn" 
+                onclick="completeInspection()" 
+                style="display: none;"
+            >
+                📋 この物件の検針を完了する
+            </button>
+        </div>
         
         <div id="errorMessage" class="error-message"></div>
         
@@ -225,11 +268,81 @@
             document.getElementById('propertyName').textContent = data.property.name;
             displayRooms(data.rooms);
             
+            // 検針完了ボタンを表示
+            const completeBtn = document.getElementById('completeInspectionBtn');
+            completeBtn.style.display = 'inline-block';
+            
             document.getElementById('loading').style.display = 'none';
             document.getElementById('roomGrid').style.display = 'grid';
             
             console.log('[room_select] 表示完了 - 物件名:', data.property.name, '部屋数:', data.rooms.length);
-        }        function displayRooms(rooms) {
+        }
+        
+        // 検針完了処理
+        async function completeInspection() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const propertyId = urlParams.get('propertyId');
+            
+            if (!propertyId) {
+                showError('物件IDが取得できません');
+                return;
+            }
+            
+            // 確認ダイアログ
+            if (!confirm('この物件の検針を完了にしますか？\n物件一覧画面に完了バッジが表示されます。')) {
+                return;
+            }
+            
+            const completeBtn = document.getElementById('completeInspectionBtn');
+            const originalText = completeBtn.textContent;
+            
+            try {
+                // ボタンを無効化・ローディング表示
+                completeBtn.disabled = true;
+                completeBtn.textContent = '⏳ 処理中...';
+                
+                const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+                if (!gasWebAppUrl) {
+                    throw new Error('Web App URLが設定されていません');
+                }
+                
+                const fetchUrl = `${gasWebAppUrl}?action=completePropertyInspection&propertyId=${encodeURIComponent(propertyId)}`;
+                console.log('[room_select] 検針完了API呼び出し:', fetchUrl);
+                
+                const response = await fetch(fetchUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`API呼び出しに失敗しました: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('[room_select] 検針完了API応答:', result);
+                
+                if (!result.success) {
+                    throw new Error(result.error || '検針完了処理に失敗しました');
+                }
+                
+                // 成功メッセージ表示
+                completeBtn.textContent = '✅ 完了しました！';
+                completeBtn.style.background = 'linear-gradient(135deg, #20c997 0%, #17a2b8 100%)';
+                
+                // 3秒後に物件一覧画面に戻る
+                setTimeout(() => {
+                    console.log('[room_select] 検針完了処理成功 - 物件一覧に戻る');
+                    window.location.href = '/property_select';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('[room_select] 検針完了処理エラー:', error);
+                showError(`検針完了処理でエラーが発生しました: ${error.message}`);
+                
+                // ボタンを復元
+                completeBtn.disabled = false;
+                completeBtn.textContent = originalText;
+            }
+        }
+
+        function displayRooms(rooms) {
             const roomGrid = document.getElementById('roomGrid');
             roomGrid.innerHTML = '';
 
