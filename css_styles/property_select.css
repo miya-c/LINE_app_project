@@ -12,7 +12,7 @@
   display: block !important;
   width: 100% !important;
   max-width: 100% !important;
-  font-size: min(max(1rem, calc(100vw / max(10, min(30, var(--property-name-len, 12))))), 2.2rem) !important;
+  font-size: unset !important;
   font-weight: 800 !important;
   margin: 0 0 10px 0 !important;
   color: #212529 !important;
@@ -25,13 +25,31 @@
 }
 @media (max-width: 768px) {
   .property-name {
-    font-size: min(max(1.2rem, calc(100vw / max(8, min(22, var(--property-name-len, 12))))), 2.8rem) !important;
+    font-size: unset !important;
   }
 }
 @media (max-width: 480px) {
   .property-name {
-    font-size: min(max(1.1rem, calc(100vw / max(6, min(18, var(--property-name-len, 12))))), 3.2rem) !important;
+    font-size: unset !important;
     line-height: 1.2 !important;
+  }
+}
+
+/* --- property-cardをcontainerに指定 --- */
+.property-card {
+  container-type: inline-size !important;
+  container-name: propertycard !important;
+}
+
+/* --- property-nameのフォントサイズをcontainer queryで制御 --- */
+@container propertycard (min-width: 320px) {
+  .property-name {
+    font-size: clamp(1rem, calc(100cqw / max(10, min(30, var(--property-name-len, 12)))), 2.2rem) !important;
+  }
+}
+@container propertycard (max-width: 319px) {
+  .property-name {
+    font-size: 1rem !important;
   }
 }
 
