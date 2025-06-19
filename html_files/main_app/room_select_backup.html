@@ -21,7 +21,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    
     <!-- External CSS -->
     <link rel="stylesheet" href="../../css_styles/room_select.css">
 </head>
@@ -110,12 +109,25 @@
                 searchParams: window.location.search
             });
             
+            // 物件IDチェックと処理継続
             if (!propertyId) {
-                console.error('[room_select] 物件IDが指定されていません');
-                if (confirm('物件IDが指定されていません。物件選択画面に戻りますか？')) {
-                    window.location.href = '/property_select';
+                console.error('[room_select] 物件IDが見つかりません');
+                
+                // ✅ セッションストレージから物件IDを復元試行
+                const savedPropertyId = sessionStorage.getItem('selectedPropertyId');
+                const savedPropertyName = sessionStorage.getItem('selectedPropertyName');
+                
+                if (savedPropertyId) {
+                    console.log('[room_select] セッションストレージから物件ID復元:', savedPropertyId);
+                    
+                    // URLを修正して再読み込み
+                    const correctedUrl = `/room_select?propertyId=${encodeURIComponent(savedPropertyId)}`;
+                    console.log('[room_select] URL修正して再読み込み:', correctedUrl);
+                    
+                    window.location.href = correctedUrl;
                 } else {
-                    document.getElementById('loading').innerHTML = '<div class="loading-spinner"></div><p class="loading-text">物件IDが指定されていません</p>';
+                    showError('<strong>エラー:</strong> 物件IDが指定されていません。物件選択画面に戻ります。');
+                    document.getElementById('loading').innerHTML = '物件IDが指定されていません';
                     setTimeout(() => window.location.href = '/property_select', 3000);
                 }
             } else {
@@ -165,32 +177,116 @@
                     throw new Error(data.error || 'データの取得に失敗しました');
                 }
                 
-                // 物件名表示
-                document.getElementById('propertyName').textContent = data.propertyName || '物件名不明';
-                
-                // 部屋表示
-                displayRooms(data.rooms);
-                
-                // 完了ボタン表示判定
-                updateCompleteButton(data.rooms);
+                displayData(data.data);
                 
             } catch (error) {
-                console.error('[room_select] エラー:', error);
-                showError(error.message);
-                document.getElementById('loading').style.display = 'none';
+                console.error('[room_select] 部屋データの読み込みエラー:', error);
+                document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました';
+                showError('データの取得でエラーが発生しました: ' + error.message);
+            }
+        }
+
+        function displayData(data) {
+            console.log('[room_select] displayData開始:', data);
+            
+            if (!data || !data.property || !Array.isArray(data.rooms)) {
+                console.error('[room_select] 不正なデータ形式:', data);
+                showError('不正なデータ形式です');
+                return;
+            }
+
+            document.getElementById('propertyName').textContent = data.property.name;
+            displayRooms(data.rooms);
+            
+            // 検針完了ボタンを表示
+            const completeBtn = document.getElementById('completeInspectionBtn');
+            completeBtn.style.display = 'flex';
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('roomGrid').style.display = 'grid';
+            
+            console.log('[room_select] 表示完了 - 物件名:', data.property.name, '部屋数:', data.rooms.length);
+        }
+        
+        // 検針完了処理
+        async function completeInspection() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const propertyId = urlParams.get('propertyId');
+            
+            if (!propertyId) {
+                showError('物件IDが取得できません');
+                return;
+            }
+            
+            // 確認ダイアログ
+            if (!confirm('この物件の検針を完了にしますか？\n物件一覧画面に完了バッジが表示されます。')) {
+                return;
+            }
+            
+            const completeBtn = document.getElementById('completeInspectionBtn');
+            const originalText = completeBtn.textContent;
+            
+            try {
+                // ボタンを無効化・ローディング表示
+                completeBtn.disabled = true;
+                completeBtn.innerHTML = `
+                    <div class="mui-circular-progress-small"></div>
+                    処理中...
+                `;
+                
+                const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+                if (!gasWebAppUrl) {
+                    throw new Error('Web App URLが設定されていません');
+                }
+                
+                const fetchUrl = `${gasWebAppUrl}?action=completePropertyInspection&propertyId=${encodeURIComponent(propertyId)}`;
+                console.log('[room_select] 検針完了API呼び出し:', fetchUrl);
+                
+                const response = await fetch(fetchUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`API呼び出しに失敗しました: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('[room_select] 検針完了API応答:', result);
+                
+                if (!result.success) {
+                    throw new Error(result.error || '検針完了処理に失敗しました');
+                }
+                
+                // 成功メッセージ表示
+                completeBtn.innerHTML = `
+                    <span class="material-icons">check_circle</span>
+                    完了しました！
+                `;
+                completeBtn.classList.add('success-state');
+                
+                // 3秒後に物件一覧画面に戻る
+                setTimeout(() => {
+                    console.log('[room_select] 検針完了処理成功 - 物件一覧に戻る');
+                    window.location.href = '/property_select';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('[room_select] 検針完了処理エラー:', error);
+                showError(`検針完了処理でエラーが発生しました: ${error.message}`);
+                
+                // ボタンを復元
+                completeBtn.disabled = false;
+                completeBtn.innerHTML = `
+                    <span class="material-icons">check_circle</span>
+                    この物件の検針を完了する
+                `;
             }
         }
 
         function displayRooms(rooms) {
             const roomGrid = document.getElementById('roomGrid');
-            const loading = document.getElementById('loading');
-            
             roomGrid.innerHTML = '';
 
             if (rooms.length === 0) {
-                roomGrid.innerHTML = '<div class="no-rooms-message">部屋データがありません</div>';
-                loading.style.display = 'none';
-                roomGrid.style.display = 'block';
+                roomGrid.innerHTML = '<div class="mui-typography-body1 no-rooms">部屋データがありません</div>';
                 return;
             }
 
@@ -201,9 +297,13 @@
             console.log('[room_select] 部屋表示開始 - 部屋数:', rooms.length, '物件ID:', propertyId);
 
             rooms.forEach((room, index) => {
-                // Room Card
+                // MUI-style Grid Item
+                const gridItem = document.createElement('div');
+                gridItem.className = 'mui-grid-item';
+                
+                // MUI-style Card
                 const card = document.createElement('div');
-                card.className = 'room-card';
+                card.className = 'mui-card room-card';
                 
                 const isCompleted = room.readingStatus === 'completed' || room.isCompleted === true;
                 card.classList.add(isCompleted ? 'status-completed' : 'status-pending');
@@ -215,14 +315,16 @@
                     ? `検針済み：${room.readingDateFormatted}`
                     : '未検針';
 
-                // Card Content - 1行表示レイアウト
+                // Card Content
                 card.innerHTML = `
-                    <div class="room-info-row">
-                        <span class="material-icons status-icon">
-                            ${isCompleted ? 'check_circle' : 'warning'}
-                        </span>
-                        <span class="room-name">${roomName}</span>
-                        <span class="room-status">${displayText}</span>
+                    <div class="mui-card-content">
+                        <div class="room-header">
+                            <span class="material-icons status-icon">
+                                ${isCompleted ? 'check_circle' : 'warning'}
+                            </span>
+                            <div class="mui-typography-h6 room-name">${roomName}</div>
+                        </div>
+                        <div class="mui-typography-body2 room-status">${displayText}</div>
                     </div>
                 `;
                 
@@ -232,38 +334,12 @@
                     window.location.href = meterReadingUrl;
                 };
 
-                // Ripple effect追加
-                addRippleEffect(card);
-                
-                roomGrid.appendChild(card);
+                gridItem.appendChild(card);
+                roomGrid.appendChild(gridItem);
             });
             
-            loading.style.display = 'none';
-            roomGrid.style.display = 'grid';
-            
             console.log('[room_select] 部屋ボタン生成完了');
-        }
-
-        function updateCompleteButton(rooms) {
-            const completeBtn = document.getElementById('completeInspectionBtn');
-            const allCompleted = rooms.every(room => room.readingStatus === 'completed' || room.isCompleted === true);
-            
-            if (allCompleted && rooms.length > 0) {
-                completeBtn.style.display = 'flex';
-                completeBtn.innerHTML = `
-                    <span class="material-icons">check_circle</span>
-                    この物件の検針を完了する
-                `;
-            }
-        }
-
-        function completeInspection() {
-            console.log('[room_select] 検針完了ボタンクリック');
-            // 検針完了処理を実装してください
-            alert('検針完了処理を実装してください');
-        }
-
-        function goBack() {
+        }        function goBack() {
             console.log('[room_select] 戻るボタンクリック');
             window.location.href = '/property_select';
         }
