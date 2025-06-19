@@ -15,6 +15,17 @@ body {
     border-radius: 20px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
 }
+.property-info-card {
+    background-color: var(--accent-color, #007bff);
+    color: var(--header-text-color, #fff);
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
 .property-name {
     text-align: center;
     font-size: 2.2rem;
@@ -22,6 +33,21 @@ body {
     color: #1976d2;
     font-weight: 700;
     letter-spacing: 0.02em;
+}
+.property-name {
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    font-weight: bold;
+    margin: 0 0 10px 0;
+    color: var(--header-text-color, #fff);
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+.room-info {
+    font-size: clamp(1.3rem, 4vw, 2.0rem);
+    font-weight: bold;
+    margin: 0;
+    color: var(--header-text-color, #fff);
+    text-align: center;
 }
 .button-container {
     text-align: center;
