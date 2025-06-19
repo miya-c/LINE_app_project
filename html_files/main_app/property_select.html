@@ -146,21 +146,36 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .property-name-row { 
-      display: flex; justify-content: space-between; align-items: flex-start; /* center → flex-start */
-      flex-wrap: wrap; gap: 8px; 
-      min-height: auto; /* 固定高を削除して自動調整 */
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: nowrap;
+      gap: 8px;
+      min-height: auto;
+      width: 100%;
     }
-    .property-name { 
-      font-size: clamp(18px, 6vw, 28px); /* 最小18px、最大28pxに拡大 */
-      font-weight: 600; color: #212529; 
-      line-height: 1.4; /* 行間を少し広げて読みやすく */
-      white-space: normal; /* 改行を許可 */
-      overflow: visible; /* はみ出しを表示 */
+    .property-name {
+      font-size: clamp(1.2rem, 6vw, 2.8rem); /* 画面幅に応じて可変・最大化 */
+      font-weight: 700;
+      color: #212529;
+      line-height: 1.1;
+      white-space: nowrap; /* 折り返し禁止 */
+      overflow: visible; /* 省略記号を無効化 */
       text-overflow: unset; /* 省略記号を無効化 */
       max-width: 100%;
+      flex: 1 1 auto;
       transition: font-size 0.3s ease;
-      word-wrap: break-word; /* 長い単語も改行 */
-      word-break: break-word; /* 英数字の長い文字列も改行 */
+      word-break: break-all;
+      letter-spacing: 0.01em;
+      text-align: left;
+    }
+    @media (max-width: 768px) {
+      .property-name {
+        font-size: clamp(1rem, 8vw, 2rem);
+      }
+    }
+    @media (max-width: 480px) {
+      .property-name {
+        font-size: clamp(0.9rem, 10vw, 1.3rem);
+      }
     }
     .completion-date { 
       font-size: 12px; color: #ffffff; font-weight: 600; 
