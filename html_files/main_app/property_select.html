@@ -182,7 +182,7 @@
       .mantine-paper { padding: 16px; }
       .property-name { font-size: 16px; }
       .property-name-row { flex-direction: column; align-items: flex-start; }
-      .completion-date { align-self: flex-end; margin-top: 8px; }
+      .completion-date { font-size: 11px; padding: 4px 8px; }
       .mantine-text-input input { padding: 16px 18px; }
     }
     /* Styles loading state management */
@@ -798,18 +798,21 @@
                 >
                   <div className="property-card">
                     <div className="property-info">
-                      <span className="property-id">
-                        ID: {property.id != null ? property.id : 'IDなし'}
-                      </span>
-                      <div className="property-name-row">
-                        <div className="property-name">
-                          {property.name != null ? property.name : '名称なし'}
-                        </div>                        {/* 検針完了日を物件名の右側に表示 */}
+                      <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
+                        <span className="property-id">
+                          ID: {property.id != null ? property.id : 'IDなし'}
+                        </span>
+                        {/* 検針完了日を物件IDの右隣に表示 */}
                         {formatCompletionDate(property.completionDate) && (
                           <div className="completion-date">
                             {formatCompletionDate(property.completionDate)}
                           </div>
                         )}
+                      </div>
+                      <div className="property-name-row">
+                        <div className="property-name">
+                          {property.name != null ? property.name : '名称なし'}
+                        </div>
                       </div>
                     </div>
                     <svg className="property-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
