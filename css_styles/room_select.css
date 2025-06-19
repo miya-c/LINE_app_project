@@ -417,39 +417,38 @@ body {
 }
 
 @media (max-width: 600px) {
-  /* === モバイル・シニア配慮: フォントサイズ拡大 === */
   body {
-    font-size: 28px;
+    font-size: 22px;
   }
   .room-name {
-    font-size: 2rem;
+    font-size: 1.1rem;
   }
   .mui-typography-h6 {
-    font-size: 2.2rem;
+    font-size: 1.3rem;
   }
   .mui-typography-h5 {
-    font-size: 2.4rem;
+    font-size: 1.5rem;
   }
   .room-status {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
   }
 }
 
 @media (max-width: 480px) {
   body {
-    font-size: 32px;
+    font-size: 24px;
   }
   .room-name {
-    font-size: 2.3rem;
+    font-size: 1.1rem;
   }
   .mui-typography-h6 {
-    font-size: 2.5rem;
+    font-size: 1.1rem;
   }
   .mui-typography-h5 {
-    font-size: 2.7rem;
+    font-size: 1.2rem;
   }
   .room-status {
-    font-size: 1.7rem;
+    font-size: 1.15rem;
   }
 }
 
