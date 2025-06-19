@@ -265,6 +265,13 @@
       console.log('[CSS] 開発モード: 10秒間隔でCSSを自動リロードします');
     }
   </script>
+
+  <!-- Material UI CDN -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <script src="https://unpkg.com/@mui/material@5.15.15/umd/material-ui.development.js"></script>
+  <script src="https://unpkg.com/@emotion/react@11.11.4/dist/emotion-react.umd.min.js"></script>
+  <script src="https://unpkg.com/@emotion/styled@11.11.0/dist/emotion-styled.umd.min.js"></script>
 </head>
 <body>
   <div id="root" class="styles-loading"></div>
@@ -320,6 +327,11 @@
       });
     }
     
+    // Material UIのグローバル参照
+    const {
+      Card, CardContent, Typography, Button, Box, CircularProgress, Alert, Stack, TextField, Container
+    } = MaterialUI;
+
     const App = () => {
       const [properties, setProperties] = React.useState([]);
       const [searchTerm, setSearchTerm] = React.useState('');
@@ -691,150 +703,89 @@
                propertyNameString.toLowerCase().includes(searchTerm.toLowerCase());
       });
 
-      // 物件データ取得中の初期ローディング
+      // ローディング中
       if (loading && properties.length === 0) {
         return (
-          <div className="mantine-container" style={{padding: '20px'}}>
-            <div style={{maxWidth: '400px', margin: '0 auto'}}>
-              <h1 className="mantine-title" style={{marginBottom: '24px'}}>物件選択</h1>
-              <div className="mantine-text-input" style={{marginBottom: '24px'}}>
-                <input
-                  type="text"
-                  placeholder="物件IDまたは物件名で検索..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  disabled
-                />
-              </div>
-              <div className="mantine-center">
-                <div className="mantine-stack">
-                  <div className="mantine-center">
-                    <div className="mantine-loader"></div>
-                  </div>
-                  <p style={{textAlign: 'center', color: '#6c757d'}}>
-                    物件情報を読み込み中です...
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Container maxWidth="sm" sx={{ py: 6 }}>
+            <Typography variant="h4" align="center" sx={{ mb: 4, fontWeight: 700, background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>物件選択</Typography>
+            <TextField fullWidth label="物件IDまたは物件名で検索..." disabled sx={{ mb: 3 }} />
+            <Stack alignItems="center" spacing={2}>
+              <CircularProgress color="primary" />
+              <Typography color="text.secondary">物件情報を読み込み中です...</Typography>
+            </Stack>
+          </Container>
         );
       }
-      
-      // 物件データ取得エラー (初期ロード時)
+
+      // エラー
       if (error && properties.length === 0) {
         return (
-          <div className="mantine-container" style={{padding: '20px'}}>
-            <div style={{maxWidth: '400px', margin: '0 auto'}}>
-              <h1 className="mantine-title" style={{marginBottom: '24px'}}>物件選択</h1>
-              <div className="mantine-text-input" style={{marginBottom: '24px'}}>
-                <input
-                  type="text"
-                  placeholder="物件IDまたは物件名で検索..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  disabled
-                />
-              </div>
-              <div className="mantine-alert">
-                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
-                <p style={{margin: 0}}>{error}</p>
-              </div>
-            </div>
-          </div>
+          <Container maxWidth="sm" sx={{ py: 6 }}>
+            <Typography variant="h4" align="center" sx={{ mb: 4, fontWeight: 700, background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>物件選択</Typography>
+            <TextField fullWidth label="物件IDまたは物件名で検索..." disabled sx={{ mb: 3 }} />
+            <Alert severity="error">{error}</Alert>
+          </Container>
         );
       }
-      
+
       return (
-        <div className="mantine-container" style={{padding: '20px', minHeight: '100vh'}}>
-          {isNavigating && <LoadingOverlay message={navigationMessage} />}
-          <div style={{maxWidth: '400px', margin: '0 auto'}}>
-            <h1 className="mantine-title" style={{marginBottom: '24px'}}>物件選択</h1>
-            
-            <div className="mantine-text-input" style={{marginBottom: '24px'}}>
-              <input
-                type="text"
-                placeholder="物件IDまたは物件名で検索..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                disabled={loading && properties.length === 0}
-              />
-            </div>
-            
-            {loading && properties.length > 0 && (
-              <div className="mantine-center" style={{marginBottom: '16px'}}>
-                <div className="mantine-stack">
-                  <div className="mantine-center">
-                    <div className="mantine-loader size-sm"></div>
-                  </div>
-                  <p style={{textAlign: 'center', color: '#6c757d', fontSize: '14px', margin: 0}}>
-                    処理中...
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {error && (
-              <div className="mantine-alert" style={{marginBottom: '16px'}}>
-                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
-                <p style={{margin: 0}}>{error}</p>
-              </div>
-            )}
-
-            {!loading && properties.length === 0 && !error && (
-              <p style={{textAlign: 'center', color: '#6c757d'}}>
-                登録されている物件がありません。
-              </p>
-            )}
-            
-            {!loading && properties.length > 0 && filteredProperties.length === 0 && (
-              <p style={{textAlign: 'center', color: '#6c757d'}}>
-                該当する物件が見つかりません。
-              </p>
-            )}
-
-            <div className="mantine-stack">
-              {filteredProperties.map(property => (
-                <div 
-                  key={property.id} 
-                  className={`mantine-paper ${(loading || isNavigating) ? 'disabled' : ''}`}
-                  onClick={() => !(loading || isNavigating) && handlePropertySelect(property)}
-                >
-                  <div className="property-card">
-                    <div className="property-info">
-                      <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
-                        <span className="property-id">
-                          ID: {property.id != null ? property.id : 'IDなし'}
-                        </span>
-                        {/* 検針完了日を物件IDの右隣に表示 */}
-                        {formatCompletionDate(property.completionDate) && (
-                          <div className="completion-date">
-                            {formatCompletionDate(property.completionDate)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="property-name-row">
-                        <div
-                          className="property-name"
-                          title={property.name != null ? property.name : '名称なし'}
-                          style={{
-                            // 物件名の長さをCSSカスタムプロパティで渡す
-                            '--property-name-len': property.name ? property.name.length : 12
-                          }}
-                        >
-                          {property.name != null ? property.name : '名称なし'}
-                        </div>
-                      </div>
-                    </div>
-                    <svg className="property-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <Container maxWidth="sm" sx={{ py: 6 }}>
+          <Typography variant="h4" align="center" sx={{ mb: 4, fontWeight: 700, background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>物件選択</Typography>
+          <TextField
+            fullWidth
+            label="物件IDまたは物件名で検索..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            sx={{ mb: 3 }}
+            disabled={loading && properties.length === 0}
+          />
+          {loading && properties.length > 0 && (
+            <Stack alignItems="center" spacing={2} sx={{ mb: 2 }}>
+              <CircularProgress color="primary" size={28} />
+              <Typography color="text.secondary" fontSize={14}>処理中...</Typography>
+            </Stack>
+          )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+          )}
+          {!loading && properties.length === 0 && !error && (
+            <Typography align="center" color="text.secondary">登録されている物件がありません。</Typography>
+          )}
+          {!loading && properties.length > 0 && filteredProperties.length === 0 && (
+            <Typography align="center" color="text.secondary">該当する物件が見つかりません。</Typography>
+          )}
+          <Stack spacing={2}>
+            {filteredProperties.map(property => (
+              <Card
+                key={property.id}
+                variant="outlined"
+                sx={{ borderRadius: 3, boxShadow: 2, cursor: (loading || isNavigating) ? 'not-allowed' : 'pointer', opacity: (loading || isNavigating) ? 0.6 : 1 }}
+                onClick={() => !(loading || isNavigating) && handlePropertySelect(property)}
+              >
+                <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', px: 1.5, py: 0.5, borderRadius: 1, mr: 1 }}>
+                        ID: {property.id != null ? property.id : 'IDなし'}
+                      </Typography>
+                      {formatCompletionDate(property.completionDate) && (
+                        <Typography variant="caption" sx={{ color: '#fff', fontWeight: 600, background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', px: 1.5, py: 0.5, borderRadius: 2 }}>
+                          {formatCompletionDate(property.completionDate)}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Typography variant="h6" noWrap title={property.name != null ? property.name : '名称なし'} sx={{ fontWeight: 800, color: '#212529', mb: 0 }}>
+                      {property.name != null ? property.name : '名称なし'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+                    <span className="material-icons" style={{ color: '#6c757d', fontSize: 28 }}>chevron_right</span>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        </Container>
       );
     };
 
