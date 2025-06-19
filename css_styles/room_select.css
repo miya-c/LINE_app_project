@@ -171,7 +171,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fff;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     padding: 18px 0 10px 0;
     border-bottom: 2px solid #e3eaf3;
     margin-bottom: 18px;
@@ -181,15 +181,15 @@ body {
 .header-title {
     font-size: 2.2rem;
     font-weight: 700;
-    color: #1976d2;
+    color: #fff;
     letter-spacing: 0.02em;
     text-align: center;
     flex: 1;
     margin: 0;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: unset;
+    background-clip: unset;
     position: relative;
 }
 .header-title::after {
@@ -197,7 +197,7 @@ body {
     position: absolute;
     bottom: -8px; left: 50%; transform: translateX(-50%);
     width: 60px; height: 3px;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    background: #fff;
     border-radius: 2px;
 }
 @media (max-width: 768px) {
