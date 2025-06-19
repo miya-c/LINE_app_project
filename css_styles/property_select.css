@@ -10,18 +10,13 @@
 }
 .property-name {
   display: block !important;
+  /* 横幅は親（カード）幅に100%依存 */
   width: 100% !important;
   max-width: 100% !important;
-  font-size: unset !important;
-  font-weight: 800 !important;
-  margin: 0 0 10px 0 !important;
-  color: #212529 !important;
-  line-height: 1.1 !important;
-  white-space: nowrap !important; /* 折り返し禁止 */
+  /* 省略記号・折り返し禁止は維持 */
+  white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important; /* 省略記号 */
-  letter-spacing: 0.01em !important;
-  text-align: left !important;
+  text-overflow: ellipsis !important;
 }
 @media (max-width: 768px) {
   .property-name {
