@@ -5,55 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>部屋選択</title>
     
-    <!-- Material UI / Material Design Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
     <!-- Favicon and Icons -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
     
+    <!-- Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <!-- External CSS -->
     <link rel="stylesheet" href="../../css_styles/room_select.css">
 </head>
 <body>
-    <!-- App Header (検針情報画面と完全統一) -->
-    <div class="app-header">
-        <button class="back-button" onclick="goBack()" aria-label="戻る">&lt;</button>
-        <h1 class="header-title">部屋選択</h1>
-    </div>
+    <!-- MUI-style App Bar Header -->
+    <header class="mui-app-bar">
+        <div class="mui-toolbar">
+            <button class="mui-icon-button back-btn" onclick="goBack()" aria-label="戻る">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1 class="mui-typography-h6">部屋選択</h1>
+        </div>
+    </header>
 
     <!-- Main Content Container -->
-    <main class="content-area mantine-container">
+    <main class="mui-container">
         <!-- Property Info Card -->
-        <div class="property-info-card">
-            <h2 class="property-name" id="propertyName">物件名読み込み中...</h2>
+        <div class="mui-paper property-card">
+            <div class="mui-card-content">
+                <div class="mui-typography-h5" id="propertyName">物件名読み込み中...</div>
+            </div>
         </div>
         
         <!-- Complete Inspection Button -->
-        <div class="complete-btn-container">
+        <div class="mui-box complete-btn-container">
             <button 
-                class="mantine-button variant-filled complete-inspection-btn" 
+                class="mui-button mui-button-contained complete-inspection-btn" 
                 id="completeInspectionBtn" 
                 onclick="completeInspection()" 
                 style="display: none;"
             >
+                <span class="material-icons">check_circle</span>
                 この物件の検針を完了する
             </button>
         </div>
         
         <!-- Error Alert -->
-        <div id="errorMessage" class="mantine-alert" style="display: none;"></div>
+        <div id="errorMessage" class="mui-alert mui-alert-error" style="display: none;"></div>
         
         <!-- Loading -->
-        <div id="loading" class="mantine-center">
-            <div class="mantine-loader"></div>
-            <div class="mantine-text">部屋データを読み込み中...</div>
+        <div id="loading" class="mui-loading">
+            <div class="mui-circular-progress"></div>
+            <div class="mui-typography-body1">部屋データを読み込み中...</div>
         </div>
         
         <!-- Room Grid -->
-        <div id="roomGrid" class="room-grid-container" style="display: none;"></div>
+        <div id="roomGrid" class="mui-grid-container" style="display: none;"></div>
     </main>
 
     <script>        // GAS Web App URL取得（property_select.htmlから継承）
@@ -265,19 +269,16 @@
             console.log('[room_select] 部屋表示開始 - 部屋数:', rooms.length, '物件ID:', propertyId);
 
             rooms.forEach((room, index) => {
-                // Room Grid Item
+                // MUI-style Grid Item
                 const gridItem = document.createElement('div');
-                gridItem.className = 'room-grid-item';
+                gridItem.className = 'mui-grid-item';
                 
-                // Room Card with Material Design
+                // MUI-style Card
                 const card = document.createElement('div');
-                card.className = 'mantine-paper room-card md-ripple-container';
+                card.className = 'mui-card room-card';
                 
                 const isCompleted = room.readingStatus === 'completed' || room.isCompleted === true;
                 card.classList.add(isCompleted ? 'status-completed' : 'status-pending');
-
-                // Add Material Design ripple effect
-                addRippleEffect(card);
 
                 // 部屋名を取得（優先順位: name > 部屋名 > id）
                 const roomName = room.name || room['部屋名'] || room.id || '不明';
@@ -314,99 +315,6 @@
             console.log('[room_select] 戻るボタンクリック');
             window.location.href = '/property_select';
         }
-        
-        // === MATERIAL DESIGN ENHANCEMENTS ===
-        
-        // Material Design Ripple Effect
-        function addRippleEffect(element) {
-            element.addEventListener('click', function(e) {
-                const ripple = document.createElement('span');
-                const rect = element.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height);
-                const x = e.clientX - rect.left - size / 2;
-                const y = e.clientY - rect.top - size / 2;
-                
-                ripple.style.cssText = `
-                    position: absolute;
-                    width: ${size}px;
-                    height: ${size}px;
-                    left: ${x}px;
-                    top: ${y}px;
-                    background: rgba(255, 255, 255, 0.4);
-                    border-radius: 50%;
-                    transform: scale(0);
-                    animation: mdRipple 0.6s ease-out;
-                    pointer-events: none;
-                `;
-                
-                element.appendChild(ripple);
-                
-                setTimeout(() => {
-                    ripple.remove();
-                }, 600);
-            });
-        }
-        
-        // Add CSS for ripple animation
-        const rippleStyle = document.createElement('style');
-        rippleStyle.textContent = `
-            @keyframes mdRipple {
-                to {
-                    transform: scale(2);
-                    opacity: 0;
-                }
-            }
-            .md-ripple-container {
-                position: relative;
-                overflow: hidden;
-            }
-        `;
-        document.head.appendChild(rippleStyle);
-        
-        // Enhanced room card creation with Material Design
-        function createEnhancedRoomCard(room, index, propertyId) {
-            // Room Grid Item
-            const gridItem = document.createElement('div');
-            gridItem.className = 'room-grid-item';
-            
-            // Room Card
-            const card = document.createElement('div');
-            card.className = 'mantine-paper room-card md-ripple-container';
-            
-            const isCompleted = room.readingStatus === 'completed' || room.isCompleted === true;
-            card.classList.add(isCompleted ? 'status-completed' : 'status-pending');
-
-            // 部屋名を取得（優先順位: name > 部屋名 > id）
-            const roomName = room.name || room['部屋名'] || room.id || '不明';
-            
-            const displayText = isCompleted && room.readingDateFormatted 
-                ? `検針済み：${room.readingDateFormatted}`
-                : '未検針';
-
-            // Card Content
-            card.innerHTML = `
-                <div class="mui-card-content">
-                    <div class="room-header">
-                        <span class="material-icons status-icon">
-                            ${isCompleted ? 'check_circle' : 'warning'}
-                        </span>
-                        <div class="mui-typography-h6 room-name">${roomName}</div>
-                    </div>
-                    <div class="mui-typography-body2 room-status">${displayText}</div>
-                </div>
-            `;
-            
-            card.onclick = () => {
-                const meterReadingUrl = `/meter_reading?propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(room.id)}`;
-                console.log(`[room_select] 部屋[${index}]クリック:`, meterReadingUrl);
-                window.location.href = meterReadingUrl;
-            };
-
-            // リップル効果を追加
-            addRippleEffect(card);
-
-            gridItem.appendChild(card);
-            return gridItem;
-        }    </script>
+    </script>
 </body>
 </html>
