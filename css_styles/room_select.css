@@ -107,7 +107,7 @@ body {
 .mui-typography-h6 {
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
     font-weight: 500;
-    font-size: 1.7rem;
+    font-size: 1.3rem; /* 検針情報画面のタイトルと同じサイズに統一 */
     line-height: 1.6;
     letter-spacing: 0.0075em;
     margin: 0;
