@@ -98,7 +98,8 @@
     /* Property Card Styles */
     .mantine-paper { 
       background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%); 
-      border-radius: 16px; padding: 20px; 
+      border-radius: 20px; /* 16px → 20px 丸みを強調 */
+      padding: 20px; 
       box-shadow: 
         0 4px 12px rgba(0,0,0,0.08),
         0 1px 3px rgba(0,0,0,0.05); 
@@ -116,6 +117,7 @@
       background: linear-gradient(145deg, rgba(0,123,255,0.03) 0%, rgba(0,123,255,0.01) 100%);
       opacity: 0;
       transition: opacity 0.3s ease;
+      border-radius: 20px; /* 角丸を一致させる */
     }
     .mantine-paper:hover::before {
       opacity: 1;
@@ -193,7 +195,7 @@
     @media (max-width: 768px) { 
       .mantine-container { padding: 16px; } 
       .mantine-title { font-size: 32px; margin-bottom: 24px; } /* 28px → 32px */
-      .mantine-paper { padding: 20px; } /* 16px → 20px */
+      .mantine-paper { padding: 20px; border-radius: 18px; } /* 16px → 20px → 18px */
       .property-name { font-size: clamp(16px, 5vw, 22px); } /* 14px → 16px最小 */
       .property-id { font-size: 14px; padding: 6px 10px; } /* 12px → 14px */
       .completion-date { font-size: 12px; padding: 6px 10px; } /* 11px → 12px */
@@ -207,7 +209,7 @@
         font-size: clamp(15px, 4.5vw, 20px) !important; /* 13px → 15px最小 */
         line-height: 1.3;
       }
-      .mantine-paper { padding: 16px; } /* 12px → 16px */
+      .mantine-paper { padding: 16px; border-radius: 14px; } /* 12px → 16px, 丸みも調整 */
       .property-id { font-size: 13px; padding: 6px 10px; } /* 12px → 13px */
       .mantine-title { font-size: 28px; } /* 新規追加 */
     }
