@@ -10,8 +10,8 @@
     <!-- Material UI & React CDN（バージョン明示） -->
     <script src="https://unpkg.com/react@18.2.0/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@mui/material@5.15.14/umd/material-ui.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@mui/icons-material@5.15.14/umd/material-ui-icons.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@mui/material@5.11.16/umd/material-ui.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@mui/icons-material@5.11.16/umd/material-ui-icons.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="../../css_styles/room_select.css">
     <style>
@@ -24,23 +24,13 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
     const { Box, Typography, Button, Paper, Grid, CircularProgress, Alert, Container, Stack } = MaterialUI;
-    // MUIアイコンのグローバル名を自動検出
-    let muiIcons = window.MaterialUIIcons || window.MaterialUI?.Icons || window.MaterialUI?.MaterialIcons;
-    console.log('MUIアイコン グローバル名デバッグ:', {
-      MaterialUIIcons: window.MaterialUIIcons,
-      MaterialUI_Icons: window.MaterialUI?.Icons,
-      MaterialUI_MaterialIcons: window.MaterialUI?.MaterialIcons
-    });
-    if (!muiIcons) {
-      document.getElementById('root').innerHTML = '<div style="color:red;padding:2em;text-align:center;">MUIアイコンの読み込みに失敗しました。CDNのバージョン・ネットワーク・グローバル名を確認してください。</div>';
-      throw new Error('Material UI Icons not loaded');
-    }
-    const ArrowForwardIos = muiIcons.ArrowForwardIos;
-    const CheckCircle = muiIcons.CheckCircle;
-    const ErrorOutline = muiIcons.ErrorOutline;
+    // MUIアイコンはwindow.MaterialUIIconsで参照
+    const ArrowForwardIos = window.MaterialUIIcons && window.MaterialUIIcons.ArrowForwardIos;
+    const CheckCircle = window.MaterialUIIcons && window.MaterialUIIcons.CheckCircle;
+    const ErrorOutline = window.MaterialUIIcons && window.MaterialUIIcons.ErrorOutline;
     if (!ArrowForwardIos || !CheckCircle || !ErrorOutline) {
-      document.getElementById('root').innerHTML = '<div style="color:red;padding:2em;text-align:center;">MUIアイコンの一部が見つかりません。CDNバージョンやネットワークを確認してください。</div>';
-      throw new Error('Some Material UI Icons not found');
+      document.getElementById('root').innerHTML = '<div style="color:red;padding:2em;text-align:center;">MUIアイコンの読み込みに失敗しました。CDNバージョンやネットワークを確認してください。</div>';
+      throw new Error('Material UI Icons not loaded');
     }
 
     function getGASUrl() {
