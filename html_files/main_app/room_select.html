@@ -287,16 +287,16 @@
                     ? `検針済み：${room.readingDateFormatted}`
                     : '未検針';
 
-                // Card Content
+                // Card Content - 1行表示レイアウト
                 card.innerHTML = `
                     <div class="mui-card-content">
-                        <div class="room-header">
+                        <div class="room-info-row">
                             <span class="material-icons status-icon">
                                 ${isCompleted ? 'check_circle' : 'warning'}
                             </span>
                             <div class="mui-typography-h6 room-name">${roomName}</div>
+                            <div class="mui-typography-body2 room-status">${displayText}</div>
                         </div>
-                        <div class="mui-typography-body2 room-status">${displayText}</div>
                     </div>
                 `;
                 
