@@ -12,26 +12,25 @@
   display: block !important;
   width: 100% !important;
   max-width: 100% !important;
-  font-size: clamp(1rem, 4vw, 1.8rem) !important; /* タブレット以上は小さめ(16px~28.8px) */
+  font-size: min(max(1rem, calc(100vw / max(10, min(30, var(--property-name-len, 12))))), 2.2rem) !important;
   font-weight: 800 !important;
   margin: 0 0 10px 0 !important;
   color: #212529 !important;
   line-height: 1.1 !important;
-  white-space: normal !important; /* 折り返し許可 */
-  overflow-wrap: anywhere !important; /* どこでも改行 */
-  word-break: break-all !important;
-  text-overflow: unset !important; /* 省略記号なし */
+  white-space: nowrap !important; /* 折り返し禁止 */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important; /* 省略記号 */
   letter-spacing: 0.01em !important;
   text-align: left !important;
 }
 @media (max-width: 768px) {
   .property-name {
-    font-size: clamp(1.2rem, 7vw, 2.2rem) !important; /* タブレット未満は大きめ(24px~44.8px) */
+    font-size: min(max(1.2rem, calc(100vw / max(8, min(22, var(--property-name-len, 12))))), 2.8rem) !important;
   }
 }
 @media (max-width: 480px) {
   .property-name {
-    font-size: clamp(1.1rem, 10vw, 2.2rem) !important; /* スマホはさらに大きく(27.2px~51.2px) */
+    font-size: min(max(1.1rem, calc(100vw / max(6, min(18, var(--property-name-len, 12))))), 3.2rem) !important;
     line-height: 1.2 !important;
   }
 }

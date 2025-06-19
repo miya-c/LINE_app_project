@@ -817,6 +817,10 @@
                         <div
                           className="property-name"
                           title={property.name != null ? property.name : '名称なし'}
+                          style={{
+                            // 物件名の長さをCSSカスタムプロパティで渡す
+                            '--property-name-len': property.name ? property.name.length : 12
+                          }}
                         >
                           {property.name != null ? property.name : '名称なし'}
                         </div>
