@@ -11,6 +11,7 @@
 .property-name {
   display: block !important;
   width: 100% !important;
+  max-width: 100% !important;
   font-size: clamp(1rem, 4vw, 1.8rem) !important; /* タブレット以上は小さめ(16px~28.8px) */
   font-weight: 800 !important;
   margin: 0 0 10px 0 !important;
@@ -18,18 +19,18 @@
   line-height: 1.1 !important;
   white-space: nowrap !important;         /* 折り返し禁止 */
   overflow: hidden !important;            /* はみ出しを隠す */
-  text-overflow: unset !important;        /* 省略記号を使わない */
+  text-overflow: ellipsis !important; /* 省略記号を付与 */
   letter-spacing: 0.01em !important;
   text-align: left !important;
 }
 @media (max-width: 768px) {
   .property-name {
-    font-size: clamp(1.5rem, 10vw, 2.8rem) !important; /* タブレット未満は大きめ(24px~44.8px) */
+    font-size: clamp(1.2rem, 7vw, 2.2rem) !important; /* タブレット未満は大きめ(24px~44.8px) */
   }
 }
 @media (max-width: 480px) {
   .property-name {
-    font-size: clamp(1.7rem, 14vw, 3.2rem) !important; /* スマホはさらに大きく(27.2px~51.2px) */
+    font-size: clamp(1.1rem, 10vw, 2.2rem) !important; /* スマホはさらに大きく(27.2px~51.2px) */
     line-height: 1.2 !important;
   }
 }
