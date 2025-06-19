@@ -65,6 +65,8 @@ body {
     color: #fff;
     transition: box-shadow var(--mui-transitions-duration-short) var(--mui-transitions-easing-ease-in-out);
     box-shadow: var(--mui-shadows-4);
+    min-height: 64px;
+    border-radius: 0 0 12px 12px;
 }
 
 .MuiAppBar-colorPrimary {
@@ -84,11 +86,13 @@ body {
     align-items: center;
     padding-left: 16px;
     padding-right: 16px;
-    min-height: 56px;
+    min-height: 64px;
+    justify-content: center;
+    gap: 8px;
 }
 
 .MuiToolbar-regular {
-    min-height: 56px;
+    min-height: 64px;
 }
 
 @media (min-width: 600px) {
@@ -166,8 +170,10 @@ body {
 .app-title {
     flex-grow: 1;
     text-align: center;
-    margin-right: 48px; /* アイコンボタンとのバランス調整 */
     font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: 0.0075em;
+    color: #fff;
 }
 
 /* === Material UI Container === */
@@ -360,9 +366,11 @@ body {
 
 /* Property Card Specific Styling */
 .property-card {
-    margin-bottom: 24px;
-    background-color: var(--mui-palette-primary-main);
-    color: #fff;
+    margin-bottom: 32px;
+    border-radius: 16px;
+    box-shadow: var(--mui-shadows-2);
+    background: #fff;
+    padding: 0;
 }
 
 .property-card .MuiCardContent-root {
@@ -373,58 +381,75 @@ body {
 .property-header {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 12px;
+    padding: 24px 20px 20px 20px;
 }
 
 .property-icon {
-    font-size: 28px;
+    font-size: 2rem;
+    color: var(--mui-palette-primary-main);
 }
 
 .property-card .MuiTypography-h5 {
-    color: #fff;
-    font-weight: 500;
+    color: var(--mui-palette-primary-dark);
+    font-weight: 600;
+    font-size: 1.4rem;
 }
 
 /* Room Grid Layout */
 .room-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-    margin-top: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+    margin-top: 8px;
+    margin-bottom: 32px;
     padding: 0;
 }
 
 /* Room Card Specific Styling */
 .room-card {
-    transition: all var(--mui-transitions-duration-standard) var(--mui-transitions-easing-ease-in-out);
+    border-radius: 16px;
+    box-shadow: var(--mui-shadows-1);
+    background: #fff;
+    transition: box-shadow 0.2s, transform 0.2s;
+    outline: none;
+    position: relative;
+    min-height: 64px;
     cursor: pointer;
+    border: 1.5px solid transparent;
+}
+
+.room-card:focus {
+    border: 1.5px solid var(--mui-palette-primary-main);
+    box-shadow: 0 0 0 2px var(--mui-palette-primary-light);
 }
 
 .room-card:hover {
     box-shadow: var(--mui-shadows-4);
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.01);
 }
 
 .room-card.status-completed {
-    border-left: 4px solid var(--mui-palette-success-main);
-    background-color: #e8f5e8;
+    border-left: 6px solid var(--mui-palette-success-main);
+    background: #f1f8e9;
 }
 
 .room-card.status-pending {
-    border-left: 4px solid var(--mui-palette-warning-main);
-    background-color: #fff8e1;
+    border-left: 6px solid var(--mui-palette-warning-main);
+    background: #fff8e1;
 }
 
 .room-info-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    padding: 18px 20px;
 }
 
 .status-icon {
-    font-size: 24px;
+    font-size: 1.7rem;
     flex-shrink: 0;
+    margin-right: 2px;
 }
 
 .room-card.status-completed .status-icon {
@@ -438,23 +463,15 @@ body {
 .room-name {
     flex-grow: 1;
     font-weight: 500;
-    font-size: 1.125rem;
+    font-size: 1.15rem;
+    color: var(--mui-palette-grey-900);
+    letter-spacing: 0.01em;
 }
 
 .room-status {
-    font-size: 0.875rem;
+    font-size: 0.95rem;
     color: var(--mui-palette-grey-600);
     white-space: nowrap;
-}
-
-/* Loading Component */
-.loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 48px 24px;
-    gap: 16px;
 }
 
 /* Complete Button Container */
@@ -462,39 +479,42 @@ body {
     display: flex;
     justify-content: center;
     margin-top: 32px;
-    padding: 24px;
+    margin-bottom: 32px;
 }
 
 .complete-button {
-    gap: 8px;
-    padding: 12px 24px;
-    font-size: 1rem;
-    min-width: 280px;
+    gap: 10px;
+    padding: 18px 36px;
+    font-size: 1.15rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: var(--mui-shadows-2);
+    min-width: 320px;
+    letter-spacing: 0.04em;
 }
 
-/* No rooms message */
-.no-rooms-message {
-    text-align: center;
-    color: var(--mui-palette-grey-500);
-    padding: 48px 24px;
-    font-size: 1.125rem;
-}
-
-/* Ripple Effect */
+/* Ripple Effect (Material UI風) */
 .ripple {
     position: absolute;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: rgba(25, 118, 210, 0.18);
     transform: scale(0);
-    animation: ripple var(--mui-transitions-duration-standard) linear;
+    animation: ripple 0.5s linear;
     pointer-events: none;
+    z-index: 2;
 }
 
 @keyframes ripple {
     to {
-        transform: scale(4);
+        transform: scale(3.5);
         opacity: 0;
     }
+}
+
+/* アクセシビリティ: フォーカス強調 */
+.room-card:focus-visible {
+    outline: 2px solid var(--mui-palette-primary-main);
+    outline-offset: 2px;
 }
 
 /* === Responsive Design === */
