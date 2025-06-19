@@ -131,7 +131,8 @@
       opacity: 0.6; cursor: not-allowed; 
     }
     .property-card { 
-      display: flex; justify-content: space-between; align-items: center; 
+      display: flex; justify-content: space-between; align-items: flex-start; /* center → flex-start */
+      gap: 16px; /* 要素間の間隔を追加 */
     }
     .property-info { flex: 1; }
     .property-id { 
@@ -143,19 +144,21 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .property-name-row { 
-      display: flex; justify-content: space-between; align-items: center; 
+      display: flex; justify-content: space-between; align-items: flex-start; /* center → flex-start */
       flex-wrap: wrap; gap: 8px; 
-      min-height: 28px;
+      min-height: auto; /* 固定高を削除して自動調整 */
     }
     .property-name { 
       font-size: clamp(18px, 6vw, 28px); /* 最小18px、最大28pxに拡大 */
       font-weight: 600; color: #212529; 
-      line-height: 1.3; 
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: 1.4; /* 行間を少し広げて読みやすく */
+      white-space: normal; /* 改行を許可 */
+      overflow: visible; /* はみ出しを表示 */
+      text-overflow: unset; /* 省略記号を無効化 */
       max-width: 100%;
       transition: font-size 0.3s ease;
+      word-wrap: break-word; /* 長い単語も改行 */
+      word-break: break-word; /* 英数字の長い文字列も改行 */
     }
     .completion-date { 
       font-size: 12px; color: #ffffff; font-weight: 600; 
@@ -167,7 +170,10 @@
     }
     .property-arrow { 
       width: 24px; height: 24px; color: #6c757d; 
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-left: 16px; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      margin-left: 16px; 
+      flex-shrink: 0; /* アイコンのサイズを固定 */
+      margin-top: 4px; /* 少し上にオフセット */
     }
     .mantine-paper:hover .property-arrow { 
       color: #007bff; 
@@ -863,7 +869,7 @@
                           className="property-name" 
                           style={{ 
                             fontSize: calculatePropertyNameFontSize(property.name),
-                            maxWidth: 'calc(100% - 120px)', // 矢印アイコンとの間隔を考慮
+                            maxWidth: 'calc(100% - 60px)', // 矢印アイコンとの間隔を縮小
                           }}
                           title={property.name != null ? property.name : '名称なし'} // ホバー時にフルテキスト表示
                         >
