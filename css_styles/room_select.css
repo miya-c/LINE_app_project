@@ -1,204 +1,196 @@
-/* --- 共通: ベースカラー・フォント・背景 --- */
+/* ベース */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #f0f4f8;
-  font-size: 24px;
-  color: #495057;
-  min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%);
+    font-size: 16px;
+    min-height: 100vh;
 }
 .container {
-  max-width: 900px;
-  margin: 32px auto;
-  background: #fff;
-  padding: 40px 24px 48px 24px;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
-}
-.mantine-title {
-  font-size: 3.2rem;
-  font-weight: 700;
-  margin: 0 0 32px 0;
-  color: #1976d2;
-  text-align: center;
-  letter-spacing: 0.02em;
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  position: relative;
-}
-.mantine-title::after {
-  content: '';
-  position: absolute;
-  bottom: -8px; left: 50%; transform: translateX(-50%);
-  width: 60px; height: 3px;
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-  border-radius: 2px;
+    max-width: 600px;
+    margin: 32px auto;
+    background: #fff;
+    padding: 32px 20px 40px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
 }
 .property-name {
-  text-align: center;
-  font-size: 2.2rem;
-  margin-bottom: 28px;
-  color: #1976d2;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+    text-align: center;
+    font-size: 2.2rem;
+    margin-bottom: 28px;
+    color: #1976d2;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 .button-container {
-  text-align: center;
-  margin: 24px 0 16px 0;
-  padding: 0;
+    text-align: center;
+    margin: 24px 0 16px 0;
+    padding: 0;
 }
 .complete-inspection-button {
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-  color: white;
-  border: none;
-  padding: 20px 36px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  font-weight: 700;
-  margin: 10px 5px;
-  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.18);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 220px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 18px 32px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 10px 5px;
+    box-shadow: 0 4px 16px rgba(40, 167, 69, 0.18);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 220px;
 }
 .complete-inspection-button:hover {
-  background: linear-gradient(135deg, #218838 0%, #1ea472 100%);
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 8px 24px rgba(40, 167, 69, 0.25);
+    background: linear-gradient(135deg, #218838 0%, #1ea472 100%);
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.25);
 }
 .complete-inspection-button:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-  opacity: 0.6;
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 .room-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
 }
 .room-button {
-  padding: 28px 16px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(145deg, #f8fafc 0%, #e3eaf3 100%);
-  cursor: pointer;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  min-height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: box-shadow 0.2s, transform 0.2s;
-  font-size: 1.2rem;
-  font-weight: 600;
-  position: relative;
+    padding: 22px 12px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #f8fafc 0%, #e3eaf3 100%);
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.2s, transform 0.2s;
+    font-size: 1.1rem;
+    font-weight: 600;
+    position: relative;
 }
 .room-button:hover {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  box-shadow: 0 6px 24px rgba(25, 118, 210, 0.13);
-  transform: translateY(-2px) scale(1.01);
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    box-shadow: 0 6px 24px rgba(25, 118, 210, 0.13);
+    transform: translateY(-2px) scale(1.01);
 }
 .room-button.reading-completed {
-  background: linear-gradient(135deg, #e8f5e9 0%, #b2dfdb 100%);
-  border: 1.5px solid #43a047;
+    background: linear-gradient(135deg, #e8f5e9 0%, #b2dfdb 100%);
+    border: 1.5px solid #43a047;
 }
 .room-button.reading-not-completed {
-  background: linear-gradient(135deg, #fffde7 0%, #ffe082 100%);
-  border: 1.5px solid #fbc02d;
+    background: linear-gradient(135deg, #fffde7 0%, #ffe082 100%);
+    border: 1.5px solid #fbc02d;
 }
 .room-text {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #333;
-  line-height: 1.3;
-  width: 100%;
-  text-align: center;
-  letter-spacing: 0.01em;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.3;
+    width: 100%;
+    text-align: center;
+    letter-spacing: 0.01em;
 }
 .room-button.reading-completed .room-text {
-  color: #2E7D32;
+    color: #2E7D32;
 }
 .room-button.reading-not-completed .room-text {
-  color: #F57C00;
+    color: #F57C00;
 }
 .back-button {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  margin: 16px auto 0 auto;
-  font-size: 1.1rem;
-  display: block;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(108,117,125,0.12);
-  transition: background 0.2s;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 12px auto 0 auto;
+    font-size: 1rem;
+    display: block;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(108,117,125,0.12);
+    transition: background 0.2s;
 }
 .back-button:hover {
-  background-color: #495057;
+    background-color: #495057;
 }
 .error-message {
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  color: #721c24;
-  padding: 18px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  display: none;
-  font-size: 1.1rem;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: none;
+    font-size: 1rem;
 }
 .loading {
-  text-align: center;
-  padding: 32px;
-  font-size: 1.2rem;
-  color: #1976d2;
+    text-align: center;
+    padding: 24px;
+    font-size: 1.1rem;
+    color: #1976d2;
+}
+/* --- ヘッダーを検針情報画面風に --- */
+.mantine-title {
+    margin: 0 0 28px 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1976d2;
+    text-align: center;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+}
+.mantine-title::after {
+    content: '';
+    position: absolute;
+    bottom: -8px; left: 50%; transform: translateX(-50%);
+    width: 60px; height: 3px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-radius: 2px;
 }
 @media (max-width: 768px) {
-  .container {
-    padding: 14px 4px 24px 4px;
-    border-radius: 14px;
-  }
-  .mantine-title {
-    font-size: 1.8rem;
-  }
-  .property-name {
-    font-size: 1.5rem;
-  }
-  .room-grid {
-    gap: 12px;
-  }
-  .room-button {
-    padding: 16px 8px;
-    font-size: 1rem;
-  }
-  .back-button {
-    font-size: 1rem;
-    padding: 12px 18px;
-  }
+    .container {
+        padding: 14px 4px 24px 4px;
+        border-radius: 14px;
+    }
+    .property-name {
+        font-size: 1.5rem;
+    }
+    .room-grid {
+        gap: 12px;
+    }
+    .room-button {
+        padding: 16px 8px;
+        font-size: 1rem;
+    }
+    .mantine-title {
+        font-size: 1.5rem;
+    }
 }
 @media (max-width: 480px) {
-  .container {
-    padding: 8px 2px 16px 2px;
-    border-radius: 10px;
-  }
-  .mantine-title {
-    font-size: 1.2rem;
-  }
-  .property-name {
-    font-size: 1.2rem;
-  }
-  .room-button {
-    padding: 12px 4px;
-    font-size: 0.95rem;
-    min-height: 48px;
-  }
-  .back-button {
-    font-size: 0.95rem;
-    padding: 8px 10px;
-  }
+    .container {
+        padding: 8px 2px 16px 2px;
+        border-radius: 10px;
+    }
+    .property-name {
+        font-size: 1.2rem;
+    }
+    .room-button {
+        padding: 12px 4px;
+        font-size: 0.95rem;
+        min-height: 48px;
+    }
+    .mantine-title {
+        font-size: 1.2rem;
+    }
 }
