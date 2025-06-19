@@ -166,13 +166,18 @@
                 }
                 
                 // 物件名表示
-                document.getElementById('propertyName').textContent = data.propertyName || '物件名不明';
+                document.getElementById('propertyName').textContent = (data.data && data.data.propertyName) ? data.data.propertyName : '物件名不明';
                 
+                // 部屋リスト取得
+                const rooms = (data.data && Array.isArray(data.data.rooms)) ? data.data.rooms : [];
+                if (!Array.isArray(rooms)) {
+                    throw new Error('部屋データの取得に失敗しました（roomsが配列ではありません）');
+                }
                 // 部屋表示
-                displayRooms(data.rooms);
+                displayRooms(rooms);
                 
                 // 完了ボタン表示判定
-                updateCompleteButton(data.rooms);
+                updateCompleteButton(rooms);
                 
             } catch (error) {
                 console.error('[room_select] エラー:', error);
