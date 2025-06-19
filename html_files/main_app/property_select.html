@@ -366,34 +366,6 @@
         }
       };
 
-      // 物件名の動的フォントサイズ計算（モバイルアクセシビリティ重視）
-      const calculatePropertyNameFontSize = (propertyName) => {
-        if (!propertyName) return '22px'; // デフォルトサイズを大きく
-        
-        const length = propertyName.length;
-        const isMobile = window.innerWidth <= 768;
-        
-        if (isMobile) {
-          // モバイル向けサイズ（老眼対応で大きく）
-          if (length <= 4) return '22px';      // 非常に短い名前：大サイズ
-          if (length <= 8) return '20px';      // 短い名前：中大サイズ
-          if (length <= 12) return '18px';     // 中程度：中サイズ
-          if (length <= 16) return '17px';     // やや長め：やや小サイズ
-          if (length <= 20) return '16px';     // 長め：小サイズ
-          if (length <= 24) return '15px';     // 更に長い：更に小サイズ
-          return '14px';                       // 極端に長い：最小限サイズ
-        } else {
-          // デスクトップ向けサイズ（より大きく）
-          if (length <= 4) return '28px';      // 非常に短い名前：最大サイズ
-          if (length <= 8) return '26px';      // 短い名前：大サイズ
-          if (length <= 12) return '24px';     // 中程度：中サイズ
-          if (length <= 16) return '22px';     // やや長め：やや小サイズ
-          if (length <= 20) return '20px';     // 長め：小サイズ
-          if (length <= 24) return '18px';     // 更に長い：更に小サイズ
-          return '16px';                       // 極端に長い：最小限サイズ
-        }
-      };
-
       React.useEffect(() => {
         // コンポーネントマウント時にスクロール位置をリセット
         window.scrollTo(0, 0);
