@@ -340,7 +340,7 @@
           // 月日のみを取得（1桁の場合はゼロパディングなし）
           const month = date.getMonth() + 1;
           const day = date.getDate();
-          return `[検針完了日：${month}月${day}日]`;
+          return `検針完了日：${month}月${day}日`;
         } catch (error) {
           console.error('[ReactApp] formatCompletionDate error:', error);
           return '';
