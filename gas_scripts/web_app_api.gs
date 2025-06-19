@@ -129,9 +129,29 @@ function doGet(e) {
           const result = updateMeterReadings(e.parameter.propertyId, e.parameter.roomId, readings);
           return createCorsJsonResponse(result);
           
-        } catch (parseError) {          return createCorsJsonResponse({
+        } catch (parseError) {
+          return createCorsJsonResponse({
             success: false,
             error: `データ処理エラー: ${parseError.message}`
+          });
+        }
+        
+      case 'completePropertyInspection':
+        if (!e.parameter.propertyId) {
+          return createCorsJsonResponse({ 
+            success: false,
+            error: 'propertyIdが必要です'
+          });
+        }
+        
+        try {
+          const result = completePropertyInspection(e.parameter.propertyId);
+          return createCorsJsonResponse(result);
+        } catch (error) {
+          Logger.log(`[web_app_api] completePropertyInspectionエラー: ${error.message}`);
+          return createCorsJsonResponse({
+            success: false,
+            error: `検針完了処理に失敗しました: ${error.message}`
           });
         }
         

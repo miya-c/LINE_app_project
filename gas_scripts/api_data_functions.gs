@@ -579,20 +579,78 @@ function updateMeterReadings(propertyId, roomId, readings) {
 }
 
 /**
- * 物件IDの妥当性を検証
+ * 物件の検針完了日を更新する関数
  * @param {string} propertyId - 物件ID
- * @returns {boolean} 妥当性
+ * @returns {Object} 更新結果
  */
-function validatePropertyId(propertyId) {
+function completePropertyInspection(propertyId) {
   try {
-    if (!propertyId) return false;
+    Logger.log(`[completePropertyInspection] 開始 - propertyId: ${propertyId}`);
     
-    const properties = getProperties();
-    return properties.some(property => 
-      String(property['物件ID']).trim() === String(propertyId).trim()
+    if (!propertyId) {
+      throw new Error('物件IDが指定されていません');
+    }
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertySheet = ss.getSheetByName('物件マスタ');
+    
+    if (!propertySheet) {
+      throw new Error('物件マスタシートが見つかりません');
+    }
+    
+    const data = propertySheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      throw new Error('物件マスタにデータがありません');
+    }
+    
+    const headers = data[0];
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const completionDateIndex = headers.indexOf('検針完了日');
+    
+    if (propertyIdIndex === -1) {
+      throw new Error('物件マスタに「物件ID」列が見つかりません');
+    }
+    
+    if (completionDateIndex === -1) {
+      throw new Error('物件マスタに「検針完了日」列が見つかりません');
+    }
+    
+    // 指定された物件IDの行を検索
+    const targetRowIndex = data.findIndex((row, index) => 
+      index > 0 && String(row[propertyIdIndex]).trim() === String(propertyId).trim()
     );
+    
+    if (targetRowIndex === -1) {
+      throw new Error(`指定された物件ID「${propertyId}」が物件マスタに見つかりません`);
+    }
+    
+    // 現在のJST日付を取得
+    const currentDate = getCurrentJSTDate();
+    
+    // 検針完了日を更新
+    data[targetRowIndex][completionDateIndex] = currentDate;
+    
+    // シートに書き込み
+    propertySheet.clear();
+    propertySheet.getRange(1, 1, data.length, headers.length).setValues(data);
+    
+    Logger.log(`[completePropertyInspection] 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
+    
+    return {
+      success: true,
+      message: '検針完了日を更新しました',
+      propertyId: propertyId,
+      completionDate: currentDate,
+      timestamp: Utilities.formatDate(new Date(), 'JST', 'yyyy-MM-dd HH:mm:ss')
+    };
+    
   } catch (error) {
-    return false;
+    Logger.log(`[completePropertyInspection] エラー: ${error.message}`);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: Utilities.formatDate(new Date(), 'JST', 'yyyy-MM-dd HH:mm:ss')
+    };
   }
 }
 
