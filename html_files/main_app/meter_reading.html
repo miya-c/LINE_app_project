@@ -35,6 +35,7 @@
       margin: 0; padding: 0; 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       line-height: 1.6; background-color: #f5f5f5;
+      font-size: 16px; /* ベースフォントサイズを追加 */
     }
     #root {
       min-height: 100vh;
@@ -51,7 +52,7 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .mantine-container { 
-      width: 100%; max-width: 1200px; margin: 0 auto; padding: 16px; 
+      width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px; /* 16px → 20px */
     }
     .mantine-stack {
       display: flex; flex-direction: column; gap: 16px;
@@ -69,14 +70,20 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 16px; 
     }
     .mantine-title { 
-      margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #333; 
+      margin: 0 0 20px 0; /* 16px → 20px */
+      font-size: 28px; /* 24px → 28px */
+      font-weight: 600; 
+      color: #333; 
     }
     .mantine-text-input { 
       margin-bottom: 16px; 
     }
     .mantine-text-input input { 
-      width: 100%; padding: 8px 12px; border: 1px solid #ddd; 
-      border-radius: 4px; font-size: 16px; 
+      width: 100%; 
+      padding: 12px 16px; /* 8px 12px → 12px 16px */
+      border: 1px solid #ddd; 
+      border-radius: 4px; 
+      font-size: 18px; /* 16px → 18px */
     }
     .mantine-group {
       display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -91,18 +98,68 @@
       background: white; border-radius: 8px; overflow: hidden;
     }
     .mantine-table th, .mantine-table td {
-      padding: 12px; text-align: left; border-bottom: 1px solid #e9ecef;
+      padding: 16px; /* 12px → 16px */
+      text-align: left; 
+      border-bottom: 1px solid #e9ecef;
+      font-size: 16px; /* 新規追加 */
     }
     .mantine-table th {
-      background-color: #f8f9fa; font-weight: 600;
+      background-color: #f8f9fa; 
+      font-weight: 600;
+      font-size: 16px; /* 新規追加 */
     }
     /* フォームスタイル */
     .form-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
       margin-bottom: 16px;
     }
+    
+    /* モバイル向けの大幅なフォントサイズ拡大 */
     @media (max-width: 768px) {
-      .form-grid { grid-template-columns: 1fr; }
+      .mantine-container { 
+        padding: 16px; 
+      }
+      .mantine-title { 
+        font-size: 24px; 
+      }
+      .mantine-text-input input { 
+        padding: 14px 18px; 
+        font-size: 18px; /* モバイルでも大きく */
+      }
+      .mantine-table th, .mantine-table td {
+        padding: 12px;
+        font-size: 15px; /* モバイル用サイズ */
+      }
+      .property-name {
+        font-size: 22px !important; /* プロパティ名を大きく */
+      }
+      .room-info {
+        font-size: 18px !important; /* 部屋情報を大きく */
+      }
+      .form-grid { 
+        grid-template-columns: 1fr; 
+      }
+    }
+    
+    /* 極小デバイス向け */
+    @media (max-width: 480px) {
+      .mantine-title { 
+        font-size: 22px; 
+      }
+      .mantine-text-input input { 
+        font-size: 17px; 
+        padding: 14px 16px; 
+      }
+      .mantine-table th, .mantine-table td {
+        padding: 10px;
+        font-size: 14px; /* 最小でも14px確保 */
+      }
+      .property-name {
+        font-size: 20px !important;
+      }
+      .room-info {
+        font-size: 16px !important;
+      }
     }
     /* スタイル読み込み状態の管理 */
     .styles-loading { 

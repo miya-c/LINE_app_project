@@ -37,6 +37,7 @@
       line-height: 1.6; 
       background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%);
       min-height: 100vh;
+      font-size: 16px; /* ベースフォントサイズを追加 */
     }
     #root { 
       min-height: 100vh; 
@@ -147,7 +148,8 @@
       min-height: 28px;
     }
     .property-name { 
-      font-size: clamp(16px, 5vw, 22px); font-weight: 600; color: #212529; 
+      font-size: clamp(18px, 6vw, 28px); /* 最小18px、最大28pxに拡大 */
+      font-weight: 600; color: #212529; 
       line-height: 1.3; 
       white-space: nowrap;
       overflow: hidden;
@@ -184,22 +186,24 @@
     /* Responsive design */
     @media (max-width: 768px) { 
       .mantine-container { padding: 16px; } 
-      .mantine-title { font-size: 28px; margin-bottom: 24px; }
-      .mantine-paper { padding: 16px; }
-      .property-name { font-size: clamp(14px, 4vw, 18px); }
+      .mantine-title { font-size: 32px; margin-bottom: 24px; } /* 28px → 32px */
+      .mantine-paper { padding: 20px; } /* 16px → 20px */
+      .property-name { font-size: clamp(16px, 5vw, 22px); } /* 14px → 16px最小 */
+      .property-id { font-size: 14px; padding: 6px 10px; } /* 12px → 14px */
+      .completion-date { font-size: 12px; padding: 6px 10px; } /* 11px → 12px */
+      .mantine-text-input input { padding: 18px 20px; } /* 16px → 18px */
       .property-name-row { flex-direction: column; align-items: flex-start; }
-      .completion-date { font-size: 11px; padding: 4px 8px; }
-      .mantine-text-input input { padding: 16px 18px; }
     }
     
     /* Extra small devices - very long property names */
     @media (max-width: 480px) {
       .property-name {
-        font-size: clamp(13px, 3.5vw, 16px) !important;
-        line-height: 1.2;
+        font-size: clamp(15px, 4.5vw, 20px) !important; /* 13px → 15px最小 */
+        line-height: 1.3;
       }
-      .mantine-paper { padding: 12px; }
-      .property-id { font-size: 12px; padding: 4px 8px; }
+      .mantine-paper { padding: 16px; } /* 12px → 16px */
+      .property-id { font-size: 13px; padding: 6px 10px; } /* 12px → 13px */
+      .mantine-title { font-size: 28px; } /* 新規追加 */
     }
     
     /* Styles loading state management */
@@ -364,20 +368,32 @@
         }
       };
 
-      // 物件名の動的フォントサイズ計算（アクセシビリティ重視）
+      // 物件名の動的フォントサイズ計算（モバイルアクセシビリティ重視）
       const calculatePropertyNameFontSize = (propertyName) => {
-        if (!propertyName) return '20px';
+        if (!propertyName) return '22px'; // デフォルトサイズを大きく
         
         const length = propertyName.length;
+        const isMobile = window.innerWidth <= 768;
         
-        // 短い名前は大きく、長い名前でも最低14pxを確保
-        if (length <= 4) return '22px';      // 非常に短い名前：最大サイズ（老眼対応）
-        if (length <= 8) return '20px';      // 短い名前：大サイズ
-        if (length <= 12) return '18px';     // 中程度：中サイズ
-        if (length <= 16) return '17px';     // やや長め：やや小サイズ
-        if (length <= 20) return '16px';     // 長め：小サイズ
-        if (length <= 24) return '15px';     // 更に長い：更に小サイズ
-        return '14px';                       // 極端に長い：最小限サイズ（可読性確保）
+        if (isMobile) {
+          // モバイル向けサイズ（老眼対応で大きく）
+          if (length <= 4) return '22px';      // 非常に短い名前：大サイズ
+          if (length <= 8) return '20px';      // 短い名前：中大サイズ
+          if (length <= 12) return '18px';     // 中程度：中サイズ
+          if (length <= 16) return '17px';     // やや長め：やや小サイズ
+          if (length <= 20) return '16px';     // 長め：小サイズ
+          if (length <= 24) return '15px';     // 更に長い：更に小サイズ
+          return '14px';                       // 極端に長い：最小限サイズ
+        } else {
+          // デスクトップ向けサイズ（より大きく）
+          if (length <= 4) return '28px';      // 非常に短い名前：最大サイズ
+          if (length <= 8) return '26px';      // 短い名前：大サイズ
+          if (length <= 12) return '24px';     // 中程度：中サイズ
+          if (length <= 16) return '22px';     // やや長め：やや小サイズ
+          if (length <= 20) return '20px';     // 長め：小サイズ
+          if (length <= 24) return '18px';     // 更に長い：更に小サイズ
+          return '16px';                       // 極端に長い：最小限サイズ
+        }
       };
 
       React.useEffect(() => {
