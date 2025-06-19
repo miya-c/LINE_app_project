@@ -1,71 +1,101 @@
-/* room_select.html 専用CSS */
+/* ベース */
 body {
-    font-family: Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     margin: 0;
-    padding: 20px;
-    background-color: #f5f5f5;
+    padding: 0;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%);
     font-size: 16px;
+    min-height: 100vh;
 }
 .container {
     max-width: 600px;
-    margin: 0 auto;
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 32px auto;
+    background: #fff;
+    padding: 32px 20px 40px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
 }
 .property-name {
     text-align: center;
-    font-size: 28px;
-    margin-bottom: 20px;
-    color: #333;
-    font-weight: 600;
+    font-size: 2.2rem;
+    margin-bottom: 28px;
+    color: #1976d2;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
-.error-message {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    display: none;
+.button-container {
+    text-align: center;
+    margin: 24px 0 16px 0;
+    padding: 0;
+}
+.complete-inspection-button {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 18px 32px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 10px 5px;
+    box-shadow: 0 4px 16px rgba(40, 167, 69, 0.18);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 220px;
+}
+.complete-inspection-button:hover {
+    background: linear-gradient(135deg, #218838 0%, #1ea472 100%);
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.25);
+}
+.complete-inspection-button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 .room-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 18px;
+    margin-bottom: 24px;
 }
 .room-button {
-    padding: 15px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    background: white;
+    padding: 22px 12px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #f8fafc 0%, #e3eaf3 100%);
     cursor: pointer;
     text-align: center;
-    transition: all 0.3s;
-    position: relative;
-    min-height: 50px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    min-height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: box-shadow 0.2s, transform 0.2s;
+    font-size: 1.1rem;
+    font-weight: 600;
+    position: relative;
 }
 .room-button:hover {
-    background-color: #f0f0f0;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    box-shadow: 0 6px 24px rgba(25, 118, 210, 0.13);
+    transform: translateY(-2px) scale(1.01);
 }
 .room-button.reading-completed {
-    background-color: #e8f5e8;
-    border-color: #4CAF50;
+    background: linear-gradient(135deg, #e8f5e9 0%, #b2dfdb 100%);
+    border: 1.5px solid #43a047;
 }
 .room-button.reading-not-completed {
-    background-color: #fff8e1;
-    border-color: #FF9800;
+    background: linear-gradient(135deg, #fffde7 0%, #ffe082 100%);
+    border: 1.5px solid #fbc02d;
 }
 .room-text {
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 1.15rem;
+    font-weight: 700;
     color: #333;
     line-height: 1.3;
+    width: 100%;
+    text-align: center;
+    letter-spacing: 0.01em;
 }
 .room-button.reading-completed .room-text {
     color: #2E7D32;
@@ -77,88 +107,62 @@ body {
     background-color: #6c757d;
     color: white;
     border: none;
-    padding: 12px 24px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin: 5px;
-    font-size: 16px;
-}
-.back-button:hover {
-    background-color: #5a6268;
-}
-.complete-inspection-button {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    border: none;
-    padding: 18px 30px;
+    padding: 14px 28px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 18px;
+    margin: 12px auto 0 auto;
+    font-size: 1rem;
+    display: block;
     font-weight: 600;
-    margin: 10px 5px;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(255,255,255,0.3);
-    min-width: 220px;
+    box-shadow: 0 2px 8px rgba(108,117,125,0.12);
+    transition: background 0.2s;
 }
-.complete-inspection-button:hover {
-    background: linear-gradient(135deg, #218838 0%, #1ea472 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.35);
+.back-button:hover {
+    background-color: #495057;
 }
-.complete-inspection-button:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-    opacity: 0.6;
-}
-.button-container {
-    text-align: center;
-    margin: 20px 0;
-    padding: 10px;
+.error-message {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: none;
+    font-size: 1rem;
 }
 .loading {
     text-align: center;
-    padding: 20px;
+    padding: 24px;
+    font-size: 1.1rem;
+    color: #1976d2;
 }
 @media (max-width: 768px) {
+    .container {
+        padding: 14px 4px 24px 4px;
+        border-radius: 14px;
+    }
     .property-name {
-        font-size: 24px;
-    }
-    .room-text {
-        font-size: 16px;
-    }
-    .complete-inspection-button {
-        font-size: 16px;
-        padding: 16px 24px;
-    }
-    .back-button {
-        font-size: 16px;
-        padding: 12px 20px;
-    }
-}
-@media (max-width: 480px) {
-    .property-name {
-        font-size: 22px;
-    }
-    .room-text {
-        font-size: 15px;
+        font-size: 1.5rem;
     }
     .room-grid {
-        grid-template-columns: 1fr;
         gap: 12px;
     }
     .room-button {
-        padding: 18px;
-        min-height: 60px;
+        padding: 16px 8px;
+        font-size: 1rem;
     }
-    .complete-inspection-button {
-        font-size: 15px;
-        padding: 16px 20px;
-        min-width: 200px;
-    }
+}
+@media (max-width: 480px) {
     .container {
-        padding: 16px;
+        padding: 8px 2px 16px 2px;
+        border-radius: 10px;
+    }
+    .property-name {
+        font-size: 1.2rem;
+    }
+    .room-button {
+        padding: 12px 4px;
+        font-size: 0.95rem;
+        min-height: 48px;
     }
 }
