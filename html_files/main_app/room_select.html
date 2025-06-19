@@ -165,8 +165,8 @@
                     throw new Error(data.error || 'データの取得に失敗しました');
                 }
                 
-                // 物件名表示
-                document.getElementById('propertyName').textContent = (data.data && data.data.propertyName) ? data.data.propertyName : '物件名不明';
+                // 物件名表示（API応答構造に厳密対応）
+                document.getElementById('propertyName').textContent = data.data.property.name || '物件名不明';
                 
                 // 部屋リスト取得
                 const rooms = (data.data && Array.isArray(data.data.rooms)) ? data.data.rooms : [];
