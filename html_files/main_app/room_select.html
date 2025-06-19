@@ -15,11 +15,15 @@
     <link rel="stylesheet" href="../../css_styles/room_select.css">
 </head>
 <body>
-    <!-- App Header (meter_reading.htmlと完全統一) -->
-    <div class="app-header">
-        <button class="back-button" aria-label="戻る" onclick="goBack()">&lt;</button>
-        <h1 class="header-title">部屋選択</h1>
-    </div>
+    <!-- MUI-style App Bar Header -->
+    <header class="mui-app-bar">
+        <div class="mui-toolbar">
+            <button class="mui-icon-button back-btn" onclick="goBack()" aria-label="戻る">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1 class="mui-typography-h6">部屋選択</h1>
+        </div>
+    </header>
 
     <!-- Main Content Container -->
     <main class="mui-container">
