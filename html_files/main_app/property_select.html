@@ -153,7 +153,7 @@
       width: 100%;
     }
     .property-name {
-      font-size: clamp(2rem, 7vw, 3.5rem); /* さらに大きく・最小2rem 最大3.5rem */
+      font-size: clamp(2rem, 7vw, 3.5rem) !important; /* !importantで上書き保証 */
       font-weight: 700;
       color: #212529;
       line-height: 1.1;
@@ -169,12 +169,12 @@
     }
     @media (max-width: 768px) {
       .property-name {
-        font-size: clamp(1.5rem, 10vw, 2.5rem);
+        font-size: clamp(1.5rem, 10vw, 2.5rem) !important;
       }
     }
     @media (max-width: 480px) {
       .property-name {
-        font-size: clamp(2.2rem, 14vw, 3.2rem); /* モバイルでさらに大きく */
+        font-size: clamp(2.2rem, 14vw, 3.2rem) !important;
       }
     }
     .completion-date { 
