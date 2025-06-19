@@ -144,10 +144,16 @@
     .property-name-row { 
       display: flex; justify-content: space-between; align-items: center; 
       flex-wrap: wrap; gap: 8px; 
+      min-height: 28px;
     }
     .property-name { 
-      font-size: 18px; font-weight: 600; color: #212529; 
+      font-size: clamp(14px, 4vw, 18px); font-weight: 600; color: #212529; 
       line-height: 1.3; 
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      transition: font-size 0.3s ease;
     }
     .completion-date { 
       font-size: 12px; color: #ffffff; font-weight: 600; 
@@ -180,11 +186,22 @@
       .mantine-container { padding: 16px; } 
       .mantine-title { font-size: 28px; margin-bottom: 24px; }
       .mantine-paper { padding: 16px; }
-      .property-name { font-size: 16px; }
+      .property-name { font-size: clamp(12px, 3.5vw, 16px); }
       .property-name-row { flex-direction: column; align-items: flex-start; }
       .completion-date { font-size: 11px; padding: 4px 8px; }
       .mantine-text-input input { padding: 16px 18px; }
     }
+    
+    /* Extra small devices - very long property names */
+    @media (max-width: 480px) {
+      .property-name {
+        font-size: clamp(11px, 3vw, 14px) !important;
+        line-height: 1.2;
+      }
+      .mantine-paper { padding: 12px; }
+      .property-id { font-size: 12px; padding: 4px 8px; }
+    }
+    
     /* Styles loading state management */
     .styles-loading { 
       opacity: 0; 
@@ -345,6 +362,22 @@
           console.error('[ReactApp] formatCompletionDate error:', error);
           return '';
         }
+      };
+
+      // 物件名の動的フォントサイズ計算
+      const calculatePropertyNameFontSize = (propertyName) => {
+        if (!propertyName) return '18px';
+        
+        const length = propertyName.length;
+        
+        // 文字数に応じてフォントサイズを調整（より細かく）
+        if (length <= 6) return '18px';      // 非常に短い名前：最大サイズ
+        if (length <= 10) return '17px';     // 短い名前：大サイズ
+        if (length <= 14) return '16px';     // 中程度：中サイズ
+        if (length <= 18) return '15px';     // 長め：小サイズ
+        if (length <= 22) return '14px';     // 更に長い：更に小サイズ
+        if (length <= 26) return '13px';     // 非常に長い：最小サイズ
+        return '12px';                       // 極端に長い：最小限サイズ
       };
 
       React.useEffect(() => {
@@ -810,7 +843,14 @@
                         )}
                       </div>
                       <div className="property-name-row">
-                        <div className="property-name">
+                        <div 
+                          className="property-name" 
+                          style={{ 
+                            fontSize: calculatePropertyNameFontSize(property.name),
+                            maxWidth: 'calc(100% - 120px)', // 矢印アイコンとの間隔を考慮
+                          }}
+                          title={property.name != null ? property.name : '名称なし'} // ホバー時にフルテキスト表示
+                        >
                           {property.name != null ? property.name : '名称なし'}
                         </div>
                       </div>
