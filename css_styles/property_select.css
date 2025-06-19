@@ -17,9 +17,10 @@
   margin: 0 0 10px 0 !important;
   color: #212529 !important;
   line-height: 1.1 !important;
-  white-space: nowrap !important;         /* 折り返し禁止 */
-  overflow: hidden !important;            /* はみ出しを隠す */
-  text-overflow: ellipsis !important; /* 省略記号を付与 */
+  white-space: normal !important; /* 折り返し許可 */
+  overflow-wrap: anywhere !important; /* どこでも改行 */
+  word-break: break-all !important;
+  text-overflow: unset !important; /* 省略記号なし */
   letter-spacing: 0.01em !important;
   text-align: left !important;
 }
