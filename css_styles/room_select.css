@@ -118,7 +118,11 @@ body {
 
 .property-card {
     margin-bottom: 24px;
-    background-color: #1971c2;
+    background-color: #007bff;
+    color: #fff;
+}
+
+.property-card .mui-card-content, .property-card .mui-typography-h5 {
     color: #fff;
 }
 
