@@ -33,32 +33,42 @@
 
 /* Loading overlay: 画面中央に完全固定・中央寄せ */
 .loading-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0,0,0,0.5);
-  z-index: 1000;
+  position: fixed !important;
+  top: 0 !important; 
+  left: 0 !important; 
+  right: 0 !important; 
+  bottom: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  background: rgba(0,0,0,0.5) !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
 }
 .loading-overlay-content {
-  background: #fff;
-  padding: 32px 28px;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  text-align: center;
-  min-width: 180px;
-  min-height: 80px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  background: #fff !important;
+  padding: 32px 28px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18) !important;
+  text-align: center !important;
+  min-width: 180px !important;
+  min-height: 80px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  position: relative !important;
+  margin: 0 !important;
+  transform: translateY(0) !important;
 }
 @media (max-width: 480px) {
   .loading-overlay-content {
-    padding: 20px 8px;
-    border-radius: 10px;
-    min-width: 120px;
-    min-height: 60px;
+    padding: 20px 16px !important;
+    border-radius: 12px !important;
+    min-width: 140px !important;
+    min-height: 70px !important;
   }
 }
