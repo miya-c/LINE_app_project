@@ -24,7 +24,14 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
     const { Box, Typography, Button, Paper, Grid, CircularProgress, Alert, Container, Stack } = MaterialUI;
-    const { ArrowForwardIos, CheckCircle, ErrorOutline } = MaterialUI.MaterialIcons;
+    // Material UI Icons CDNグローバル名で参照
+    const ArrowForwardIos = window.MaterialUIIcons?.ArrowForwardIos;
+    const CheckCircle = window.MaterialUIIcons?.CheckCircle;
+    const ErrorOutline = window.MaterialUIIcons?.ErrorOutline;
+    if (!ArrowForwardIos || !CheckCircle || !ErrorOutline) {
+      document.getElementById('root').innerHTML = '<div style="color:red;padding:2em;text-align:center;">MUIアイコンの読み込みに失敗しました。CDNの読み込み順・ネットワークを確認してください。</div>';
+      throw new Error('Material UI Icons not loaded');
+    }
 
     function getGASUrl() {
       return sessionStorage.getItem('gasWebAppUrl');
