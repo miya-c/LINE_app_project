@@ -1001,7 +1001,8 @@
                         <th>状態</th>
                         <th>前回履歴</th>
                       </tr>
-                    </thead>                    <tbody>
+                    </thead>
+                    <tbody>
                       {meterReadings
                         .filter(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0)
                         .map((reading, index) => {
@@ -1145,7 +1146,8 @@
                               )}
                             </td>
                           </tr>
-                        );                      })}
+                        );
+                      })}
                     </tbody>
                   </table>
                 ) : (
