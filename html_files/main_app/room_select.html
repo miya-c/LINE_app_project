@@ -26,32 +26,40 @@
     <link rel="stylesheet" href="../../css_styles/room_select.css">
 </head>
 <body>
-    <!-- APP Header - Material Design App Bar -->
-    <header class="app-header">
-        <button class="back-button" onclick="goBack()" aria-label="戻る">
-            <span class="material-icons">arrow_back</span>
-        </button>
-        <h1 class="header-title">部屋選択</h1>
-    </header>
+    <!-- Material UI App Bar -->
+    <div class="MuiAppBar-root MuiAppBar-colorPrimary MuiAppBar-positionStatic">
+        <div class="MuiToolbar-root MuiToolbar-regular">
+            <button class="MuiIconButton-root MuiIconButton-colorInherit" onclick="goBack()" aria-label="戻る">
+                <span class="material-icons MuiSvgIcon-root">arrow_back</span>
+            </button>
+            <h6 class="MuiTypography-root MuiTypography-h6 app-title">部屋選択</h6>
+        </div>
+    </div>
 
-    <!-- Main Content Container -->
-    <main class="content-container">
+    <!-- Material UI Container -->
+    <div class="MuiContainer-root MuiContainer-maxWidthLg">
         <!-- Property Info Card -->
-        <div class="property-info-card">
-            <span class="material-icons property-icon">home</span>
-            <span class="property-name" id="propertyName">物件名読み込み中...</span>
+        <div class="MuiPaper-root MuiPaper-elevation1 MuiCard-root property-card">
+            <div class="MuiCardContent-root">
+                <div class="property-header">
+                    <span class="material-icons MuiSvgIcon-root property-icon">home</span>
+                    <h5 class="MuiTypography-root MuiTypography-h5" id="propertyName">物件名読み込み中...</h5>
+                </div>
+            </div>
         </div>
         
         <!-- Error Alert -->
-        <div class="error-alert" id="errorMessage" style="display: none;">
-            <span class="material-icons">error</span>
-            <span id="errorText"></span>
+        <div class="MuiAlert-root MuiAlert-standardError" id="errorMessage" style="display: none;">
+            <div class="MuiAlert-icon">
+                <span class="material-icons MuiSvgIcon-root">error</span>
+            </div>
+            <div class="MuiAlert-message" id="errorText"></div>
         </div>
         
         <!-- Loading State -->
         <div class="loading-container" id="loading">
-            <div class="loading-spinner"></div>
-            <p class="loading-text">部屋データを読み込み中...</p>
+            <div class="MuiCircularProgress-root"></div>
+            <p class="MuiTypography-root MuiTypography-body1">部屋データを読み込み中...</p>
         </div>
         
         <!-- Room Grid -->
@@ -60,16 +68,16 @@
         <!-- Complete Inspection Button -->
         <div class="complete-button-container">
             <button 
-                class="complete-button" 
+                class="MuiButton-root MuiButton-contained MuiButton-containedPrimary complete-button" 
                 id="completeInspectionBtn" 
                 onclick="completeInspection()" 
                 style="display: none;"
             >
-                <span class="material-icons">check_circle</span>
-                この物件の検針を完了する
+                <span class="material-icons MuiSvgIcon-root">check_circle</span>
+                <span class="MuiButton-label">この物件の検針を完了する</span>
             </button>
         </div>
-    </main>
+    </div>
 
     <script>
         // Ripple effect for buttons and cards
@@ -165,8 +173,16 @@
                     throw new Error(data.error || 'データの取得に失敗しました');
                 }
                 
-                // 物件名表示（API応答構造に厳密対応）
-                document.getElementById('propertyName').textContent = data.data.property.name || '物件名不明';
+                // 物件名表示（複数パターンに対応）
+                let propertyName = '物件名不明';
+                if (data.data) {
+                    propertyName = data.data.propertyName
+                        || (data.data.property && data.data.property.name)
+                        || data.data.property_name
+                        || data.data.name
+                        || '物件名不明';
+                }
+                document.getElementById('propertyName').textContent = propertyName;
                 
                 // 部屋リスト取得
                 const rooms = (data.data && Array.isArray(data.data.rooms)) ? data.data.rooms : [];
@@ -206,12 +222,16 @@
             console.log('[room_select] 部屋表示開始 - 部屋数:', rooms.length, '物件ID:', propertyId);
 
             rooms.forEach((room, index) => {
-                // Room Card
+                // Room Card with proper Material UI structure
                 const card = document.createElement('div');
-                card.className = 'room-card';
+                card.className = 'MuiPaper-root MuiPaper-elevation1 MuiCard-root room-card';
                 
                 const isCompleted = room.readingStatus === 'completed' || room.isCompleted === true;
-                card.classList.add(isCompleted ? 'status-completed' : 'status-pending');
+                if (isCompleted) {
+                    card.classList.add('status-completed');
+                } else {
+                    card.classList.add('status-pending');
+                }
 
                 // 部屋名を取得（優先順位: name > 部屋名 > id）
                 const roomName = room.name || room['部屋名'] || room.id || '不明';
@@ -220,14 +240,18 @@
                     ? `検針済み：${room.readingDateFormatted}`
                     : '未検針';
 
-                // Card Content - 1行表示レイアウト
+                // Card Content with Material UI CardContent structure
                 card.innerHTML = `
-                    <div class="room-info-row">
-                        <span class="material-icons status-icon">
-                            ${isCompleted ? 'check_circle' : 'warning'}
-                        </span>
-                        <span class="room-name">${roomName}</span>
-                        <span class="room-status">${displayText}</span>
+                    <div class="MuiCardActionArea-root">
+                        <div class="MuiCardContent-root">
+                            <div class="room-info-row">
+                                <span class="material-icons MuiSvgIcon-root status-icon">
+                                    ${isCompleted ? 'check_circle' : 'warning'}
+                                </span>
+                                <span class="MuiTypography-root MuiTypography-h6 room-name">${roomName}</span>
+                                <span class="MuiTypography-root MuiTypography-body2 room-status">${displayText}</span>
+                            </div>
+                        </div>
                     </div>
                 `;
                 
@@ -256,8 +280,8 @@
             if (allCompleted && rooms.length > 0) {
                 completeBtn.style.display = 'flex';
                 completeBtn.innerHTML = `
-                    <span class="material-icons">check_circle</span>
-                    この物件の検針を完了する
+                    <span class="material-icons MuiSvgIcon-root">check_circle</span>
+                    <span class="MuiButton-label">この物件の検針を完了する</span>
                 `;
             }
         }
