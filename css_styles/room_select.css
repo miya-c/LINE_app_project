@@ -1,259 +1,431 @@
-/* ベース */
+/* Material UI inspired Room Selection Styles */
+
+/* === BASE STYLES === */
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%);
-    font-size: 16px;
-    min-height: 100vh;
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    background-color: #f5f5f5;
+    color: rgba(0, 0, 0, 0.87);
+    font-size: 14px;
+    line-height: 1.43;
+    letter-spacing: 0.01071em;
 }
-.container {
-    max-width: 600px;
-    margin: 0 auto 32px auto;
-    background: #fff;
-    padding: 32px 20px 40px 20px;
-    border-radius: 20px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
+
+/* === MUI APP BAR === */
+.mui-app-bar {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 1100;
+    flex-shrink: 0;
+    background-color: #1976d2;
+    color: #fff;
+    box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
 }
-.property-info-card {
-    background-color: var(--accent-color, #007bff);
-    color: var(--header-text-color, #fff);
-    padding: 5px 8px;
-    margin-bottom: 8px;
-    margin-top: 0;
-    margin-left: 0;
-    margin-right: 0;
-    border-radius: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    text-align: center;
+
+.mui-toolbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    min-height: 64px;
 }
-.property-name {
-    text-align: center;
-    font-size: 2.2rem;
-    margin-bottom: 28px;
-    color: #1976d2;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-}
-.property-name {
-    font-size: clamp(1.5rem, 5vw, 2.5rem);
-    font-weight: bold;
-    margin: 0 0 10px 0;
-    color: var(--header-text-color, #fff);
-    letter-spacing: 0.02em;
-    text-align: center;
-}
-.room-info {
-    font-size: clamp(1.3rem, 4vw, 2.0rem);
-    font-weight: bold;
+
+.mui-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    background-color: transparent;
+    outline: 0;
+    border: 0;
     margin: 0;
-    color: var(--header-text-color, #fff);
-    text-align: center;
-}
-.button-container {
-    text-align: center;
-    margin: 24px 0 16px 0;
-    padding: 0;
-}
-.complete-inspection-button {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    border: none;
-    padding: 18px 32px;
-    border-radius: 12px;
+    border-radius: 50%;
+    padding: 12px;
     cursor: pointer;
-    font-size: 1.15rem;
-    font-weight: 700;
-    margin: 10px 5px;
-    box-shadow: 0 4px 16px rgba(40, 167, 69, 0.18);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    min-width: 220px;
+    user-select: none;
+    vertical-align: middle;
+    text-decoration: none;
+    color: inherit;
+    font-size: 1.5rem;
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
 }
-.complete-inspection-button:hover {
-    background: linear-gradient(135deg, #218838 0%, #1ea472 100%);
-    transform: translateY(-2px) scale(1.03);
-    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.25);
+
+.mui-icon-button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
-.complete-inspection-button:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
-    opacity: 0.6;
+
+.mui-icon-button.back-btn {
+    margin-right: 16px;
 }
-.room-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 18px;
+
+.mui-typography-h6 {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 500;
+    font-size: 1.25rem;
+    line-height: 1.6;
+    letter-spacing: 0.0075em;
+    margin: 0;
+    flex-grow: 1;
+    text-align: center;
+    margin-right: 48px; /* バランス調整のため戻るボタン分を相殺 */
+}
+
+/* === MUI CONTAINER === */
+.mui-container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 24px 16px;
+    max-width: 1200px;
+}
+
+/* === MUI PAPER & CARDS === */
+.mui-paper {
+    background-color: #fff;
+    color: rgba(0, 0, 0, 0.87);
+    transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+    border-radius: 4px;
+    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+}
+
+.mui-card {
+    overflow: hidden;
+    border-radius: 4px;
+    background-color: #fff;
+    color: rgba(0, 0, 0, 0.87);
+    transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+    cursor: pointer;
+}
+
+.mui-card:hover {
+    box-shadow: 0px 5px 5px -3px rgba(0,0,0,0.2), 0px 8px 10px 1px rgba(0,0,0,0.14), 0px 3px 14px 2px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+.mui-card-content {
+    padding: 16px;
+}
+
+.property-card {
+    margin-bottom: 24px;
+    background-color: #1976d2;
+    color: #fff;
+}
+
+.property-card .mui-card-content {
+    text-align: center;
+    padding: 20px 16px;
+}
+
+.mui-typography-h5 {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 400;
+    font-size: 1.5rem;
+    line-height: 1.334;
+    letter-spacing: 0em;
+    margin: 0;
+}
+
+/* === MUI BUTTONS === */
+.mui-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    background-color: transparent;
+    outline: 0;
+    border: 0;
+    margin: 0;
+    border-radius: 4px;
+    padding: 6px 16px;
+    cursor: pointer;
+    user-select: none;
+    vertical-align: middle;
+    text-decoration: none;
+    color: inherit;
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.75;
+    letter-spacing: 0.02857em;
+    text-transform: uppercase;
+    min-width: 64px;
+    transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, border-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+}
+
+.mui-button-contained {
+    color: #fff;
+    background-color: #1976d2;
+    box-shadow: 0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12);
+}
+
+.mui-button-contained:hover {
+    box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+    background-color: #1565c0;
+}
+
+.mui-button-contained:disabled {
+    color: rgba(0, 0, 0, 0.26);
+    box-shadow: none;
+    background-color: rgba(0, 0, 0, 0.12);
+    cursor: default;
+}
+
+.complete-inspection-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+    gap: 8px;
+    background-color: #2e7d32;
+    min-width: 280px;
+}
+
+.complete-inspection-btn:hover {
+    background-color: #1b5e20;
+}
+
+.complete-inspection-btn.success-state {
+    background-color: #388e3c;
+}
+
+.mui-box {
     margin-bottom: 24px;
 }
-.room-button {
-    padding: 22px 12px;
-    border: none;
-    border-radius: 16px;
-    background: linear-gradient(145deg, #f8fafc 0%, #e3eaf3 100%);
-    cursor: pointer;
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-    min-height: 64px;
+
+.complete-btn-container {
     display: flex;
-    align-items: center;
     justify-content: center;
-    transition: box-shadow 0.2s, transform 0.2s;
-    font-size: 1.1rem;
-    font-weight: 600;
-    position: relative;
 }
-.room-button:hover {
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    box-shadow: 0 6px 24px rgba(25, 118, 210, 0.13);
-    transform: translateY(-2px) scale(1.01);
-}
-.room-button.reading-completed {
-    background: linear-gradient(135deg, #e8f5e9 0%, #b2dfdb 100%);
-    border: 1.5px solid #43a047;
-}
-.room-button.reading-not-completed {
-    background: linear-gradient(135deg, #fffde7 0%, #ffe082 100%);
-    border: 1.5px solid #fbc02d;
-}
-.room-text {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #333;
-    line-height: 1.3;
+
+/* === MUI GRID === */
+.mui-grid-container {
     width: 100%;
-    text-align: center;
-    letter-spacing: 0.01em;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
 }
-.room-button.reading-completed .room-text {
-    color: #2E7D32;
+
+.mui-grid-item {
+    display: flex;
+    flex-direction: column;
 }
-.room-button.reading-not-completed .room-text {
-    color: #F57C00;
+
+/* === ROOM CARDS === */
+.room-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
 }
-.back-button {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    padding: 10px 22px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-right: 12px;
-    box-shadow: 0 2px 8px rgba(108,117,125,0.12);
-    transition: background 0.2s;
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
+
+.room-card.status-completed {
+    border-left: 4px solid #4caf50;
 }
-.back-button:hover {
-    background-color: #495057;
+
+.room-card.status-pending {
+    border-left: 4px solid #ff9800;
 }
-.error-message {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: none;
-    font-size: 1rem;
-}
-.loading {
-    text-align: center;
-    padding: 24px;
-    font-size: 1.1rem;
-    color: #1976d2;
-}
-/* --- ヘッダーを検針情報画面風に --- */
-.app-header {
+
+.room-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    padding: 18px 0 10px 0;
-    border-bottom: 2px solid #e3eaf3;
-    margin-bottom: 0;
-    position: relative;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    gap: 12px;
+    margin-bottom: 8px;
 }
-.header-title {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: 0.02em;
-    text-align: center;
-    flex: 1;
+
+.status-icon {
+    font-size: 24px;
+}
+
+.room-card.status-completed .status-icon {
+    color: #4caf50;
+}
+
+.room-card.status-pending .status-icon {
+    color: #ff9800;
+}
+
+.room-name {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 500;
+    font-size: 1.25rem;
+    line-height: 1.6;
+    letter-spacing: 0.0075em;
     margin: 0;
-    background: none;
-    -webkit-background-clip: unset;
-    -webkit-text-fill-color: unset;
-    background-clip: unset;
-    position: relative;
+    flex-grow: 1;
 }
-.header-title::after {
-    content: '';
-    position: absolute;
-    bottom: -8px; left: 50%; transform: translateX(-50%);
-    width: 60px; height: 3px;
-    background: #fff;
-    border-radius: 2px;
+
+.mui-typography-body2 {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 400;
+    font-size: 0.875rem;
+    line-height: 1.43;
+    letter-spacing: 0.01071em;
+    margin: 0;
+    color: rgba(0, 0, 0, 0.6);
 }
-@media (max-width: 768px) {
-    .container {
-        padding: 14px 4px 24px 4px;
-        border-radius: 14px;
+
+.room-status {
+    padding-left: 36px; /* アイコン分のオフセット */
+}
+
+/* === MUI ALERTS === */
+.mui-alert {
+    display: none;
+    align-items: flex-start;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 400;
+    font-size: 0.875rem;
+    line-height: 1.43;
+    letter-spacing: 0.01071em;
+}
+
+.mui-alert-error {
+    color: #d32f2f;
+    background-color: #fdeded;
+    border: 1px solid #f5c6cb;
+}
+
+.mui-alert-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.mui-alert-content .material-icons {
+    font-size: 20px;
+    margin-top: -1px;
+}
+
+/* === MUI LOADING === */
+.mui-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 48px 24px;
+}
+
+.mui-circular-progress {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e3f2fd;
+    border-radius: 50%;
+    border-top-color: #1976d2;
+    animation: mui-spin 1s ease-in-out infinite;
+}
+
+.mui-circular-progress-small {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: mui-spin 1s ease-in-out infinite;
+    margin-right: 8px;
+}
+
+@keyframes mui-spin {
+    to {
+        transform: rotate(360deg);
     }
-    .property-name {
-        font-size: 1.5rem;
-    }
-    .room-grid {
+}
+
+.mui-typography-body1 {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0.00938em;
+    margin: 0;
+}
+
+.no-rooms {
+    text-align: center;
+    color: rgba(0, 0, 0, 0.6);
+    padding: 48px 24px;
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 960px) {
+    .mui-grid-container {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 12px;
     }
-    .room-button {
+}
+
+@media (max-width: 600px) {
+    .mui-container {
         padding: 16px 8px;
-        font-size: 1rem;
     }
-    .mantine-title {
-        font-size: 1.5rem;
+    
+    .mui-toolbar {
+        min-height: 56px;
+        padding: 0 8px;
     }
-    .header-title {
-        font-size: 1.5rem;
+    
+    .mui-typography-h6 {
+        font-size: 1.1rem;
+        margin-right: 40px;
     }
-    .app-header {
-        padding: 10px 0 6px 0;
+    
+    .mui-grid-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
-    .back-button {
-        font-size: 1rem;
-        padding: 8px 14px;
+    
+    .complete-inspection-btn {
+        min-width: 250px;
+        font-size: 0.9rem;
+        padding: 10px 20px;
+    }
+    
+    .property-card .mui-typography-h5 {
+        font-size: 1.3rem;
+    }
+    
+    .room-name {
+        font-size: 1.1rem;
     }
 }
+
 @media (max-width: 480px) {
-    .container {
-        padding: 8px 2px 16px 2px;
-        border-radius: 10px;
-    }
-    .property-name {
-        font-size: 1.2rem;
-    }
-    .room-button {
+    .mui-container {
         padding: 12px 4px;
-        font-size: 0.95rem;
-        min-height: 48px;
     }
-    .mantine-title {
+    
+    .mui-toolbar {
+        padding: 0 4px;
+    }
+    
+    .mui-icon-button.back-btn {
+        margin-right: 8px;
+        padding: 8px;
+    }
+    
+    .complete-inspection-btn {
+        min-width: 200px;
+        font-size: 0.85rem;
+        padding: 8px 16px;
+    }
+    
+    .property-card .mui-typography-h5 {
         font-size: 1.2rem;
-    }
-    .header-title {
-        font-size: 1.2rem;
-    }
-    .app-header {
-        padding: 6px 0 4px 0;
-    }
-    .back-button {
-        font-size: 0.95rem;
-        padding: 6px 10px;
     }
 }
