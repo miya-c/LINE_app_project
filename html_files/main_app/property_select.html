@@ -881,13 +881,9 @@
                         )}
                       </div>
                       <div className="property-name-row">
-                        <div 
-                          className="property-name" 
-                          style={{ 
-                            fontSize: calculatePropertyNameFontSize(property.name),
-                            maxWidth: 'calc(100% - 60px)', // 矢印アイコンとの間隔を縮小
-                          }}
-                          title={property.name != null ? property.name : '名称なし'} // ホバー時にフルテキスト表示
+                        <div
+                          className="property-name"
+                          title={property.name != null ? property.name : '名称なし'}
                         >
                           {property.name != null ? property.name : '名称なし'}
                         </div>
