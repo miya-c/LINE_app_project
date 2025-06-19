@@ -136,6 +136,28 @@ body {
     font-size: 1.1rem;
     color: #1976d2;
 }
+/* --- ヘッダーを検針情報画面風に --- */
+.mantine-title {
+    margin: 0 0 28px 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1976d2;
+    text-align: center;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+}
+.mantine-title::after {
+    content: '';
+    position: absolute;
+    bottom: -8px; left: 50%; transform: translateX(-50%);
+    width: 60px; height: 3px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-radius: 2px;
+}
 @media (max-width: 768px) {
     .container {
         padding: 14px 4px 24px 4px;
@@ -151,6 +173,9 @@ body {
         padding: 16px 8px;
         font-size: 1rem;
     }
+    .mantine-title {
+        font-size: 1.5rem;
+    }
 }
 @media (max-width: 480px) {
     .container {
@@ -164,5 +189,8 @@ body {
         padding: 12px 4px;
         font-size: 0.95rem;
         min-height: 48px;
+    }
+    .mantine-title {
+        font-size: 1.2rem;
     }
 }
