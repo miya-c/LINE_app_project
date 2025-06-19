@@ -1002,9 +1002,8 @@
                     meterReadings: {Array.isArray(meterReadings) ? `配列 (長さ: ${meterReadings.length})` : typeof meterReadings}<br/>
                     データ: {JSON.stringify(meterReadings, null, 2)}
                   </div>
-                )}
-
-                {Array.isArray(meterReadings) && meterReadings.length > 0 ? (
+                )}                {Array.isArray(meterReadings) && meterReadings.length > 0 && 
+                 meterReadings.some(reading => reading.date && reading.date !== '' && reading.currentReading && reading.currentReading !== '') ? (
                   <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
                       <tr>
@@ -1160,8 +1159,7 @@
                         );
                       })}
                     </tbody>
-                  </table>
-                ) : (
+                  </table>                ) : (
                   <div className="mantine-stack">
                     <div className="mantine-alert info">
                       <h3 className="mantine-text weight-600">初回検針</h3>
@@ -1256,7 +1254,9 @@
                   className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
                   disabled={updating || isNavigating}
-                  title={Array.isArray(meterReadings) && meterReadings.length > 0 ? "指示数を更新" : "初回検針データを保存"}
+                  title={Array.isArray(meterReadings) && meterReadings.length > 0 && 
+                         meterReadings.some(reading => reading.date && reading.date !== '' && reading.currentReading && reading.currentReading !== '') 
+                         ? "指示数を更新" : "初回検針データを保存"}
                   style={{
                       width: '72px',
                       height: '72px',
