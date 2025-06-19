@@ -1003,7 +1003,7 @@
                     データ: {JSON.stringify(meterReadings, null, 2)}
                   </div>
                 )}                {Array.isArray(meterReadings) && meterReadings.length > 0 && 
-                 meterReadings.some(reading => reading.date && reading.date !== '' && reading.currentReading && reading.currentReading !== '') ? (
+                 meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) ? (
                   <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
                       <tr>
@@ -1253,9 +1253,8 @@
                 <button
                   className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
-                  disabled={updating || isNavigating}
-                  title={Array.isArray(meterReadings) && meterReadings.length > 0 && 
-                         meterReadings.some(reading => reading.date && reading.date !== '' && reading.currentReading && reading.currentReading !== '') 
+                  disabled={updating || isNavigating}                  title={Array.isArray(meterReadings) && meterReadings.length > 0 && 
+                         meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) 
                          ? "指示数を更新" : "初回検針データを保存"}
                   style={{
                       width: '72px',
