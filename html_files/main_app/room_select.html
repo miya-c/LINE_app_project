@@ -9,55 +9,46 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
     
-    <!-- Material Icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <!-- External CSS -->
     <link rel="stylesheet" href="../../css_styles/room_select.css">
 </head>
 <body>
-    <!-- MUI-style App Bar Header -->
-    <header class="mui-app-bar">
-        <div class="mui-toolbar">
-            <button class="mui-icon-button back-btn" onclick="goBack()" aria-label="戻る">
-                <span class="material-icons">arrow_back</span>
-            </button>
-            <h1 class="mui-typography-h6">部屋選択</h1>
-        </div>
-    </header>
+    <!-- App Header (検針情報画面と完全統一) -->
+    <div class="app-header">
+        <button class="back-button" onclick="goBack()" aria-label="戻る">&lt;</button>
+        <h1 class="header-title">部屋選択</h1>
+    </div>
 
     <!-- Main Content Container -->
-    <main class="mui-container">
+    <main class="content-area mantine-container">
         <!-- Property Info Card -->
-        <div class="mui-paper property-card">
-            <div class="mui-card-content">
-                <div class="mui-typography-h5" id="propertyName">物件名読み込み中...</div>
-            </div>
+        <div class="property-info-card">
+            <h2 class="property-name" id="propertyName">物件名読み込み中...</h2>
         </div>
         
         <!-- Complete Inspection Button -->
-        <div class="mui-box complete-btn-container">
+        <div class="complete-btn-container">
             <button 
-                class="mui-button mui-button-contained complete-inspection-btn" 
+                class="mantine-button variant-filled complete-inspection-btn" 
                 id="completeInspectionBtn" 
                 onclick="completeInspection()" 
                 style="display: none;"
             >
-                <span class="material-icons">check_circle</span>
                 この物件の検針を完了する
             </button>
         </div>
         
         <!-- Error Alert -->
-        <div id="errorMessage" class="mui-alert mui-alert-error" style="display: none;"></div>
+        <div id="errorMessage" class="mantine-alert" style="display: none;"></div>
         
         <!-- Loading -->
-        <div id="loading" class="mui-loading">
-            <div class="mui-circular-progress"></div>
-            <div class="mui-typography-body1">部屋データを読み込み中...</div>
+        <div id="loading" class="mantine-center">
+            <div class="mantine-loader"></div>
+            <div class="mantine-text">部屋データを読み込み中...</div>
         </div>
         
         <!-- Room Grid -->
-        <div id="roomGrid" class="mui-grid-container" style="display: none;"></div>
+        <div id="roomGrid" class="room-grid-container" style="display: none;"></div>
     </main>
 
     <script>        // GAS Web App URL取得（property_select.htmlから継承）
@@ -269,13 +260,13 @@
             console.log('[room_select] 部屋表示開始 - 部屋数:', rooms.length, '物件ID:', propertyId);
 
             rooms.forEach((room, index) => {
-                // MUI-style Grid Item
+                // Room Grid Item
                 const gridItem = document.createElement('div');
-                gridItem.className = 'mui-grid-item';
+                gridItem.className = 'room-grid-item';
                 
-                // MUI-style Card
+                // Room Card
                 const card = document.createElement('div');
-                card.className = 'mui-card room-card';
+                card.className = 'mantine-paper room-card';
                 
                 const isCompleted = room.readingStatus === 'completed' || room.isCompleted === true;
                 card.classList.add(isCompleted ? 'status-completed' : 'status-pending');
