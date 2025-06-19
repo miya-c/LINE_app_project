@@ -7,13 +7,12 @@
     <!-- Favicon and Icons -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2JmZiIvPgo8c3ZnIHg9IjgiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMwMDdiZmYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+">
-    <!-- Material UI & React CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Material UI & React CDN（バージョン明示） -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@mui/material@5.15.14/umd/material-ui.development.js" crossorigin></script>
     <script src="https://unpkg.com/@mui/icons-material@5.14.0/umd/material-ui-icons.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- 外部CSSは最小限に（MUI中心に移行） -->
     <link rel="stylesheet" href="../../css_styles/room_select.css">
     <style>
       body { background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%); min-height: 100vh; }
@@ -27,16 +26,12 @@
     const { Box, Typography, Button, Paper, Grid, CircularProgress, Alert, Container, Stack } = MaterialUI;
     const { ArrowForwardIos, CheckCircle, ErrorOutline } = MaterialUIIcons;
 
-    // GAS Web App URLとpropertyId取得
     function getGASUrl() {
       return sessionStorage.getItem('gasWebAppUrl');
     }
     function getPropertyId() {
       const urlParams = new URLSearchParams(window.location.search);
       return urlParams.get('propertyId');
-    }
-    function getPropertyName() {
-      return sessionStorage.getItem('selectedPropertyName') || '';
     }
 
     const RoomSelectApp = () => {
@@ -49,8 +44,8 @@
       const gasWebAppUrl = getGASUrl();
       const propertyId = getPropertyId();
 
-      // 部屋データ取得
       useEffect(() => {
+        console.log('RoomSelectApp 初期化', { gasWebAppUrl, propertyId });
         if (!gasWebAppUrl || !propertyId) {
           setError('Web App URLまたは物件IDが設定されていません。物件選択画面から再度アクセスしてください。');
           setLoading(false);
@@ -71,7 +66,6 @@
           });
       }, [gasWebAppUrl, propertyId]);
 
-      // 検針完了処理
       const handleCompleteInspection = async () => {
         if (!propertyId) return;
         if (!window.confirm('この物件の検針を完了にしますか？\n物件一覧画面に完了バッジが表示されます。')) return;
@@ -90,15 +84,16 @@
         }
       };
 
-      // 部屋カードクリック
       const handleRoomClick = (room) => {
         window.location.href = `/meter_reading?propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(room.id)}`;
       };
 
-      // 戻るボタン
       const handleBack = () => {
         window.location.href = '/property_select';
       };
+
+      // レンダリング確認
+      console.log('RoomSelectApp レンダリング', { rooms, property, loading, error });
 
       return (
         <Container maxWidth="sm" sx={{ py: 4 }}>
@@ -147,7 +142,15 @@
       );
     };
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<RoomSelectApp />);
+    // React 18 createRoot対応＋フォールバック
+    const rootEl = document.getElementById('root');
+    if (window.ReactDOM && ReactDOM.createRoot) {
+      ReactDOM.createRoot(rootEl).render(<RoomSelectApp />);
+    } else if (window.ReactDOM && ReactDOM.render) {
+      ReactDOM.render(<RoomSelectApp />, rootEl);
+    } else {
+      rootEl.innerHTML = '<div style="color:red;padding:2em;text-align:center;">Reactの初期化に失敗しました。CDNの読み込みを確認してください。</div>';
+    }
   </script>
 </body>
 </html>
