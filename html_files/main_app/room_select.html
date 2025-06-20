@@ -32,9 +32,9 @@
       </nav>
     </header>
 
-    <main class="MuiContainer-root MuiContainer-maxWidthLg" style="padding-top:32px;">
+    <main class="MuiContainer-root MuiContainer-maxWidthLg" style="padding-top:32px;" role="main" aria-label="部屋選択メイン">
       <!-- 物件名カード -->
-      <section class="MuiCard-root MuiPaper-root MuiPaper-elevation1 property-card" aria-label="物件情報">
+      <section class="MuiCard-root MuiPaper-root MuiPaper-elevation1 property-card" aria-label="物件情報" tabindex="0" role="region">
         <div class="MuiCardHeader-root property-header">
           <span class="material-icons MuiSvgIcon-root property-icon" aria-hidden="true">home</span>
           <span class="MuiTypography-root MuiTypography-h5" id="propertyName">物件名読み込み中...</span>
@@ -42,24 +42,24 @@
       </section>
 
       <!-- エラーアラート -->
-      <div class="MuiAlert-root MuiAlert-standardError" id="errorMessage" style="display:none;">
-        <span class="MuiAlert-icon"><span class="material-icons MuiSvgIcon-root">error</span></span>
+      <div class="MuiAlert-root MuiAlert-standardError" id="errorMessage" style="display:none;" role="alert" aria-live="assertive">
+        <span class="MuiAlert-icon"><span class="material-icons MuiSvgIcon-root" aria-hidden="true">error</span></span>
         <span class="MuiAlert-message" id="errorText"></span>
       </div>
 
       <!-- ローディング -->
-      <div class="loading-container" id="loading">
+      <div class="loading-container" id="loading" aria-live="polite" aria-busy="true">
         <span class="MuiCircularProgress-root" aria-label="読み込み中"></span>
         <span class="MuiTypography-root MuiTypography-body1">部屋データを読み込み中...</span>
       </div>
 
       <!-- 部屋グリッド -->
-      <section class="room-grid" id="roomGrid" style="display:none;" aria-label="部屋一覧"></section>
+      <section class="room-grid" id="roomGrid" style="display:none;" aria-label="部屋一覧" role="list"></section>
 
       <!-- 完了ボタン -->
       <div class="complete-button-container">
-        <button class="MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge complete-button" id="completeInspectionBtn" onclick="completeInspection()" style="display:none;" aria-label="この物件の検針を完了する">
-          <span class="material-icons MuiSvgIcon-root">check_circle</span>
+        <button class="MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge complete-button" id="completeInspectionBtn" onclick="completeInspection()" style="display:none;" aria-label="この物件の検針を完了する" tabindex="0" role="button">
+          <span class="material-icons MuiSvgIcon-root" aria-hidden="true">check_circle</span>
           <span class="MuiButton-label">この物件の検針を完了する</span>
         </button>
       </div>
