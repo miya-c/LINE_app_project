@@ -246,9 +246,7 @@ body {
   grid-area: date;
   text-align: center;
   font-weight: bold;
-  background-color: #e8f4f8 !important;
-  background: #e8f4f8 !important;
-  color: #1976d2 !important;
+  background-color: #f8f9fa;
   margin: -8px -8px 0 -8px; /* padding変更に合わせて調整 */
   padding: 16px 8px; /* 左右パディングを8pxに */
   border-radius: 0; /* 角丸を削除 */
@@ -268,21 +266,19 @@ body {
 /* 左カラム - 今回使用量 */
 .mantine-table td[data-label="今回使用量"] {
   grid-area: usage;
-  background-color: #e3f2fd !important;
-  background: #e3f2fd !important;
-  color: #1976d2 !important;
+  background-color: #e3f2fd;
   padding: 6px 8px;
   border-radius: 6px;
   font-weight: bold;
   font-size: 3rem;
   line-height: 1.1;
-  border-right: 1px solid #bdbdbd;
+  border-right: 1px solid var(--mantine-color-gray-2);
   margin: 0;
   border-bottom: none;
 }
 
 .mantine-table td[data-label="今回使用量"]::before {
-  color: #1976d2 !important;
+  color: var(--mantine-color-blue-7);
   margin-bottom: 2px;
 }
 
@@ -693,95 +689,4 @@ body {
   .desktop-only {
     display: none !important;
   }
-}
-
-.mantine-card, .property-info-card {
-  background: #ffffff;
-  color: #1976d2;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border: 1px solid #1976d2;
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.mantine-title {
-  color: #1976d2;
-}
-
-.mantine-button {
-  background-color: #1976d2;
-  color: #fff;
-  border: 1px solid #1565c0;
-}
-.mantine-button:hover {
-  background-color: #1565c0;
-}
-
-.mantine-alert {
-  background: #ffebee;
-  color: #d32f2f;
-  border: 1px solid #d32f2f;
-}
-.mantine-alert.info {
-  background: #e8f5e8;
-  color: #2e7d32;
-  border: 1px solid #2e7d32;
-}
-
-.mantine-table {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  color: #212121 !important;
-}
-.mantine-table th {
-  background: #e3f2fd !important;
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-}
-.mantine-table td[data-label="今回使用量"] {
-  background: #e3f2fd !important;
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-}
-
-/* 青系背景色の追加強化 */
-table.mantine-table td[data-label="今回使用量"],
-.mantine-table td[data-label="今回使用量"],
-td[data-label="今回使用量"] {
-  background: #e3f2fd !important;
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-}
-
-/* 検針日時の背景色も青系に統一 */
-.mantine-table td[data-label="検針日時"] {
-  background-color: #e8f4f8 !important;
-  background: #e8f4f8 !important;
-  color: #1976d2 !important;
-}
-
-/* 最優先度の青系背景色指定 - カラーが確実に反映されるよう最後に配置 */
-html body .mantine-table td[data-label="今回使用量"] {
-  background: #e3f2fd !important;
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-}
-
-html body .mantine-table td[data-label="検針日時"] {
-  background: #e8f4f8 !important;
-  background-color: #e8f4f8 !important;
-  color: #1976d2 !important;
-}
-
-html body .mantine-table th {
-  background: #e3f2fd !important;
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-}
-
-/* テーブル全体の背景色も確実に適用 */
-html body .mantine-table {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
 }
