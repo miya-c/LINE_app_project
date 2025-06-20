@@ -692,8 +692,8 @@ body {
 }
 
 .mantine-card, .property-info-card {
-  background: #fff;
-  color: #212121;
+  background: #ffffff;
+  color: #1976d2;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   border: 1px solid #1976d2;
@@ -726,7 +726,7 @@ body {
 }
 
 .mantine-table {
-  background: #fff;
+  background: #ffffff;
   color: #212121;
 }
 .mantine-table th {
