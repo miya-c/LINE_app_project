@@ -89,3 +89,133 @@
     min-height: 70px !important;
   }
 }
+
+/* Material UI Property Select Styles */
+:root {
+  /* 既存のroom_select.cssのMaterial UI変数を利用 */
+}
+
+/* AppBar/Toolbar/タイトル */
+.MuiAppBar-root {
+  min-height: 64px;
+  box-shadow: var(--mui-shadows-4);
+  border-radius: 0 0 12px 12px;
+}
+.MuiToolbar-root {
+  min-height: 64px;
+  justify-content: center;
+  gap: 8px;
+}
+.app-title {
+  flex-grow: 1;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: 0.0075em;
+  color: #fff;
+}
+
+/* 物件グリッド */
+.property-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+  margin-bottom: 32px;
+}
+
+/* 物件カード */
+.property-card {
+  border-radius: 16px;
+  box-shadow: var(--mui-shadows-1);
+  background: #fff;
+  transition: box-shadow 0.2s, transform 0.2s;
+  outline: none;
+  position: relative;
+  min-height: 64px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+}
+.property-card:focus {
+  border: 1.5px solid var(--mui-palette-primary-main);
+  box-shadow: 0 0 0 2px var(--mui-palette-primary-light);
+}
+.property-card:hover {
+  box-shadow: var(--mui-shadows-4);
+  transform: translateY(-2px) scale(1.01);
+}
+.property-info-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+}
+.property-icon {
+  font-size: 2rem;
+  color: var(--mui-palette-primary-main);
+}
+.property-name {
+  flex-grow: 1;
+  font-weight: 500;
+  font-size: 1.15rem;
+  color: var(--mui-palette-grey-900);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.property-id {
+  font-size: 0.95rem;
+  color: var(--mui-palette-grey-600);
+  background: var(--mui-palette-grey-100);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Ripple Effect (Material UI風) */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(25, 118, 210, 0.18);
+  transform: scale(0);
+  animation: ripple 0.5s linear;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes ripple {
+  to {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+/* アクセシビリティ: フォーカス強調 */
+.property-card:focus-visible {
+  outline: 2px solid var(--mui-palette-primary-main);
+  outline-offset: 2px;
+}
+
+/* ローディング・アラート・メッセージ */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 16px;
+}
+.no-rooms-message {
+  text-align: center;
+  color: var(--mui-palette-grey-500);
+  padding: 48px 24px;
+  font-size: 1.125rem;
+}
+
+/* レスポンシブ */
+@media (max-width: 600px) {
+  .MuiToolbar-root { min-height: 56px; }
+  .property-info-row { padding: 12px 10px; gap: 8px; }
+  .property-grid { grid-template-columns: 1fr; gap: 12px; }
+}

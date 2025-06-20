@@ -270,8 +270,36 @@
   <div id="root" class="styles-loading"></div>
 
   <link rel="stylesheet" href="../../css_styles/property_select.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="../../css_styles/room_select.css"><!-- Material UI変数・共通色用 -->
 
-  <script type="text/babel">
+  <!-- Material UI AppBar -->
+  <header class="MuiAppBar-root MuiAppBar-colorPrimary MuiAppBar-positionStatic mui-elevation-4" role="banner">
+    <nav class="MuiToolbar-root MuiToolbar-regular" aria-label="物件選択ナビゲーション">
+      <button class="MuiIconButton-root MuiIconButton-colorInherit" onclick="window.location.href='/'" aria-label="戻る">
+        <span class="material-icons MuiSvgIcon-root">arrow_back</span>
+      </button>
+      <span class="MuiTypography-root MuiTypography-h6 app-title" aria-label="画面タイトル">物件選択</span>
+    </nav>
+  </header>
+
+  <main class="MuiContainer-root MuiContainer-maxWidthLg" style="padding-top:32px;">
+    <!-- エラーアラート -->
+    <div class="MuiAlert-root MuiAlert-standardError" id="errorMessage" style="display:none;">
+      <span class="MuiAlert-icon"><span class="material-icons MuiSvgIcon-root">error</span></span>
+      <span class="MuiAlert-message" id="errorText"></span>
+    </div>
+    <!-- ローディング -->
+    <div class="loading-container" id="loading">
+      <span class="MuiCircularProgress-root" aria-label="読み込み中"></span>
+      <span class="MuiTypography-root MuiTypography-body1">物件データを読み込み中...</span>
+    </div>
+    <!-- 物件グリッド -->
+    <section class="property-grid" id="propertyGrid" style="display:none;" aria-label="物件一覧"></section>
+  </main>
+
+<script>
     // 🦁 Brave Browser Cache Busting Version 20250614c
     // WOFF完全削除済み - 一般ブラウザ専用
     // CSS読み込み完了待機機能追加
