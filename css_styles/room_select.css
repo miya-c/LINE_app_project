@@ -91,16 +91,6 @@ body {
     gap: 8px;
 }
 
-.MuiToolbar-regular {
-    min-height: 64px;
-}
-
-@media (min-width: 600px) {
-    .MuiToolbar-regular {
-        min-height: 64px;
-    }
-}
-
 /* === Material UI Icon Button === */
 .MuiIconButton-root {
     text-align: center;
@@ -168,12 +158,16 @@ body {
 }
 
 .app-title {
-    flex-grow: 1;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: auto;
     text-align: center;
     font-size: 1.5rem;
     font-weight: 500;
     letter-spacing: 0.0075em;
     color: #fff;
+    pointer-events: none;
 }
 
 /* === Material UI Container === */
