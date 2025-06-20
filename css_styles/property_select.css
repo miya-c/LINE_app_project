@@ -354,7 +354,7 @@ body {
   }
   
   .MuiToolbar-root {
-    min-height: 56px;
+    min-height: 64px;
     padding: 0 var(--mui-spacing-1);
   }
   
