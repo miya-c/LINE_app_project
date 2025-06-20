@@ -246,7 +246,9 @@ body {
   grid-area: date;
   text-align: center;
   font-weight: bold;
-  background-color: #f8f9fa;
+  background-color: #e8f4f8 !important;
+  background: #e8f4f8 !important;
+  color: #1976d2 !important;
   margin: -8px -8px 0 -8px; /* padding変更に合わせて調整 */
   padding: 16px 8px; /* 左右パディングを8pxに */
   border-radius: 0; /* 角丸を削除 */
@@ -266,19 +268,21 @@ body {
 /* 左カラム - 今回使用量 */
 .mantine-table td[data-label="今回使用量"] {
   grid-area: usage;
-  background-color: #e3f2fd;
+  background-color: #e3f2fd !important;
+  background: #e3f2fd !important;
+  color: #1976d2 !important;
   padding: 6px 8px;
   border-radius: 6px;
   font-weight: bold;
   font-size: 3rem;
   line-height: 1.1;
-  border-right: 1px solid var(--mantine-color-gray-2);
+  border-right: 1px solid #bdbdbd;
   margin: 0;
   border-bottom: none;
 }
 
 .mantine-table td[data-label="今回使用量"]::before {
-  color: var(--mantine-color-blue-7);
+  color: #1976d2 !important;
   margin-bottom: 2px;
 }
 
@@ -726,14 +730,58 @@ body {
 }
 
 .mantine-table {
-  background: #ffffff;
-  color: #212121;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #212121 !important;
 }
 .mantine-table th {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #e3f2fd !important;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
 }
 .mantine-table td[data-label="今回使用量"] {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #e3f2fd !important;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+}
+
+/* 青系背景色の追加強化 */
+table.mantine-table td[data-label="今回使用量"],
+.mantine-table td[data-label="今回使用量"],
+td[data-label="今回使用量"] {
+  background: #e3f2fd !important;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+}
+
+/* 検針日時の背景色も青系に統一 */
+.mantine-table td[data-label="検針日時"] {
+  background-color: #e8f4f8 !important;
+  background: #e8f4f8 !important;
+  color: #1976d2 !important;
+}
+
+/* 最優先度の青系背景色指定 - カラーが確実に反映されるよう最後に配置 */
+html body .mantine-table td[data-label="今回使用量"] {
+  background: #e3f2fd !important;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+}
+
+html body .mantine-table td[data-label="検針日時"] {
+  background: #e8f4f8 !important;
+  background-color: #e8f4f8 !important;
+  color: #1976d2 !important;
+}
+
+html body .mantine-table th {
+  background: #e3f2fd !important;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+}
+
+/* テーブル全体の背景色も確実に適用 */
+html body .mantine-table {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
 }
