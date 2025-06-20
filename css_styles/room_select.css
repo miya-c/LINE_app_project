@@ -117,12 +117,16 @@ body {
     margin: 0;
     display: inline-flex;
     outline: 0;
-    position: relative;
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     align-items: center;
     user-select: none;
     vertical-align: middle;
     justify-content: center;
     text-decoration: none;
+    z-index: 10;
 }
 
 .MuiIconButton-root:hover {
@@ -519,6 +523,28 @@ body {
 .room-card:focus-visible {
     outline: 2px solid var(--mui-palette-primary-main);
     outline-offset: 2px;
+}
+
+/* === Header back button positioning === */
+.app-header .MuiIconButton-root,
+.app-header [role="button"] {
+    position: absolute !important;
+    left: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 15 !important;
+}
+
+.app-header .app-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    margin: 0 auto;
+    pointer-events: none;
+    z-index: 5;
 }
 
 /* === Responsive Design === */
