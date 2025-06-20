@@ -350,9 +350,14 @@
 </head>
 <body>
   <div id="root" class="styles-loading"></div>
-
+  <!-- ローディングモーダル -->
+  <div id="modal-loading" style="display:none;position:fixed;z-index:2000;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);backdrop-filter:blur(2px);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.12);padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:220px;">
+      <span class="MuiCircularProgress-root" style="width:48px;height:48px;border-width:5px;" aria-label="読み込み中"></span>
+      <span class="MuiTypography-root MuiTypography-body1">部屋一覧を読み込み中...</span>
+    </div>
+  </div>
   <link rel="stylesheet" href="../../css_styles/property_select.css">
-
   <script type="text/babel">
     // 🦁 Brave Browser Cache Busting Version 20250614c
     // WOFF完全削除済み - 一般ブラウザ専用
@@ -579,6 +584,9 @@
         
         setIsNavigating(true);
         setNavigationMessage('部屋情報を読み込んでいます...');
+        
+        // 画面遷移時ローディングモーダル表示
+        window.showLoadingModal();
         
         try {
           const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
