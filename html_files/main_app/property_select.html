@@ -312,184 +312,53 @@
     // CSS読み込み完了を待機する関数（改良版）
     function waitForStylesLoaded() {
       return new Promise((resolve) => {
-        const checkStyles = () => {
-          try {
-            // CSSカスタムプロパティをチェックして読み込み完了を確認
-            const rootStyles = getComputedStyle(document.documentElement);
-            const stylesLoaded = rootStyles.getPropertyValue('--meter-reading-styles-loaded').trim();
-            
-            if (stylesLoaded === "'true'" || stylesLoaded === '"true"') {
-              console.log('✅ CSS読み込み完了確認');
-              
-              // スタイル読み込み完了の視覚的フィードバック
-              const root = document.getElementById('root');
-              if (root) {
-                root.classList.remove('styles-loading');
-                root.classList.add('styles-loaded');
-              }
-              
-              resolve();
-            } else {
-              console.log('⏳ CSS読み込み待機中...', stylesLoaded);
-              setTimeout(checkStyles, 50);
-            }
-          } catch (error) {
-            console.warn('⚠️ CSS読み込みチェックエラー:', error);
-            setTimeout(checkStyles, 100);
+        const check = () => {
+          const root = document.getElementById('root');
+          if (root && getComputedStyle(root).opacity !== '0.3') {
+            root.classList.remove('styles-loading');
+            root.classList.add('styles-loaded');
+            resolve();
+          } else {
+            setTimeout(check, 50);
           }
         };
-        
-        // 初回チェック
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', checkStyles);
-        } else {
-          checkStyles();
-        }
+        check();
       });
     }
-    
+
     const App = () => {
       const [properties, setProperties] = React.useState([]);
       const [searchTerm, setSearchTerm] = React.useState('');
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState(null);
-      const [isNavigating, setIsNavigating] = React.useState(false);      const [navigationMessage, setNavigationMessage] = React.useState('');
+      const [isNavigating, setIsNavigating] = React.useState(false);
+      const [navigationMessage, setNavigationMessage] = React.useState('');
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbzzK3mKFuP8KT5l_irp0kMPJv4-zZUUQSCG2ssVYlTmg9wtDwSZUAJ3eIQD1vbH4jKXQQ/exec';
 
       // 検針完了日フォーマット関数
       const formatCompletionDate = (dateStr) => {
-        if (!dateStr || dateStr.trim() === '') {
-          return '';
-        }
-        
-        try {
-          // YYYY-MM-DD形式の文字列をDate型に変換
-          const date = new Date(dateStr);
-          if (isNaN(date.getTime())) {
-            return '';
-          }
-          
-          // 月日のみを取得（1桁の場合はゼロパディングなし）
-          const month = date.getMonth() + 1;
-          const day = date.getDate();
-          return `検針完了日：${month}月${day}日`;
-        } catch (error) {
-          console.error('[ReactApp] formatCompletionDate error:', error);
-          return '';
-        }
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr;
+        return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
       };
 
       React.useEffect(() => {
-        // コンポーネントマウント時にスクロール位置をリセット
-        window.scrollTo(0, 0);
-        
-        // 直接プロパティを取得（WOFF初期化なし）
-        const fetchProperties = async () => {
-          setLoading(true);
-          setError(null);
-          try {
-            // キャッシュバスティング付きAPI呼び出し
-            const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
-            console.log('[ReactApp] Fetching properties from:', requestUrl);
-            console.log('[ReactApp] Request URL breakdown:', {
-              baseUrl: gasWebAppUrl,
-              parameters: `action=getProperties&cache=${Date.now()}`,
-              fullUrl: requestUrl
-            });
-            
-            const response = await fetch(requestUrl);
-            console.log('[ReactApp] Response status:', response.status);
-            console.log('[ReactApp] Response headers:', response.headers);
-            
-            if (!response.ok) {
-              throw new Error(`Network response was not ok. Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('[ReactApp] GAS Response (properties):', data);
-            console.log('[ReactApp] Response type:', typeof data);
-            console.log('[ReactApp] Response keys:', data ? Object.keys(data) : 'No keys');
-            
-            // データが null または undefined の場合
-            if (!data) {
-              console.error('[ReactApp] Response data is null or undefined');
-              throw new Error('サーバーからのレスポンスが空です。');
-            }
-            
-            // 新しい統一レスポンス形式への対応
-            if (data.success === false) {
-              console.error('[ReactApp] GAS Error Response:', data);
-              throw new Error(`GASエラー: ${data.error || 'Unknown error'}`);
-            }
-            
-            // 統一レスポンス形式の処理
-            let actualData = null;
-            if (data.success === true && data.data) {
-              // 新しい統一レスポンス形式: {success: true, data: [...], count: number, timestamp: string}
-              console.log('[ReactApp] New unified response format detected');
-              console.log('[ReactApp] Response metadata:', {
-                success: data.success,
-                count: data.count,
-                timestamp: data.timestamp,
-                debugInfo: data.debugInfo
-              });
-              actualData = data.data;
-            } else if (Array.isArray(data)) {
-              // 従来の直接配列形式への下位互換性
-              console.log('[ReactApp] Legacy direct array format detected');
-              actualData = data;
-            } else if (data.properties && Array.isArray(data.properties)) {
-              // 古いpropertiesプロパティ形式への下位互換性
-              console.log('[ReactApp] Legacy properties wrapper format detected');
-              actualData = data.properties;
-            } else if (data.availableSheets) {
-              // シートが見つからない場合の特別処理
-              console.error('[ReactApp] Spreadsheet sheets not found:', data.availableSheets);
-              throw new Error('Google Spreadsheetの「物件マスタ」シートが見つかりません。管理者に連絡してください。');
-            } else {
-              console.error('[ReactApp] Unknown response format:', data);
-              console.error('[ReactApp] Data type:', typeof data);
-              console.error('[ReactApp] Data keys:', Object.keys(data));
-              throw new Error('物件データの形式が正しくありません。管理者に連絡してください。');
-            }
-            
-            // actualDataの検証と設定
-            if (!Array.isArray(actualData)) {
-              console.error('[ReactApp] Final data is not an array:', actualData);
-              throw new Error('物件データが配列形式ではありません。管理者に連絡してください。');
-            }
-              console.log('[ReactApp] Data is array, setting properties');
-            console.log('[ReactApp] First property sample:', actualData[0]);
-            
-            // 検針完了日フィールドの確認ログ
-            if (actualData.length > 0 && actualData[0]) {              console.log('[ReactApp] completionDate field check:', {
-                hasCompletionDate: '検針完了日' in actualData[0],
-                completionDateValue: actualData[0]['検針完了日'],
-                completionDateType: typeof actualData[0]['検針完了日'],
-                normalizedCompletionDate: actualData[0].completionDate || actualData[0]['検針完了日']
-              });
-            }
-            
-            // プロパティ名の正規化（日本語フィールド名をサポート）
-            const normalizedData = actualData.map(property => ({
-              ...property,
-              // 既存のcompletionDateがあればそれを保持、なければ検針完了日を使用
-              completionDate: property.completionDate || property['検針完了日'],
-              // idやnameの正規化も追加
-              id: property.id || property['物件ID'],
-              name: property.name || property['物件名']
-            }));
-            
-            setProperties(normalizedData);
-          } catch (fetchError) {
-            console.error('[ReactApp] Failed to fetch properties:', fetchError);
-            setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
-          } finally {
+        setLoading(true);
+        setError(null);
+        fetch(gasWebAppUrl + '?action=getProperties')
+          .then((res) => {
+            if (!res.ok) throw new Error('物件データの取得に失敗しました');
+            return res.json();
+          })
+          .then((data) => {
+            setProperties(Array.isArray(data) ? data : []);
             setLoading(false);
-          }
-        };
-
-        fetchProperties();
+          })
+          .catch((e) => {
+            setError(e.message);
+            setLoading(false);
+          });
       }, [gasWebAppUrl]);
 
       const handleSearchChange = (event) => {
@@ -497,371 +366,106 @@
       };
 
       const handlePropertySelect = async (property) => {
-        console.log('[ReactApp] handlePropertySelect called with:', property);
-        
-        if (!property) {
-            console.error('[ReactApp] Property is null or undefined');
-            alert('選択された物件情報が無効です。(property is null)');
-            return;
-        }
-        
-        if (typeof property.id === 'undefined') {
-            console.error('[ReactApp] Property.id is undefined:', property);
-            alert('選択された物件のIDが無効です。(property.id is undefined)');
-            return;
-        }
-        
-        if (typeof property.name === 'undefined') {
-            console.error('[ReactApp] Property.name is undefined:', property);
-            alert('選択された物件の名前が無効です。(property.name is undefined)');
-            return;
-        }
-        
-        console.log('[ReactApp] Property selected:', property);
-        
-        // ✅ 画面遷移前にページの最上部にスクロール
-        window.scrollTo(0, 0);
-        
         setIsNavigating(true);
-        setNavigationMessage('部屋情報を読み込んでいます...');
-        
-        try {
-          const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
-          console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id}`);
-          console.log('[ReactApp] Room request URL breakdown:', {
-            baseUrl: gasWebAppUrl,
-            parameters: `action=getRooms&propertyId=${property.id}`,
-            fullUrl: requestUrl
-          });
-          
-          const roomResponse = await fetch(requestUrl);
-          
-          console.log('[ReactApp] Room Response Status:', roomResponse.status);
-          console.log('[ReactApp] Room Response Headers:', roomResponse.headers);
-          if (!roomResponse.ok) {
-            const errorText = await roomResponse.text();
-            console.error('[ReactApp] Failed to fetch room information:', roomResponse.status, errorText);
-            throw new Error(`部屋情報の取得に失敗しました。ステータス: ${roomResponse.status}. 詳細: ${errorText}`);
-          }
-            const roomData = await roomResponse.json();
-          console.log('[ReactApp] Fetched room data:', roomData);
-          console.log('[ReactApp] Room data type:', typeof roomData);
-          
-          // 🔍 部屋データの詳細構造をログ出力
-          if (roomData && roomData.data && Array.isArray(roomData.data)) {
-            console.log('[ReactApp] 部屋データサンプル:');
-            roomData.data.slice(0, 2).forEach((room, index) => {
-              console.log(`[ReactApp] 部屋[${index}] プロパティ一覧:`, Object.keys(room));
-              console.log(`[ReactApp] 部屋[${index}] 詳細:`, room);
-            });
-          } else if (Array.isArray(roomData)) {
-            console.log('[ReactApp] 直接配列の部屋データサンプル:');
-            roomData.slice(0, 2).forEach((room, index) => {
-              console.log(`[ReactApp] 部屋[${index}] プロパティ一覧:`, Object.keys(room));
-              console.log(`[ReactApp] 部屋[${index}] 詳細:`, room);
-            });
-          }
-
-          // 🔥 完全修正版: 統一レスポンス判定処理
-          let rooms = [];
-          console.log('[ReactApp] 🔍 レスポンス形式判定開始');
-          console.log('[ReactApp] レスポンス詳細:', {
-            type: typeof roomData,
-            isNull: roomData === null,
-            isUndefined: roomData === undefined,
-            hasSuccess: roomData && typeof roomData === 'object' && 'success' in roomData,
-            successValue: roomData?.success,
-            hasData: roomData && typeof roomData === 'object' && 'data' in roomData,
-            dataValue: roomData?.data,
-            isDataArray: Array.isArray(roomData?.data),
-            isDirectArray: Array.isArray(roomData),
-            keys: roomData && typeof roomData === 'object' ? Object.keys(roomData) : 'N/A'
-          });
-
-          // パターン1: 統一形式 {success: true, data: []}
-          if (roomData && 
-              typeof roomData === 'object' && 
-              roomData !== null && 
-              roomData.success === true && 
-              Array.isArray(roomData.data)) {
-            rooms = roomData.data;
-            console.log('[ReactApp] ✅ 統一形式採用 - データ件数:', rooms.length);
-          }
-          // パターン2: 直接配列
-          else if (Array.isArray(roomData)) {
-            rooms = roomData;
-            console.log('[ReactApp] ⚠️ 直接配列形式採用 - データ件数:', rooms.length);
-          }
-          // パターン3: エラーレスポンス
-          else if (roomData && roomData.success === false) {
-            console.error('[ReactApp] ❌ エラーレスポンス:', roomData.error);
-            rooms = [];
-          }
-          // パターン4: 予期しない形式
-          else {
-            console.warn('[ReactApp] ⚠️ 予期しない形式 - 空配列で継続:', roomData);
-            rooms = [];
-          }
-
-          console.log('[ReactApp] 最終採用データ:', rooms.length, '件');
-          
-          // 🔧 部屋データの正規化処理を追加
-          const normalizedRooms = rooms.map((room, index) => {
-            console.log(`[ReactApp] 部屋データ[${index}] 正規化前:`, room);
-            console.log(`[ReactApp] 部屋データ[${index}] プロパティ一覧:`, Object.keys(room));
-            
-            return {
-              ...room,
-              // 基本プロパティの正規化
-              id: room.id || room.roomId || room['部屋ID'] || `room-${index}`,
-              name: room.name || room.roomName || room['部屋名'] || '部屋名未設定',
-              
-              // 検針関連プロパティの正規化
-              rawInspectionDate: room.rawInspectionDate || room.inspectionDate || room['検針日時'],
-              hasActualReading: room.hasActualReading || room.hasReading || room['検針済み'] || false,
-              
-              // その他のプロパティを保持
-              ...Object.keys(room).reduce((acc, key) => {
-                if (!['id', 'name', 'rawInspectionDate', 'hasActualReading'].includes(key)) {
-                  acc[key] = room[key];
-                }
-                return acc;
-              }, {})
-            };
-          });
-          
-          console.log('[ReactApp] 正規化後の部屋データ:', normalizedRooms);
-          console.log('[ReactApp] 正規化後サンプル:', normalizedRooms.slice(0, 1));          
-          console.log('[ReactApp] Processed rooms:', normalizedRooms);
-          console.log('[ReactApp] Rooms array check:', Array.isArray(normalizedRooms));
-          console.log('[ReactApp] Rooms length:', normalizedRooms.length);
-
-          console.log('[ReactApp] Storing to sessionStorage...');
-          console.log('[ReactApp] - propertyId:', property.id, '(type:', typeof property.id, ')');
-          console.log('[ReactApp] - propertyName:', property.name, '(type:', typeof property.name, ')');
-          console.log('[ReactApp] - rooms length:', Array.isArray(normalizedRooms) ? normalizedRooms.length : 'not array');
-          
-          sessionStorage.setItem('selectedPropertyId', String(property.id));
-          sessionStorage.setItem('selectedPropertyName', String(property.name));
-          sessionStorage.setItem('selectedRooms', JSON.stringify(normalizedRooms));
-          
-          console.log('[ReactApp] sessionStorage after saving:');
-          console.log('[ReactApp] - selectedPropertyId:', sessionStorage.getItem('selectedPropertyId'));
-          console.log('[ReactApp] - selectedPropertyName:', sessionStorage.getItem('selectedPropertyName'));
-          console.log('[ReactApp] - selectedRooms length:', sessionStorage.getItem('selectedRooms')?.length);
-          
-          if (gasWebAppUrl) {
-            sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
-            console.log('[ReactApp] gasWebAppUrl saved to sessionStorage:', gasWebAppUrl);
-          } else {
-            console.error('[ReactApp] ★ERROR: gasWebAppUrl is not defined before saving to sessionStorage!');
-            alert('アプリケーションの設定にエラーがあります。(code: RP1)');
-            setIsNavigating(false);
-            return;
-          }
-
-          setNavigationMessage('画面を切り替えています...');
-          
-          const targetUrl = `/room_select?propertyId=${encodeURIComponent(property.id)}`;
-          console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
-          // 短い遅延の後に画面遷移
-          setTimeout(() => {
-            window.location.href = targetUrl;
-          }, 300);
-        } catch (error) {
-          console.error('[ReactApp] Error fetching rooms or navigating:', error);
-          
-          // エラー時でも基本情報を保存（空配列で継続）
-          console.log('[ReactApp] エラー時の基本情報保存...');
-          sessionStorage.setItem('selectedPropertyId', String(property.id));
-          sessionStorage.setItem('selectedPropertyName', String(property.name));
-          sessionStorage.setItem('selectedRooms', JSON.stringify([])); // 空配列で保存
-          
-          if (gasWebAppUrl) {
-            sessionStorage.setItem('gasWebAppUrl', gasWebAppUrl);
-          }
-          
-          // エラーメッセージを設定（但し、致命的ではない場合は継続）
-          if (error.message && (error.message.includes('部屋データの形式') || error.message.includes('部屋情報の取得に失敗'))) {
-            console.warn('[ReactApp] データ形式エラーですが、空配列で継続します:', error.message);
-            
-            // 空の状態で画面遷移を続行
-            setNavigationMessage('空の状態で画面を切り替えています...');
-            
-            const targetUrl = `/room_select?propertyId=${encodeURIComponent(property.id)}`;
-            console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
-            setTimeout(() => {
-              window.location.href = targetUrl;
-            }, 300);
-          } else {
-            setError(`部屋情報の処理中にエラーが発生しました: ${error.message}`);
-            setIsNavigating(false);
-          }
-        }
+        setNavigationMessage('部屋一覧に移動中...');
+        // 遷移先URL例: room_select.html?propertyId=xxx
+        window.location.href = `room_select.html?propertyId=${encodeURIComponent(property.id)}`;
       };
 
       // LoadingOverlayコンポーネント（モダンデザイン版）
       const LoadingOverlay = ({ message }) => (
         <div className="loading-overlay">
           <div className="loading-overlay-content">
-            <div className="loading-spinner" style={{ marginBottom: '16px' }}></div>
-            <p style={{ margin: 0, fontSize: '16px', color: '#495057', fontWeight: 500 }}>
-              {message || '読み込み中...'}
-            </p>
+            <div className="mantine-loader" />
+            <div style={{ marginTop: 16, fontSize: '1.1rem', color: '#555' }}>{message}</div>
           </div>
         </div>
       );
 
       const filteredProperties = properties.filter(property => {
-        const propertyIdString = String(property.id != null ? property.id : ''); 
-        const propertyNameString = String(property.name != null ? property.name : '');
-        return propertyIdString.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               propertyNameString.toLowerCase().includes(searchTerm.toLowerCase());
+        if (!searchTerm) return true;
+        return (
+          (property.name && property.name.includes(searchTerm)) ||
+          (property.id && property.id.includes(searchTerm))
+        );
       });
 
       // 物件データ取得中の初期ローディング
       if (loading && properties.length === 0) {
-        return (
-          <div className="mantine-container" style={{padding: '20px'}}>
-            <div style={{maxWidth: '400px', margin: '0 auto'}}>
-              <h1 className="mantine-title" style={{marginBottom: '24px'}}>物件選択</h1>
-              <div className="mantine-text-input" style={{marginBottom: '24px'}}>
-                <input
-                  type="text"
-                  placeholder="物件IDまたは物件名で検索..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  disabled
-                />
-              </div>
-              <div className="mantine-center">
-                <div className="mantine-stack">
-                  <div className="mantine-center">
-                    <div className="mantine-loader"></div>
-                  </div>
-                  <p style={{textAlign: 'center', color: '#6c757d'}}>
-                    物件情報を読み込み中です...
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+        return <LoadingOverlay message="物件データを取得中..." />;
       }
-      
+
       // 物件データ取得エラー (初期ロード時)
       if (error && properties.length === 0) {
         return (
-          <div className="mantine-container" style={{padding: '20px'}}>
-            <div style={{maxWidth: '400px', margin: '0 auto'}}>
-              <h1 className="mantine-title" style={{marginBottom: '24px'}}>物件選択</h1>
-              <div className="mantine-text-input" style={{marginBottom: '24px'}}>
-                <input
-                  type="text"
-                  placeholder="物件IDまたは物件名で検索..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  disabled
-                />
-              </div>
-              <div className="mantine-alert">
-                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
-                <p style={{margin: 0}}>{error}</p>
-              </div>
-            </div>
+          <div className="mantine-container mantine-stack center">
+            <div className="mantine-alert">{error}</div>
           </div>
         );
       }
-      
+
       return (
-        <div className="mantine-container" style={{padding: '20px', minHeight: '100vh'}}>
-          {isNavigating && <LoadingOverlay message={navigationMessage} />}
-          <div style={{maxWidth: '400px', margin: '0 auto'}}>
-            <h1 className="mantine-title" style={{marginBottom: '24px'}}>物件選択</h1>
-            
-            <div className="mantine-text-input" style={{marginBottom: '24px'}}>
-              <input
-                type="text"
-                placeholder="物件IDまたは物件名で検索..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                disabled={loading && properties.length === 0}
-              />
-            </div>
-            
-            {loading && properties.length > 0 && (
-              <div className="mantine-center" style={{marginBottom: '16px'}}>
-                <div className="mantine-stack">
-                  <div className="mantine-center">
-                    <div className="mantine-loader size-sm"></div>
-                  </div>
-                  <p style={{textAlign: 'center', color: '#6c757d', fontSize: '14px', margin: 0}}>
-                    処理中...
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {error && (
-              <div className="mantine-alert" style={{marginBottom: '16px'}}>
-                <h3 style={{margin: '0 0 8px 0', fontWeight: 600}}>エラー</h3>
-                <p style={{margin: 0}}>{error}</p>
-              </div>
-            )}
+        <div className="mantine-container">
+          {/* AppBar */}
+          <header className="MuiAppBar-root MuiAppBar-colorPrimary MuiAppBar-positionStatic mui-elevation-4" role="banner">
+            <nav className="MuiToolbar-root MuiToolbar-regular" aria-label="物件選択ナビゲーション">
+              <span className="app-title" style={{ flex: 1, textAlign: 'center' }}>物件一覧</span>
+            </nav>
+          </header>
 
-            {!loading && properties.length === 0 && !error && (
-              <p style={{textAlign: 'center', color: '#6c757d'}}>
-                登録されている物件がありません。
-              </p>
-            )}
-            
-            {!loading && properties.length > 0 && filteredProperties.length === 0 && (
-              <p style={{textAlign: 'center', color: '#6c757d'}}>
-                該当する物件が見つかりません。
-              </p>
-            )}
-
-            <div className="mantine-stack">
-              {filteredProperties.map(property => (
-                <div 
-                  key={property.id} 
-                  className={`mantine-paper ${(loading || isNavigating) ? 'disabled' : ''}`}
-                  onClick={() => !(loading || isNavigating) && handlePropertySelect(property)}
-                >
-                  <div className="property-card">
-                    <div className="property-info">
-                      <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
-                        <span className="property-id">
-                          ID: {property.id != null ? property.id : 'IDなし'}
-                        </span>
-                        {/* 検針完了日を物件IDの右隣に表示 */}
-                        {formatCompletionDate(property.completionDate) && (
-                          <div className="completion-date">
-                            {formatCompletionDate(property.completionDate)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="property-name-row">
-                        <div
-                          className="property-name"
-                          title={property.name != null ? property.name : '名称なし'}
-                          style={{
-                            // 物件名の長さをCSSカスタムプロパティで渡す
-                            '--property-name-len': property.name ? property.name.length : 12
-                          }}
-                        >
-                          {property.name != null ? property.name : '名称なし'}
-                        </div>
-                      </div>
-                    </div>
-                    <svg className="property-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* 検索ボックス */}
+          <div className="mantine-text-input" style={{ margin: '32px 0 0 0' }}>
+            <input
+              type="text"
+              placeholder="物件名またはIDで検索"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              aria-label="物件検索"
+              style={{ fontSize: '1.1rem', padding: '12px 16px', borderRadius: 8, border: '1.5px solid #ddd', width: '100%' }}
+            />
           </div>
+
+          {/* エラー表示 */}
+          {error && (
+            <div className="mantine-alert" style={{ marginBottom: 16 }}>{error}</div>
+          )}
+
+          {/* ローディングオーバーレイ（遷移時） */}
+          {isNavigating && <LoadingOverlay message={navigationMessage || '遷移中...'} />}
+
+          {/* 物件グリッド */}
+          <section className="property-grid" aria-label="物件一覧">
+            {filteredProperties.length === 0 ? (
+              <div className="no-rooms-message">該当する物件がありません</div>
+            ) : (
+              filteredProperties.map((property, idx) => (
+                <div
+                  key={property.id || idx}
+                  className="property-card"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`物件 ${property.name || ''}`}
+                  onClick={() => handlePropertySelect(property)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handlePropertySelect(property); }}
+                  style={{ animation: `fadeInUp 0.4s ease ${0.1 * idx}s both` }}
+                >
+                  <div className="property-info-row">
+                    <span className="material-icons property-icon" aria-hidden="true">home_work</span>
+                    <span className="property-name-row">
+                      <span className="property-name">{property.name}</span>
+                      <span className="property-id">{property.id}</span>
+                    </span>
+                  </div>
+                  {property.completionDate && (
+                    <div className="completion-date" style={{ color: '#888', fontSize: '0.95rem', marginLeft: 56, marginBottom: 8 }}>
+                      完了日: {formatCompletionDate(property.completionDate)}
+                    </div>
+                  )}
+                  <span className="property-arrow material-icons" aria-hidden="true" style={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)', color: '#007bff', fontSize: '2rem' }}>arrow_forward_ios</span>
+                </div>
+              ))
+            )}
+          </section>
         </div>
       );
     };
@@ -869,7 +473,6 @@
     // CSS読み込み完了後にアプリを起動
     waitForStylesLoaded().then(() => {
       console.log('🎨 物件選択アプリ起動: CSS読み込み完了後に実行');
-      
       // Use React 18 createRoot API instead of ReactDOM.render
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<App />);
