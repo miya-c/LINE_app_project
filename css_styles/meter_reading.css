@@ -690,3 +690,50 @@ body {
     display: none !important;
   }
 }
+
+.mantine-card, .property-info-card {
+  background: #fff;
+  color: #212121;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid #1976d2;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.mantine-title {
+  color: #1976d2;
+}
+
+.mantine-button {
+  background-color: #1976d2;
+  color: #fff;
+  border: 1px solid #1565c0;
+}
+.mantine-button:hover {
+  background-color: #1565c0;
+}
+
+.mantine-alert {
+  background: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #d32f2f;
+}
+.mantine-alert.info {
+  background: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #2e7d32;
+}
+
+.mantine-table {
+  background: #fff;
+  color: #212121;
+}
+.mantine-table th {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+.mantine-table td[data-label="今回使用量"] {
+  background: #e3f2fd;
+  color: #1976d2;
+}
