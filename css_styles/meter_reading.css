@@ -916,13 +916,30 @@ body {
   }
 }
 
-/* デスクトップ専用表示 - モバイルで非表示 */
-.desktop-only {
-  display: block;
+/* Loading Container Styles */
+.loading-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.95);
+  z-index: 9999;
 }
 
-@media (max-width: 768px) {
-  .desktop-only {
-    display: none !important;
-  }
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e1e1e1;
+  border-top: 4px solid var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

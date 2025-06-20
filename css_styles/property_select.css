@@ -265,12 +265,18 @@ body {
 
 /* Material UI Loading States (公式準拠) */
 .loading-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 50vh;
   flex-direction: column;
   gap: var(--mui-spacing-2);
+  background-color: rgba(255, 255, 255, 0.95);
+  z-index: 9999;
 }
 
 .MuiCircularProgress-root {
