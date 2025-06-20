@@ -102,6 +102,28 @@ body {
   position: relative;
 }
 
+/* === Header back button positioning === */
+.MuiToolbar-root .MuiIconButton-root,
+.MuiToolbar-root [role="button"] {
+  position: absolute !important;
+  left: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 15 !important;
+}
+
+.MuiToolbar-root .app-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  margin: 0 auto;
+  pointer-events: none;
+  z-index: 5;
+}
+
 .app-title {
   flex-grow: 1;
   text-align: center;
