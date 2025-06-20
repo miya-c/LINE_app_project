@@ -91,23 +91,14 @@ body {
     gap: 8px;
 }
 
-/* タイトル中央・戻るボタン左端 */
-.app-title {
-    position: absolute;
-    left: 0;
-    right: 0;
-    margin: auto;
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: 500;
-    letter-spacing: 0.0075em;
-    color: #fff;
-    pointer-events: none;
+.MuiToolbar-regular {
+    min-height: 64px;
 }
-.MuiIconButton-root {
-    position: absolute;
-    left: 0;
-    z-index: 1;
+
+@media (min-width: 600px) {
+    .MuiToolbar-regular {
+        min-height: 64px;
+    }
 }
 
 /* === Material UI Icon Button === */
