@@ -141,7 +141,7 @@ body {
 }
 @media (max-width: 480px) {
   .app-title {
-    font-size: 1.125rem;
+    font-size: 1.3rem;
   }
 }
 @media (min-width: 600px) {
@@ -399,7 +399,7 @@ body {
   }
   
   .app-title {
-    font-size: 1.125rem;
+    font-size: 1.3rem;
   }
 }
 
