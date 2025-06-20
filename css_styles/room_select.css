@@ -644,4 +644,34 @@ body {
     }
 }
 
+/* === ローディングモーダルを画面中央・全画面固定表示 === */
+.loading-container {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255,255,255,0.7); /* 半透明背景 */
+  z-index: 2000;
+  min-height: unset;
+  gap: 16px;
+}
+
+/* ローディングスピナーの中央表示用 */
+.MuiCircularProgress-root {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top-color: #007bff;
+  border-radius: 50%;
+  animation: spin 1.4s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 
