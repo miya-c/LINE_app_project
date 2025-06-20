@@ -1019,8 +1019,7 @@
             </div>
             <div className="content-area mantine-container">
               <div className="mantine-stack">
-                {/* アラートにrole属性追加 */}
-                <div className="mantine-alert" role="alert">
+                <div className="mantine-alert">
                   <h3 className="mantine-text weight-600">エラー</h3>
                   <p className="mantine-text">{error}</p>
                 </div>
@@ -1038,7 +1037,7 @@
             <button onClick={handleBackButton} className="back-button" aria-label="戻る">
               &lt;
             </button>
-            <h1 className="header-title">検針情報</h1>
+            <h1 className="header-title">検針ああああああああああ情報</h1>
           </div>
 
           <div className="content-area mantine-container">
@@ -1050,14 +1049,14 @@
 
                 {Array.isArray(meterReadings) && meterReadings.length > 0 && 
                  meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) ? (
-                  <table className="mantine-table" role="table" aria-label="検針履歴テーブル">
-                    <thead role="rowgroup">
-                      <tr role="row">
-                        <th role="columnheader">検針日時</th>
-                        <th role="columnheader">今回あああああああああああああ指示数(㎥)</th>
-                        <th role="columnheader">今回使用量</th>
-                        <th role="columnheader">状態</th>
-                        <th role="columnheader">前回履歴</th>
+                  <table className="mantine-table">
+                    <thead style={{ display: 'none' }}>
+                      <tr>
+                        <th>検針日時</th>
+                        <th>今回指示数(㎥)</th>
+                        <th>今回使用量</th>
+                        <th>状態</th>
+                        <th>前回履歴</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1078,8 +1077,8 @@
                         const previousReadingsInfo = getPreviousReadingsText(reading);
                         
                         return (
-                          <tr key={index} role="row">
-                            <td data-label="検針日時" role="cell">
+                          <tr key={index}>
+                            <td data-label="検針日時">
                               <span style={{
                                 color: inspectionStatus.status === '未検針' ? 'var(--mantine-color-red-6)' : 'inherit',
                                 fontWeight: inspectionStatus.status === '未検針' ? 'bold' : 'normal'
@@ -1087,20 +1086,17 @@
                                 最終検針日時: {inspectionStatus.status === '未検針' ? '未検針' : inspectionStatus.displayDate}
                               </span>
                             </td>
-                            <td data-label="今回指示数(㎥)" role="cell">
-                              <input
-                                type="number"
-                                step="any"
-                                defaultValue={currentReadingDisplay}
-                                placeholder="指示数入力"
-                                min="0"
-                                data-date={dateForDataAttribute}
-                                data-original-value={formatReading(reading.currentReading)}
-                                data-previous-reading={formatReading(reading.previousReading)}
-                                className={"mantine-input" + (inputErrors[dateForDataAttribute] ? " input-error" : "")}
-                                aria-label="今回指示数(㎥)"
-                                aria-required="true"
-                                aria-invalid={!!inputErrors[dateForDataAttribute]}
+                            <td data-label="今回指示数(㎥)">
+                              <input 
+                                type="number" 
+                                step="any" 
+                                defaultValue={currentReadingDisplay} 
+                                placeholder="指示数入力" 
+                                min="0" 
+                                data-date={dateForDataAttribute} 
+                                data-original-value={formatReading(reading.currentReading)} 
+                                data-previous-reading={formatReading(reading.previousReading)} 
+                                className="mantine-input" 
                                 onChange={(e) => {
                                   const currentValue = e.target.value;
                                   const previousValue = formatReading(reading.previousReading);
@@ -1144,34 +1140,57 @@
                                 }} 
                               />
                               {inputErrors[dateForDataAttribute] && (
-                                <div style={{
-                                  color: 'var(--mantine-color-red-6)',
-                                  fontSize: '0.9em',
-                                  marginTop: '4px'
-                                }} role="alert">
+                                <div style={{ 
+                                  color: 'var(--mantine-color-red-6)', 
+                                  fontSize: '0.9em', 
+                                  marginTop: '4px' 
+                                }}>
                                   {inputErrors[dateForDataAttribute]}
                                 </div>
                               )}
                             </td>
-                            <td data-label="今回使用量" role="cell">
+                            <td data-label="今回使用量">
                               {usageDisplayString}
                             </td>
-                            <td data-label="状態" role="cell">
-                              <span className={
-                                'status-' + (getStatusDisplay(reading) === '要確認' ? 'warning' : getStatusDisplay(reading) === '正常' ? 'normal' : 'waiting')
-                              }>
+                            <td data-label="状態">
+                              <span style={{ 
+                                display: 'inline-block', 
+                                padding: '3px 9px', 
+                                fontSize: '0.9em', 
+                                fontWeight: 500, 
+                                backgroundColor: (() => {
+                                  const status = getStatusDisplay(reading);
+                                  if (status === '要確認') return 'var(--mantine-color-red-light)';
+                                  if (status === '正常') return 'var(--mantine-color-green-light)';
+                                  return 'var(--mantine-color-gray-2)';
+                                })(),
+                                color: (() => {
+                                  const status = getStatusDisplay(reading);
+                                  if (status === '要確認') return 'var(--mantine-color-red-8)';
+                                  if (status === '正常') return 'var(--mantine-color-green-8)';
+                                  return 'var(--mantine-color-gray-7)';
+                                })(),
+                                borderRadius: 'var(--mantine-radius-sm)' 
+                              }}>
                                 {getStatusDisplay(reading)}
-                                {/* σ値は非表示 */}
+                                {(() => {
+                                  const sigma = getStandardDeviationDisplay(reading);
+                                  return sigma ? (
+                                    <div style={{ fontSize: '0.7em', marginTop: '2px', opacity: 0.8 }}>
+                                      σ: {sigma}
+                                    </div>
+                                  ) : null;
+                                })()}
                               </span>
                             </td>
-                            <td data-label="前回履歴" role="cell">
+                            <td data-label="前回履歴">
                               {previousReadingsInfo && previousReadingsInfo.length > 0 ? (
                                 <div style={{ lineHeight: '1.6' }}>
                                   {previousReadingsInfo.map((info, infoIndex) => (
-                                    <div
-                                      key={infoIndex}
+                                    <div 
+                                      key={infoIndex} 
                                       className="previous-reading-text"
-                                      style={{
+                                      style={{ 
                                         marginBottom: infoIndex < previousReadingsInfo.length - 1 ? '6px' : '0'
                                       }}
                                     >
@@ -1275,14 +1294,12 @@
             
             {(!loading && !error) && (
               <div className="fab-container" style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1001}}>
-                {/* FABボタンにaria-label追加 */}
                 <button
                   className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
-                  disabled={updating || isNavigating}
-                  aria-label={Array.isArray(meterReadings) && meterReadings.length > 0 &&
-                    meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0)
-                    ? "指示数を更新" : "初回検針データを保存"}
+                  disabled={updating || isNavigating}                  title={Array.isArray(meterReadings) && meterReadings.length > 0 && 
+                         meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) 
+                         ? "指示数を更新" : "初回検針データを保存"}
                   style={{
                       width: '72px',
                       height: '72px',
