@@ -193,7 +193,12 @@ body {
 }
 
 .mantine-table thead {
-  display: none;
+  display: table-header-group;
+}
+@media (max-width: 900px) {
+  .mantine-table thead {
+    display: none;
+  }
 }
 
 .mantine-table tbody {
@@ -689,4 +694,46 @@ body {
   .desktop-only {
     display: none !important;
   }
+}
+
+/* 状態表示の色を明示 */
+:root {
+  --status-normal-bg: #e8f5e8;
+  --status-normal-text: #2e7d32;
+  --status-warning-bg: #ffebee;
+  --status-warning-text: #d32f2f;
+  --status-waiting-bg: #fffde7;
+  --status-waiting-text: #fbc02d;
+}
+
+.mantine-table td[data-label="状態"] span.status-normal {
+  background: var(--status-normal-bg);
+  color: var(--status-normal-text);
+}
+.mantine-table td[data-label="状態"] span.status-warning {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+.mantine-table td[data-label="状態"] span.status-waiting {
+  background: var(--status-waiting-bg);
+  color: var(--status-waiting-text);
+}
+
+/* 入力エラー時の色コントラスト強化 */
+.mantine-input:invalid, .mantine-input.input-error {
+  border-color: #d32f2f !important;
+  background: #ffebee !important;
+  color: #b71c1c !important;
+}
+
+/* アラートのrole明示用 */
+.mantine-alert[role="alert"] {
+  outline: 2px solid #d32f2f;
+  outline-offset: 2px;
+}
+
+/* フォーカス強調 */
+.mantine-input:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
 }
