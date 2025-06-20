@@ -991,16 +991,16 @@
       if (loading) {
         return (
           <>
-            <div className="MuiAppBar-root">
-              <button onClick={handleBackButton} className="MuiButton-root" aria-label="戻る">
+            <div className="app-header">
+              <button onClick={handleBackButton} className="back-button" aria-label="戻る">
                 &lt;
               </button>
-              <h1 className="MuiTypography-root app-title">検針情報</h1>
+              <h1 className="header-title">検針情報</h1>
             </div>
-            <div className="MuiContainer-root content-area">
-              <div className="MuiStack-root" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
-                <div className="MuiCircularProgress-root"></div>
-                <p className="MuiTypography-root">検針データを読み込んでいます...</p>
+            <div className="content-area mantine-container">
+              <div className="mantine-stack center">
+                <div className="mantine-loader"></div>
+                <p className="mantine-text">検針データを読み込んでいます...</p>
               </div>
             </div>
           </>
@@ -1011,17 +1011,17 @@
       if (error) {
         return (
           <>
-            <div className="MuiAppBar-root">
-              <button onClick={handleBackButton} className="MuiButton-root" aria-label="戻る">
+            <div className="app-header">
+              <button onClick={handleBackButton} className="back-button" aria-label="戻る">
                 &lt;
               </button>
-              <h1 className="MuiTypography-root app-title">検針情報</h1>
+              <h1 className="header-title">検針情報</h1>
             </div>
-            <div className="MuiContainer-root content-area">
-              <div className="MuiStack-root">
-                <div className="MuiAlert-root">
-                  <h3 className="MuiTypography-root" style={{fontWeight: 600}}>エラー</h3>
-                  <p className="MuiTypography-root">{error}</p>
+            <div className="content-area mantine-container">
+              <div className="mantine-stack">
+                <div className="mantine-alert">
+                  <h3 className="mantine-text weight-600">エラー</h3>
+                  <p className="mantine-text">{error}</p>
                 </div>
               </div>
             </div>
@@ -1033,25 +1033,23 @@
       return (
         <>
           {isNavigating && <LoadingOverlay message={navigationMessage} />}
-          <div className="MuiAppBar-root">
-            <button onClick={handleBackButton} className="MuiButton-root" aria-label="戻る">
+          <div className="app-header">
+            <button onClick={handleBackButton} className="back-button" aria-label="戻る">
               &lt;
             </button>
-            <h1 className="MuiTypography-root app-title">検針情報</h1>
+            <h1 className="header-title">検針情報</h1>
           </div>
 
-          <div className="MuiContainer-root content-area">
-            <div className="MuiStack-root">
-              <div className="MuiCard-root MuiCardContent-root">
-                <h2 className="MuiTypography-root property-name">{propertyName}</h2>
-                <p className="MuiTypography-root room-info">部屋: {roomName}</p>
-              </div>
-              <div className="MuiPaper-root reading-history-container" style={{padding: 'var(--mui-spacing-1)', margin: '0'}}>
-                <h3 className="MuiTypography-root desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mui-spacing-2)' }}>検針履歴</h3>
+          <div className="content-area mantine-container">
+            <div className="mantine-stack">
+              <div className="property-info-card">
+                <h2 className="property-name">{propertyName}</h2>
+                <p className="room-info">部屋: {roomName}</p>
+              </div>              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>                <h3 className="mantine-subtitle desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
 
                 {Array.isArray(meterReadings) && meterReadings.length > 0 && 
                  meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) ? (
-                  <table className="MuiTable-root">
+                  <table className="mantine-table">
                     <thead style={{ display: 'none' }}>
                       <tr>
                         <th>検針日時</th>
@@ -1082,7 +1080,7 @@
                           <tr key={index}>
                             <td data-label="検針日時">
                               <span style={{
-                                color: inspectionStatus.status === '未検針' ? 'var(--mui-palette-error-main)' : 'inherit',
+                                color: inspectionStatus.status === '未検針' ? 'var(--mantine-color-red-6)' : 'inherit',
                                 fontWeight: inspectionStatus.status === '未検針' ? 'bold' : 'normal'
                               }}>
                                 最終検針日時: {inspectionStatus.status === '未検針' ? '未検針' : inspectionStatus.displayDate}
@@ -1098,7 +1096,7 @@
                                 data-date={dateForDataAttribute} 
                                 data-original-value={formatReading(reading.currentReading)} 
                                 data-previous-reading={formatReading(reading.previousReading)} 
-                                className="MuiTextField-root" 
+                                className="mantine-input" 
                                 onChange={(e) => {
                                   const currentValue = e.target.value;
                                   const previousValue = formatReading(reading.previousReading);
@@ -1110,7 +1108,7 @@
                                     setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: calculateUsageDisplay(currentValue, previousValue) }));
                                   } else if (isNaN(numericValue) || numericValue < 0) {
                                     setInputErrors(prev => ({...prev, [dateForDataAttribute]: '0以上の数値を入力'}));
-                                    e.target.style.borderColor = 'var(--mui-palette-error-main)';
+                                    e.target.style.borderColor = 'var(--mantine-color-red-6)';
                                     setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' }));
                                   } else {
                                     setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
@@ -1143,7 +1141,7 @@
                               />
                               {inputErrors[dateForDataAttribute] && (
                                 <div style={{ 
-                                  color: 'var(--mui-palette-error-main)', 
+                                  color: 'var(--mantine-color-red-6)', 
                                   fontSize: '0.9em', 
                                   marginTop: '4px' 
                                 }}>
@@ -1155,24 +1153,24 @@
                               {usageDisplayString}
                             </td>
                             <td data-label="状態">
-                              <span className="MuiChip-root" style={{ 
+                              <span style={{ 
                                 display: 'inline-block', 
                                 padding: '3px 9px', 
                                 fontSize: '0.9em', 
                                 fontWeight: 500, 
                                 backgroundColor: (() => {
                                   const status = getStatusDisplay(reading);
-                                  if (status === '要確認') return 'var(--mui-palette-error-light)';
-                                  if (status === '正常') return 'var(--mui-palette-success-light)';
-                                  return 'var(--mui-palette-grey-200)';
+                                  if (status === '要確認') return 'var(--mantine-color-red-light)';
+                                  if (status === '正常') return 'var(--mantine-color-green-light)';
+                                  return 'var(--mantine-color-gray-2)';
                                 })(),
                                 color: (() => {
                                   const status = getStatusDisplay(reading);
-                                  if (status === '要確認') return 'var(--mui-palette-error-main)';
-                                  if (status === '正常') return 'var(--mui-palette-success-main)';
-                                  return 'var(--mui-palette-grey-900)';
+                                  if (status === '要確認') return 'var(--mantine-color-red-8)';
+                                  if (status === '正常') return 'var(--mantine-color-green-8)';
+                                  return 'var(--mantine-color-gray-7)';
                                 })(),
-                                borderRadius: '12px' 
+                                borderRadius: 'var(--mantine-radius-sm)' 
                               }}>
                                 {getStatusDisplay(reading)}
                                 {(() => {
@@ -1191,7 +1189,7 @@
                                   {previousReadingsInfo.map((info, infoIndex) => (
                                     <div 
                                       key={infoIndex} 
-                                      className="MuiTypography-root previous-reading-text"
+                                      className="previous-reading-text"
                                       style={{ 
                                         marginBottom: infoIndex < previousReadingsInfo.length - 1 ? '6px' : '0'
                                       }}
@@ -1210,30 +1208,30 @@
                     </tbody>
                   </table>
                 ) : (
-                  <div className="MuiStack-root">
-                    <div className="MuiAlert-root MuiAlert-info">
-                      <h3 className="MuiTypography-root" style={{fontWeight: 600}}>初回検針</h3>
+                  <div className="mantine-stack">
+                    <div className="mantine-alert info">
+                      <h3 className="mantine-text weight-600">初回検針</h3>
                     </div>
-                    <div className="MuiPaper-root" style={{marginTop: 'var(--mui-spacing-2)', padding: 'var(--mui-spacing-2)'}}>
-                      <h4 className="MuiTypography-root" style={{marginBottom: 'var(--mui-spacing-1)'}}>初回データ入力</h4>
-                      <div className="MuiStack-root" style={{gap: 'var(--mui-spacing-3)'}}>
+                    <div className="mantine-paper" style={{marginTop: 'var(--mantine-spacing-md)', padding: 'var(--mantine-spacing-md)'}}>
+                      <h4 className="mantine-subtitle" style={{marginBottom: 'var(--mantine-spacing-sm)'}}>初回データ入力</h4>
+                      <div className="mantine-stack" style={{gap: 'var(--mantine-spacing-lg)'}}>
                         <div>
-                          <label htmlFor="initialReadingDate" className="MuiTypography-root" style={{fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日時:</label>
+                          <label htmlFor="initialReadingDate" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>検針日時:</label>
                           <input 
                             type="text" 
                             id="initialReadingDate" 
                             value="未検針" 
                             readOnly 
-                            className="MuiTextField-root" 
+                            className="mantine-input" 
                             style={{fontSize: '1rem', padding: '10px'}} 
                           />
                         </div>
                         <div>
-                          <label htmlFor="initialReadingValue" className="MuiTypography-root" style={{fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
+                          <label htmlFor="initialReadingValue" className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回指示数(㎥):</label>
                           <input
                             type="number"
                             id="initialReadingValue"
-                            className="MuiTextField-root"
+                            className="mantine-input"
                             placeholder="指示数入力"
                             min="0"
                             step="any"
@@ -1246,11 +1244,11 @@
                               const numericValue = parseFloat(e.target.value);
                               if (e.target.value === '') {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: '初回検針では指示数の入力が必須です。'}));
-                                  e.target.style.borderColor = 'var(--mui-palette-error-main)';
+                                  e.target.style.borderColor = 'var(--mantine-color-red-6)';
                                   setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' }));
                               } else if (isNaN(numericValue) || numericValue < 0) {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: '0以上の数値を入力してください。'}));
-                                  e.target.style.borderColor = 'var(--mui-palette-error-main)';
+                                  e.target.style.borderColor = 'var(--mantine-color-red-6)';
                                   setUsageStates(prev => ({ ...prev, [dateForDataAttribute]: '-' }));
                               } else {
                                   setInputErrors(prev => ({...prev, [dateForDataAttribute]: ''}));
@@ -1260,21 +1258,21 @@
                             }}
                           />
                           {inputErrors[""] && (
-                            <div style={{ color: 'var(--mui-palette-error-main)', fontSize: '0.9em', marginTop: '4px' }}>
+                            <div style={{ color: 'var(--mantine-color-red-6)', fontSize: '0.9em', marginTop: '4px' }}>
                               {inputErrors[""]}
                             </div>
                           )}
                         </div>
                         <div>
-                          <label className="MuiTypography-root" style={{fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回使用量:</label>
+                          <label className="mantine-text weight-600" style={{fontSize: '0.9rem', marginBottom: '4px', display: 'block'}}>今回使用量:</label>
                           <div style={{
-                            backgroundColor: 'var(--mui-palette-primary-50)',
-                            border: '1px solid var(--mui-palette-grey-300)',
-                            borderRadius: '12px',
+                            backgroundColor: '#e3f2fd',
+                            border: '1px solid var(--mantine-color-gray-3)',
+                            borderRadius: 'var(--mantine-radius-sm)',
                             padding: '10px',
                             fontSize: '1.2rem',
                             fontWeight: 'bold',
-                            color: 'var(--mui-palette-primary-dark)',
+                            color: 'var(--mantine-color-blue-7)',
                             minHeight: '44px',
                             display: 'flex',
                             alignItems: 'center'
@@ -1283,7 +1281,7 @@
                               ? `${usageStates[""]}${usageStates[""] !== '-' ? '㎥' : ''}`
                               : '-'}
                           </div>
-                          <div style={{ fontSize: '0.85em', color: 'var(--mui-palette-grey-600)', marginTop: '4px' }}>
+                          <div style={{ fontSize: '0.85em', color: 'var(--mantine-color-gray-6)', marginTop: '4px' }}>
                             ※初回検針では、指示数がそのまま使用量になります
                           </div>
                         </div>
@@ -1297,7 +1295,7 @@
             {(!loading && !error) && (
               <div className="fab-container" style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1001}}>
                 <button
-                  className="MuiButton-root fab-button"
+                  className="fab-button mantine-button variant-filled"
                   onClick={handleUpdateReadings}
                   disabled={updating || isNavigating}                  title={Array.isArray(meterReadings) && meterReadings.length > 0 && 
                          meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) 
@@ -1313,7 +1311,7 @@
                       justifyContent: 'center'
                   }}
                 >
-                  {updating ? <div className="MuiCircularProgress-root" style={{width: '32px', height: '32px', borderTopColor: 'white'}}></div> : '💾'}
+                  {updating ? <div className="mantine-loader" style={{width: '32px', height: '32px', borderTopColor: 'white'}}></div> : '💾'}
                 </button>
               </div>
             )}
@@ -1332,10 +1330,10 @@
                 justifyContent: 'center'
               }}>
                 <div style={{
-                  backgroundColor: 'var(--mui-palette-primary-main)',
+                  backgroundColor: 'var(--mantine-color-blue-6)',
                   color: 'white',
                   padding: '24px 32px',
-                  borderRadius: '16px',
+                  borderRadius: 'var(--mantine-radius-lg)',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                   fontSize: '1.2rem',
                   fontWeight: '600',
