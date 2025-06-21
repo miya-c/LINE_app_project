@@ -444,6 +444,30 @@
       const [navigationMessage, setNavigationMessage] = React.useState('');
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbzzK3mKFuP8KT5l_irp0kMPJv4-zZUUQSCG2ssVYlTmg9wtDwSZUAJ3eIQD1vbH4jKXQQ/exec';
 
+      // ページ復元時のローディング強制解除
+      React.useEffect(() => {
+        const handleForceHideLoading = () => {
+          console.log('[property_select] React - 強制ローディング解除イベント受信');
+          setLoading(false);
+          setError(null);
+          setIsNavigating(false);
+          setNavigationMessage('');
+        };
+
+        // ページshow時のグローバルフラグチェック
+        if (window.forceHideLoading) {
+          handleForceHideLoading();
+          window.forceHideLoading = false;
+        }
+
+        // カスタムイベントリスナー
+        window.addEventListener('forceHideLoading', handleForceHideLoading);
+        
+        return () => {
+          window.removeEventListener('forceHideLoading', handleForceHideLoading);
+        };
+      }, []);
+
       // 検針完了日フォーマット関数
       const formatCompletionDate = (dateStr) => {
         if (!dateStr || dateStr.trim() === '') {
@@ -1173,6 +1197,9 @@
     
     // ページ表示時にローディングを必ず非表示にする（ブラウザの戻る対応）
     function hideLoadingOnPageShow() {
+      console.log('[property_select] pageshow イベント - ローディング強制解除開始');
+      
+      // DOM要素の直接操作
       const loadingElements = document.querySelectorAll('.loading-container, .mantine-loader, .MuiCircularProgress-root');
       loadingElements.forEach(element => {
         if (element) {
@@ -1184,14 +1211,31 @@
         }
       });
       
+      // Root要素のローディングクラス削除
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        rootElement.classList.remove('styles-loading');
+        rootElement.classList.add('styles-loaded');
+      }
+      
       // Body操作ブロック解除
       document.body.style.overflow = '';
       document.body.style.pointerEvents = '';
+      
+      // React側のローディング状態もリセット（グローバルに設定）
+      window.forceHideLoading = true;
+      
+      console.log('[property_select] pageshow イベント - ローディング強制解除完了');
     }
 
     // ページ復元時にも初期化（ブラウザの戻るボタン対応）
     window.addEventListener('pageshow', function(event) {
       hideLoadingOnPageShow();
+      
+      // React側にイベント通知
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceHideLoading'));
+      }, 100);
     });
   </script>
 </body>
