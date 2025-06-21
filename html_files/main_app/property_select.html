@@ -608,16 +608,83 @@
           } catch (fetchError) {
             console.error('[ReactApp] ❌ 物件データ取得エラー:', fetchError);
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
-          } finally {
-            console.log('[ReactApp] 🏁 データ取得処理完了 - ローディング終了');
+            // エラー時は即座にローディング解除
             setLoading(false);
+          } finally {
+            console.log('[ReactApp] 🏁 データ取得処理完了 - 描画準備完了');
             setIsFetched(true); // ← 追加：データ取得処理完了
-            console.log('[ReactApp] 📊 最終状態:', { loading: false, isFetched: true });
+            console.log('[ReactApp] 📊 中間状態:', { loading: '描画待ち', isFetched: true });
+            // ローディング解除は描画完了後に行う（useEffectで制御）
           }
         };
 
         fetchProperties();
       }, [gasWebAppUrl]);
+
+      // 描画完了を検知してローディングを解除するuseEffect
+      React.useEffect(() => {
+        // データ取得が完了し、ローディング中の場合のみ描画完了を監視
+        if (isFetched && loading) {
+          console.log('[ReactApp] 🎨 描画完了監視開始 - 物件数:', properties.length, 'フィルタ後:', filteredProperties.length);
+          
+          // フィルタリング後の物件数を基準に描画を監視
+          const expectedCount = filteredProperties.length;
+          
+          if (expectedCount === 0) {
+            // 表示する物件がない場合は即座にローディング解除
+            console.log('[ReactApp] 📭 表示物件0件 - 即座にローディング解除');
+            setLoading(false);
+            return;
+          }
+          
+          // requestAnimationFrameを使用して次の描画フレームまで待機
+          const checkRenderingComplete = () => {
+            requestAnimationFrame(() => {
+              // 物件リストが実際にDOMに描画されているかチェック
+              const propertyElements = document.querySelectorAll('.MuiCard-root, .property-card, [data-property-id]');
+              console.log('[ReactApp] 🔍 描画要素チェック:', {
+                expectedCount: expectedCount,
+                renderedCount: propertyElements.length,
+                elementsFound: propertyElements.length > 0,
+                searchSelectors: '.MuiCard-root, .property-card, [data-property-id]',
+                renderingComplete: propertyElements.length >= expectedCount
+              });
+              
+              // 期待される数の物件要素が描画されている場合
+              if (propertyElements.length >= expectedCount && expectedCount > 0) {
+                // さらにもう1フレーム待って確実に描画を完了させる
+                requestAnimationFrame(() => {
+                  console.log('[ReactApp] ✅ 描画完了確認 - ローディング解除');
+                  setLoading(false);
+                  console.log('[ReactApp] 📊 最終状態:', { 
+                    loading: false, 
+                    isFetched: true, 
+                    renderedElements: propertyElements.length,
+                    expectedElements: expectedCount
+                  });
+                });
+              } else {
+                // 要素がまだ描画されていない場合、短時間後に再チェック
+                console.log('[ReactApp] ⏳ 描画未完了 - 再チェック予約');
+                setTimeout(checkRenderingComplete, 50);
+              }
+            });
+          };
+          
+          // フォールバック: 3秒後に強制的にローディングを解除
+          const fallbackTimeout = setTimeout(() => {
+            console.log('[ReactApp] ⚠️ 描画完了タイムアウト - フォールバックによるローディング解除');
+            setLoading(false);
+          }, 3000);
+          
+          checkRenderingComplete();
+          
+          // クリーンアップ関数でタイムアウトをクリア
+          return () => {
+            clearTimeout(fallbackTimeout);
+          };
+        }
+      }, [isFetched, loading, filteredProperties.length]);
 
       const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
@@ -1121,6 +1188,7 @@
                 {filteredProperties.map((property, index) => (
                   <div 
                     key={property.id} 
+                    data-property-id={property.id}
                     className={`MuiCard-root ${(loading || isNavigating) ? 'MuiCard-disabled' : ''}`}
                     onClick={() => !(loading || isNavigating) && handlePropertySelect(property)}
                     style={{
