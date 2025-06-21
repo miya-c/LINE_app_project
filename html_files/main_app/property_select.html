@@ -611,15 +611,19 @@
             setProperties(normalizedData);
             console.log('[ReactApp] ✅ 物件データ設定完了 - プロパティ数:', normalizedData.length);
             
+            // データ設定完了後、描画完了検知のためにローディング状態を復元
+            console.log('[ReactApp] 🔄 描画完了検知のためローディング状態復元');
+            setLoading(true);
+            
           } catch (fetchError) {
             console.error('[ReactApp] ❌ 物件データ取得エラー:', fetchError);
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
             // エラー時は即座にローディング解除
             setLoading(false);
           } finally {
-            console.log('[ReactApp] 🏁 データ取得処理完了 - 描画準備完了');
+            console.log('[ReactApp] 🏁 データ取得処理完了');
             setIsFetched(true); // ← 追加：データ取得処理完了
-            console.log('[ReactApp] 📊 中間状態:', { loading: '描画待ち', isFetched: true });
+            console.log('[ReactApp] � finally状態:', { isFetched: true });
             // ローディング解除は描画完了後に行う（useEffectで制御）
           }
         };
