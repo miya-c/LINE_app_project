@@ -342,7 +342,7 @@ body {
     overflow: auto;
 }
 
-/* === Material UI Loading Container (ユーザーディスプレイ中央表示) === */
+/* === Material UI Loading Container (ユーザーディスプレイ中央表示&操作ブロック) === */
 .loading-container {
     position: fixed !important;
     top: 0 !important;
@@ -355,15 +355,23 @@ body {
     flex-direction: column;
     gap: var(--mui-spacing-2);
     background-color: rgba(255, 255, 255, 0.95) !important;
-    z-index: 9999 !important;
+    z-index: 2147483647 !important; /* 最大値で最前面 */
+    pointer-events: all !important; /* 背面のクリック・操作を完全ブロック */
+    overflow: hidden !important;
     /* GPU加速とユーザーディスプレイ中央配置を保証 */
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
-    /* スクロール位置やレイアウトの影響を受けないように */
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
 }
+
+/* ローディング中はbodyにoverflow: hidden;を付与することを推奨（JSで制御可） */
+/*
+body.loading {
+    overflow: hidden !important;
+}
+*/
 
 /* === Material UI Circular Progress (Loading) === */
 .MuiCircularProgress-root {
