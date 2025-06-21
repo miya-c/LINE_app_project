@@ -449,10 +449,16 @@
       React.useEffect(() => {
         const handleForceHideLoading = () => {
           console.log('[property_select] React - 強制ローディング解除イベント受信');
-          setLoading(false);
-          setError(null);
-          setIsNavigating(false);
-          setNavigationMessage('');
+          // データ取得完了後は描画完了検知に任せる
+          if (!isFetched) {
+            console.log('[property_select] データ未取得のため強制ローディング解除実行');
+            setLoading(false);
+            setError(null);
+            setIsNavigating(false);
+            setNavigationMessage('');
+          } else {
+            console.log('[property_select] データ取得完了済み - 描画完了検知に任せる');
+          }
         };
 
         // ページshow時のグローバルフラグチェック
@@ -467,7 +473,7 @@
         return () => {
           window.removeEventListener('forceHideLoading', handleForceHideLoading);
         };
-      }, []);
+      }, [isFetched]);
 
       // 検針完了日フォーマット関数
       const formatCompletionDate = (dateStr) => {
@@ -623,6 +629,8 @@
 
       // 描画完了を検知してローディングを解除するuseEffect
       React.useEffect(() => {
+        console.log('[ReactApp] 📐 描画完了監視useEffect実行:', { isFetched, loading });
+        
         // データ取得が完了し、ローディング中の場合のみ描画完了を監視
         if (isFetched && loading) {
           console.log('[ReactApp] 🎨 描画完了監視開始 - 物件数:', properties.length, 'フィルタ後:', filteredProperties ? filteredProperties.length : 0);
@@ -639,6 +647,7 @@
           
           // requestAnimationFrameを使用して次の描画フレームまで待機
           const checkRenderingComplete = () => {
+            console.log('[ReactApp] 🔄 描画フレームチェック開始');
             requestAnimationFrame(() => {
               // 物件リストが実際にDOMに描画されているかチェック
               const propertyElements = document.querySelectorAll('.MuiCard-root, .property-card, [data-property-id]');
