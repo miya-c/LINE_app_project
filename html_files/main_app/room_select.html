@@ -388,21 +388,48 @@
                     throw new Error('必要なパラメータが不足しています');
                 }
                 
-                // 検針完了API呼び出し
-                const completeUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}`;
+                // 検針完了API呼び出し（リトライ機能付き）
+                const currentDateTime = new Date().toISOString();
+                const completeUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}&completedAt=${encodeURIComponent(currentDateTime)}&completedBy=user`;
                 console.log('[room_select] 検針完了API呼び出し:', completeUrl);
                 
-                const response = await fetch(completeUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        propertyId: propertyId,
-                        completedAt: new Date().toISOString(),
-                        completedBy: 'user' // 実際の環境ではユーザー情報を設定
-                    })
-                });
+                let response;
+                let retryCount = 0;
+                const maxRetries = 3;
+                
+                while (retryCount < maxRetries) {
+                    try {
+                        // タイムアウト制御
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Request timeout')), 30000)
+                        );
+                        
+                        const fetchPromise = fetch(completeUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                            }
+                        });
+                        
+                        response = await Promise.race([fetchPromise, timeoutPromise]);
+                        
+                        if (response.ok) {
+                            break; // 成功したのでループを抜ける
+                        } else {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                    } catch (fetchError) {
+                        retryCount++;
+                        console.warn(`[room_select] API呼び出し失敗 (試行 ${retryCount}/${maxRetries}):`, fetchError.message);
+                        
+                        if (retryCount >= maxRetries) {
+                            throw new Error(`API呼び出しに失敗しました (${maxRetries}回試行): ${fetchError.message}`);
+                        }
+                        
+                        // 1秒待機してリトライ
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
                 
                 console.log('[room_select] 検針完了APIレスポンス:', response.status, response.ok);
                 

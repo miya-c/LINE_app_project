@@ -3,9 +3,31 @@
  */
 
 function createCorsJsonResponse(data) {
-  return ContentService
+  const response = ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+  
+  // CORSヘッダーを明示的に設定
+  response.setHeaders({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    'Access-Control-Max-Age': '86400'
+  });
+  
+  return response;
+}
+
+/**
+ * OPTIONSリクエスト（プリフライト）の処理
+ */
+function doOptions(e) {
+  return createCorsJsonResponse({ 
+    success: true, 
+    message: 'CORS preflight request handled',
+    timestamp: new Date().toISOString(),
+    method: 'OPTIONS'
+  });
 }
 
 function doGet(e) {
@@ -145,10 +167,22 @@ function doGet(e) {
         }
 
         try {
+          // 追加のパラメータを取得（オプション）
+          const completedAt = e.parameter.completedAt || new Date().toISOString();
+          const completedBy = e.parameter.completedBy || 'user';
+          
+          console.log(`[completeInspection] 処理開始 - propertyId: ${e.parameter.propertyId}, completedAt: ${completedAt}, completedBy: ${completedBy}`);
+          
           const result = completePropertyInspection(e.parameter.propertyId);
+          
+          // 追加情報をログに記録
+          if (result.success) {
+            console.log(`[completeInspection] 成功 - ${result.message}`);
+          }
+          
           return createCorsJsonResponse(result);
         } catch (error) {
-          Logger.log(`[web_app_api] completePropertyInspectionエラー: ${error.message}`);
+          Logger.log(`[web_app_api] completeInspectionエラー: ${error.message}`);
           return createCorsJsonResponse({
             success: false,
             error: `検針完了処理に失敗しました: ${error.message}`
