@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/index.html"
+      "destination": "/html_files/main_app/index.html"
     },
     {
       "source": "/property_select",
