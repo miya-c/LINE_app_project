@@ -129,11 +129,11 @@
             }
         }
 
-        // エラーメッセージ表示
+        // エラーメッセージ表示 - React Error #418対策
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
-            errorText.textContent = message;
+            errorText.textContent = String(message || 'エラーが発生しました');
             errorDiv.style.display = 'flex';
         }
 
@@ -312,19 +312,19 @@
                   (room.readingStatus === 'completed' || room.isCompleted ? ' status-completed' : ' status-pending');
                 card.setAttribute('tabindex', '0');
                 card.setAttribute('role', 'button');
-                card.setAttribute('aria-label', `${room.name || room['部屋名'] || room.id || '不明'} ${room.readingStatus === 'completed' ? '検針済み' : '未検針'}`);
-                // 1行表示
+                card.setAttribute('aria-label', `${String(room.name || room['部屋名'] || room.id || '不明')} ${room.readingStatus === 'completed' ? '検針済み' : '未検針'}`);
+                // 1行表示 - React Error #418対策（値の安全化）
                 card.innerHTML = `
                   <div class="MuiCardContent-root room-info-row">
                     <span class="material-icons MuiSvgIcon-root status-icon" aria-hidden="true" style="color:${room.readingStatus === 'completed' ? '#2e7d32' : '#ed6c02'};">
                       ${room.readingStatus === 'completed' ? 'check_circle' : 'warning'}
                     </span>
-                    <span class="MuiTypography-root MuiTypography-h6 room-name">${room.name || room['部屋名'] || room.id || '不明'}</span>
-                    <span class="MuiTypography-root MuiTypography-body2 room-status">${room.readingStatus === 'completed' && room.readingDateFormatted ? `検針済み：${room.readingDateFormatted}` : '未検針'}</span>
+                    <span class="MuiTypography-root MuiTypography-h6 room-name">${String(room.name || room['部屋名'] || room.id || '不明')}</span>
+                    <span class="MuiTypography-root MuiTypography-body2 room-status">${room.readingStatus === 'completed' && room.readingDateFormatted ? `検針済み：${String(room.readingDateFormatted)}` : '未検針'}</span>
                   </div>
                 `;
                 card.onclick = () => {
-                  const meterReadingUrl = `/meter_reading?propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(room.id)}`;
+                  const meterReadingUrl = `/meter_reading?propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(String(room.id || ''))}`;
                   window.location.href = meterReadingUrl;
                 };
                 addRippleEffect(card);

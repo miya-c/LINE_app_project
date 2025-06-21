@@ -1,11 +1,11 @@
 /**
- * web_app_api.gs - Web App API関数群（setHeaders削除・検針完了対応版）
- * Last Updated: 2025-06-21 14:30:00 JST
- * バージョン: v2.6.0-complete-inspection
+ * web_app_api.gs - Web App API関数群（setHeaders削除・検針完了シンプル版）
+ * Last Updated: 2025-06-21 15:15:00 JST
+ * バージョン: v2.8.0-simple-completion
  */
 
-const API_VERSION = "v2.6.0-complete-inspection";
-const LAST_UPDATED = "2025-06-21 14:30:00 JST";
+const API_VERSION = "v2.8.0-simple-completion";
+const LAST_UPDATED = "2025-06-21 15:15:00 JST";
 
 function createCorsJsonResponse(data) {
   console.log('[createCorsJsonResponse] APIバージョン:', API_VERSION);
@@ -158,18 +158,29 @@ function doGet(e) {
 
         try {
           console.log(`[completeInspection] 処理開始 - propertyId: ${e.parameter.propertyId}`);
+          console.log(`[completeInspection] 🔄 物件マスタ更新処理を実行中...`);
           
-          // 検針完了処理（現在は簡単なレスポンス）
-          const result = {
-            success: true,
-            message: `物件 ${e.parameter.propertyId} の検針完了処理を受け付けました`,
-            propertyId: e.parameter.propertyId,
-            completionDate: new Date().toISOString(),
-            apiVersion: API_VERSION
-          };
+          // 検針完了処理を実行（物件マスタの更新のみ）
+          const result = completePropertyInspectionSimple(e.parameter.propertyId);
           
-          console.log(`[completeInspection] 成功: ${result.message}`);
-          return createCorsJsonResponse(result);
+          if (result.success) {
+            console.log(`[completeInspection] ✅ 成功: ${result.message}`);
+            console.log(`[completeInspection] 📊 詳細情報:`, {
+              propertyId: result.propertyId,
+              completionDate: result.completionDate
+            });
+            
+            // APIバージョン情報を追加
+            result.apiVersion = API_VERSION;
+            result.processedAt = new Date().toISOString();
+            result.processedBy = 'web_app_api';
+            
+            console.log(`[completeInspection] 🚀 レスポンス送信準備完了`);
+            return createCorsJsonResponse(result);
+          } else {
+            console.error(`[completeInspection] ❌ 処理失敗: ${result.error}`);
+            throw new Error(result.error || '検針完了処理に失敗しました');
+          }
           
         } catch (error) {
           console.error(`[completeInspection] エラー: ${error.message}`);

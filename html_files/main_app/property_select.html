@@ -475,9 +475,10 @@
         };
       }, [isFetched]);
 
-      // 検針完了日フォーマット関数
+      // 検針完了日フォーマット関数 - React Error #418 対策
       const formatCompletionDate = (dateStr) => {
-        if (!dateStr || dateStr.trim() === '') {
+        // 確実に文字列を返すための安全化
+        if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') {
           return '';
         }
         
@@ -597,15 +598,26 @@
               });
             }
             
-            // プロパティ名の正規化（日本語フィールド名をサポート）
-            const normalizedData = actualData.map(property => ({
-              ...property,
-              // 既存のcompletionDateがあればそれを保持、なければ検針完了日を使用
-              completionDate: property.completionDate || property['検針完了日'],
-              // idやnameの正規化も追加
-              id: property.id || property['物件ID'],
-              name: property.name || property['物件名']
-            }));
+            // プロパティ名の正規化（日本語フィールド名をサポート）- React Error #418 対策
+            const normalizedData = actualData.map(property => {
+              // 基本情報の安全化（undefinedやnullを防ぐ）
+              const safeProperty = {
+                ...property,
+                // 確実に文字列値になるよう正規化
+                id: String(property.id || property['物件ID'] || ''),
+                name: String(property.name || property['物件名'] || '名称未設定'),
+                completionDate: property.completionDate || property['検針完了日'] || '',
+              };
+              
+              // すべての文字列プロパティを安全化
+              Object.keys(safeProperty).forEach(key => {
+                if (safeProperty[key] === null || safeProperty[key] === undefined) {
+                  safeProperty[key] = '';
+                }
+              });
+              
+              return safeProperty;
+            });
             
             console.log('[ReactApp] 📋 正規化データ設定開始:', normalizedData.length, '件');
             setProperties(normalizedData);
@@ -1086,7 +1098,7 @@
                     margin: 0,
                     color: '#b91c1c'
                   }}>
-                    {error}
+                    {String(error || 'エラーが発生しました')}
                   </div>
                 </div>
               </div>
@@ -1167,7 +1179,7 @@
                     margin: 0,
                     color: '#b91c1c'
                   }}>
-                    {error}
+                    {String(error || 'エラーが発生しました')}
                   </div>
                 </div>
               )}
@@ -1236,27 +1248,30 @@
                               border: '1px solid rgba(0,0,0,0.08)',
                               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                             }}>
-                              ID: {property.id != null ? property.id : 'IDなし'}
+                              ID: {String(property.id || 'IDなし')}
                             </div>
                             
-                            {/* Completion Date Badge */}
-                            {formatCompletionDate(property.completionDate) && (
-                              <div className="MuiChip-root" style={{
-                                backgroundColor: '#e8f5e8',
-                                color: '#2e7d32',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                padding: '6px 10px',
-                                borderRadius: '12px',
-                                border: '1px solid #c8e6c9',
-                                boxShadow: '0 2px 8px rgba(46, 125, 50, 0.15)'
-                              }}>
-                                {formatCompletionDate(property.completionDate)}
-                              </div>
-                            )}
+                            {/* Completion Date Badge - React Error #418対策 */}
+                            {(() => {
+                              const completionText = formatCompletionDate(property.completionDate);
+                              return completionText ? (
+                                <div className="MuiChip-root" style={{
+                                  backgroundColor: '#e8f5e8',
+                                  color: '#2e7d32',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  padding: '6px 10px',
+                                  borderRadius: '12px',
+                                  border: '1px solid #c8e6c9',
+                                  boxShadow: '0 2px 8px rgba(46, 125, 50, 0.15)'
+                                }}>
+                                  {completionText}
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
                           
-                          {/* Property Name */}
+                          {/* Property Name - React Error #418対策 */}
                           <div className="MuiTypography-root" style={{
                             fontSize: '1.125rem',
                             fontWeight: 500,
@@ -1265,7 +1280,7 @@
                             margin: 0,
                             letterSpacing: '0.00938em'
                           }}>
-                            {property.name != null ? property.name : '名称なし'}
+                            {String(property.name || '名称なし')}
                           </div>
                         </div>
                         

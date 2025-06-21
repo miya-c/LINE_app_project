@@ -578,14 +578,124 @@ function updateMeterReadings(propertyId, roomId, readings) {
   }
 }
 
-/**
- * 物件の検針完了日を更新する関数
+/*
+ * 物件の検針完了日を更新する関数（履歴記録機能付き版 - 無効化済み）
  * @param {string} propertyId - 物件ID
  * @returns {Object} 更新結果
- */
+ * 
+ * NOTE: この関数は履歴記録機能を含むため無効化されています
+ *       代わりに completePropertyInspectionSimple() を使用してください
+ *
 function completePropertyInspection(propertyId) {
   try {
     Logger.log(`[completePropertyInspection] 開始 - propertyId: ${propertyId}`);
+    
+    if (!propertyId) {
+      throw new Error('物件IDが指定されていません');
+    }
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertySheet = ss.getSheetByName('物件マスタ');
+    
+    if (!propertySheet) {
+      throw new Error('物件マスタシートが見つかりません');
+    }
+    
+    const data = propertySheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      throw new Error('物件マスタにデータがありません');
+    }
+    
+    const headers = data[0];
+    const propertyIdIndex = headers.indexOf('物件ID');
+    const completionDateIndex = headers.indexOf('検針完了日');
+    
+    if (propertyIdIndex === -1) {
+      throw new Error('物件マスタに「物件ID」列が見つかりません');
+    }
+    
+    if (completionDateIndex === -1) {
+      throw new Error('物件マスタに「検針完了日」列が見つかりません');
+    }
+    
+    // 指定された物件IDの行を検索
+    const targetRowIndex = data.findIndex((row, index) => 
+      index > 0 && String(row[propertyIdIndex]).trim() === String(propertyId).trim()
+    );
+    
+    if (targetRowIndex === -1) {
+      throw new Error(`指定された物件ID「${propertyId}」が物件マスタに見つかりません`);
+    }
+    
+    // 現在のJST日付を取得
+    const currentDate = getCurrentJSTDate();
+    
+    // 検針完了日を更新
+    data[targetRowIndex][completionDateIndex] = currentDate;
+    
+    // 物件名を取得（履歴記録用）
+    const propertyNameIndex = headers.indexOf('物件名');
+    const propertyName = propertyNameIndex !== -1 ? data[targetRowIndex][propertyNameIndex] : '物件名不明';
+    
+    // シートに書き込み
+    propertySheet.clear();
+    propertySheet.getRange(1, 1, data.length, headers.length).setValues(data);
+    
+    // 部屋数を取得（履歴記録用）
+    let completedRoomsCount = 0;
+    try {
+      const roomsData = getRooms(propertyId);
+      completedRoomsCount = roomsData.rooms ? roomsData.rooms.length : 0;
+    } catch (roomError) {
+      Logger.log(`[completePropertyInspection] 部屋数取得エラー: ${roomError.message}`);
+      completedRoomsCount = 0;
+    }
+    
+    // 検針完了履歴を記録
+    const historyResult = recordInspectionCompletionHistory(
+      propertyId, 
+      propertyName, 
+      completedRoomsCount, 
+      'user'
+    );
+    
+    if (!historyResult.success) {
+      Logger.log(`[completePropertyInspection] 履歴記録警告: ${historyResult.error}`);
+    }
+    
+    Logger.log(`[completePropertyInspection] 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
+    
+    return {
+      success: true,
+      message: '検針完了日を更新しました',
+      propertyId: propertyId,
+      propertyName: propertyName,
+      completionDate: currentDate,
+      completedRoomsCount: completedRoomsCount,
+      historyRecorded: historyResult.success,
+      historyRecordId: historyResult.recordId,
+      timestamp: Utilities.formatDate(new Date(), 'JST', 'yyyy-MM-dd HH:mm:ss')
+    };
+    
+  } catch (error) {
+    Logger.log(`[completePropertyInspection] エラー: ${error.message}`);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: Utilities.formatDate(new Date(), 'JST', 'yyyy-MM-dd HH:mm:ss')
+    };
+  }
+}
+*/
+
+/**
+ * 物件の検針完了日を更新する関数（シンプル版）
+ * @param {string} propertyId - 物件ID
+ * @returns {Object} 更新結果
+ */
+function completePropertyInspectionSimple(propertyId) {
+  try {
+    Logger.log(`[completePropertyInspectionSimple] 開始 - propertyId: ${propertyId}`);
     
     if (!propertyId) {
       throw new Error('物件IDが指定されていません');
@@ -634,7 +744,7 @@ function completePropertyInspection(propertyId) {
     propertySheet.clear();
     propertySheet.getRange(1, 1, data.length, headers.length).setValues(data);
     
-    Logger.log(`[completePropertyInspection] 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
+    Logger.log(`[completePropertyInspectionSimple] 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
     
     return {
       success: true,
@@ -645,7 +755,7 @@ function completePropertyInspection(propertyId) {
     };
     
   } catch (error) {
-    Logger.log(`[completePropertyInspection] エラー: ${error.message}`);
+    Logger.log(`[completePropertyInspectionSimple] エラー: ${error.message}`);
     return {
       success: false,
       error: error.message,
@@ -912,3 +1022,81 @@ function getCurrentJSTDate() {
   Logger.log(`[getCurrentJSTDate] 現在のJST日付: ${jstDateString}`);
   return jstDateString;
 }
+
+/*
+ * 検針完了履歴をスプレッドシートに記録する関数
+ * @param {string} propertyId - 物件ID
+ * @param {string} propertyName - 物件名
+ * @param {number} completedRoomsCount - 完了した部屋数
+ * @param {string} completedBy - 完了者
+ * @returns {Object} 記録結果
+ * 
+ * NOTE: この機能は現在無効化されています
+ */
+/*
+function recordInspectionCompletionHistory(propertyId, propertyName, completedRoomsCount, completedBy = 'system') {
+  try {
+    Logger.log(`[recordInspectionCompletionHistory] 開始 - propertyId: ${propertyId}`);
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let historySheet = ss.getSheetByName('検針完了履歴');
+    
+    // 検針完了履歴シートが存在しない場合は作成
+    if (!historySheet) {
+      Logger.log('[recordInspectionCompletionHistory] 検針完了履歴シートを新規作成');
+      historySheet = ss.insertSheet('検針完了履歴');
+      
+      // ヘッダー行を設定
+      const headers = [
+        '完了日時',
+        '物件ID', 
+        '物件名',
+        '完了部屋数',
+        '完了者',
+        '記録ID',
+        '備考'
+      ];
+      historySheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      
+      // ヘッダー行のスタイルを設定
+      const headerRange = historySheet.getRange(1, 1, 1, headers.length);
+      headerRange.setFontWeight('bold');
+      headerRange.setBackground('#e1f5fe');
+      historySheet.setFrozenRows(1);
+    }
+    
+    // 新しい履歴レコードを追加
+    const currentDateTime = getCurrentJSTDate();
+    const recordId = Utilities.getUuid();
+    const newRecord = [
+      currentDateTime,
+      propertyId,
+      propertyName || '物件名不明',
+      completedRoomsCount || 0,
+      completedBy,
+      recordId,
+      `検針完了処理実行`
+    ];
+    
+    // 最終行の次に追加
+    const lastRow = historySheet.getLastRow();
+    historySheet.getRange(lastRow + 1, 1, 1, newRecord.length).setValues([newRecord]);
+    
+    Logger.log(`[recordInspectionCompletionHistory] 履歴記録完了 - ID: ${recordId}`);
+    
+    return {
+      success: true,
+      message: '検針完了履歴を記録しました',
+      recordId: recordId,
+      completionDateTime: currentDateTime
+    };
+    
+  } catch (error) {
+    Logger.log(`[recordInspectionCompletionHistory] エラー: ${error.message}`);
+    return {
+      success: false,
+      error: `履歴記録に失敗しました: ${error.message}`
+    };
+  }
+}
+*/
