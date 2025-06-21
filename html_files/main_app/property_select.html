@@ -1169,36 +1169,29 @@
   <script>
     // PWA機能の初期化
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('[PWA] Property Select page loaded with PWA support');
-      
-      // Service Worker登録（既にpwa-utils.jsで実行されるが、確実性のため）
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('[PWA] Service Worker registered from property select page');
-            })
-            .catch(error => {
-              console.error('[PWA] Service Worker registration failed:', error);
-            });
-        });
-      }
-      
-      // PWAインストール状態の確認
-      if (window.pwaUtils) {
-        const appInfo = window.pwaUtils.getAppInfo();
-        console.log('[PWA] App info:', appInfo);
-        
-        // インストール済みの場合、UI調整
-        if (appInfo.isInstalled) {
-          document.body.classList.add('pwa-installed');
+    });
+    
+    // ページ表示時にローディングを必ず非表示にする（ブラウザの戻る対応）
+    function hideLoadingOnPageShow() {
+      const loadingElements = document.querySelectorAll('.loading-container, .mantine-loader, .MuiCircularProgress-root');
+      loadingElements.forEach(element => {
+        if (element) {
+          element.style.display = 'none';
+          element.style.visibility = 'hidden';
+          element.style.opacity = '0';
+          element.style.pointerEvents = 'none';
+          element.style.zIndex = '-1';
         }
-        
-        // オフライン状態の場合、警告表示
-        if (!appInfo.isOnline) {
-          window.pwaUtils.showNetworkStatus('オフライン', 'warning');
-        }
-      }
+      });
+      
+      // Body操作ブロック解除
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+    }
+
+    // ページ復元時にも初期化（ブラウザの戻るボタン対応）
+    window.addEventListener('pageshow', function(event) {
+      hideLoadingOnPageShow();
     });
   </script>
 </body>
