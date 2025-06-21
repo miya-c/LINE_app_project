@@ -353,12 +353,65 @@
                     <span class="material-icons MuiSvgIcon-root">check_circle</span>
                     <span class="MuiButton-label">この物件の検針を完了する</span>
                 `;
+                console.log('[room_select] 検針完了ボタンを表示');
+            } else {
+                completeBtn.style.display = 'none';
+                console.log('[room_select] 部屋がないため検針完了ボタンを非表示');
             }
         }
 
         async function completeInspection() {
-            // 検針完了機能は削除済み - UIボタンのみ残存
-            alert('検針完了機能は削除されました');
+            console.log('[room_select] 検針完了ボタンクリック');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const propertyId = urlParams.get('propertyId');
+            
+            if (!propertyId) {
+                alert('物件IDが取得できませんでした');
+                return;
+            }
+            
+            if (!gasWebAppUrl) {
+                alert('Web App URLが設定されていません');
+                return;
+            }
+            
+            try {
+                // 現在の日付をYYYY-MM-DD形式で取得
+                const today = new Date();
+                const completionDate = today.getFullYear() + '-' + 
+                    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(today.getDate()).padStart(2, '0');
+                
+                console.log(`[completeInspection] 検針完了処理開始 - 物件ID: ${propertyId}, 完了日: ${completionDate}`);
+                
+                // GAS API呼び出し
+                const response = await fetch(`${gasWebAppUrl}?action=completeInspection&propertyId=${propertyId}&completionDate=${completionDate}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('[completeInspection] API応答:', result);
+                
+                if (result.success) {
+                    alert(`検針完了日を ${completionDate} で保存しました！`);
+                    // ページをリロードして最新状態を反映
+                    window.location.reload();
+                } else {
+                    throw new Error(result.error || '検針完了処理に失敗しました');
+                }
+                
+            } catch (error) {
+                console.error('[completeInspection] エラー:', error);
+                alert(`検針完了処理でエラーが発生しました: ${error.message}`);
+            }
         }
 
         function goBack() {
