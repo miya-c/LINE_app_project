@@ -7,7 +7,19 @@
     
     <!-- PWA メタタグ -->
     <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
-    <meta name="theme-color" content="#007bff">
+    <meta    });
+    addRippleEffect(card);
+    roomGrid.appendChild(card);
+  });
+  
+  console.log('[room_select] 部屋カード作成完了 - 件数:', rooms.length);
+  loading.style.display = 'none';
+  roomGrid.style.display = 'grid';
+  
+  // 正常に完了した場合も操作制限を解除
+  disableLoadingBlock();
+  console.log('[room_select] displayRooms完了 - ローディング解除');
+}me-color" content="#007bff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="メーター読み取り">
@@ -155,11 +167,22 @@
 
         // ローディング終了時の操作ブロック解除
         function disableLoadingBlock() {
+            console.log('[room_select] disableLoadingBlock開始');
             document.body.style.overflow = '';
             document.body.style.pointerEvents = '';
             document.removeEventListener('keydown', blockAllKeyEvents, true);
             document.removeEventListener('keyup', blockAllKeyEvents, true);
             document.removeEventListener('keypress', blockAllKeyEvents, true);
+            
+            // ローディング要素も確実に非表示にする
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+                console.log('[room_select] loading要素を非表示に設定');
+            } else {
+                console.warn('[room_select] loading要素が見つかりません');
+            }
+            console.log('[room_select] disableLoadingBlock完了');
         }
 
         async function loadRoomData() {
@@ -230,16 +253,32 @@
         }
 
         function displayRooms(rooms) {
+  console.log('[room_select] displayRooms開始 - 部屋数:', rooms.length);
   const roomGrid = document.getElementById('roomGrid');
   const loading = document.getElementById('loading');
+  
+  if (!roomGrid) {
+    console.error('[room_select] roomGrid要素が見つかりません');
+    disableLoadingBlock();
+    return;
+  }
+  
+  if (!loading) {
+    console.error('[room_select] loading要素が見つかりません');
+    disableLoadingBlock();
+    return;
+  }
+  
   roomGrid.innerHTML = '';
   if (rooms.length === 0) {
+    console.log('[room_select] 部屋データが0件');
     roomGrid.innerHTML = '<div class="no-rooms-message">部屋データがありません</div>';
     loading.style.display = 'none';
     roomGrid.style.display = 'block';
     
     // 操作制限を解除
     disableLoadingBlock();
+    console.log('[room_select] displayRooms完了（0件）- ローディング解除');
     return;
   }
   const urlParams = new URLSearchParams(window.location.search);
@@ -269,11 +308,14 @@
     addRippleEffect(card);
     roomGrid.appendChild(card);
   });
+  
+  console.log('[room_select] 部屋カード作成完了 - 件数:', rooms.length);
   loading.style.display = 'none';
   roomGrid.style.display = 'grid';
   
   // 正常に完了した場合も操作制限を解除
   disableLoadingBlock();
+  console.log('[room_select] displayRooms完了 - ローディング解除');
 }
 
         function updateCompleteButton(rooms) {
