@@ -356,10 +356,162 @@
             }
         }
 
-        function completeInspection() {
-            console.log('[room_select] 検針完了ボタンクリック');
-            // 検針完了処理を実装してください
-            alert('検針完了処理を実装してください');
+        async function completeInspection() {
+            console.log('[room_select] 検針完了ボタンクリック - 処理開始');
+            
+            try {
+                // ローディング開始
+                enableLoadingBlock();
+                const loadingElement = document.getElementById('loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'flex';
+                    loadingElement.style.visibility = 'visible';
+                    loadingElement.style.opacity = '1';
+                    loadingElement.style.pointerEvents = 'all';
+                    loadingElement.style.zIndex = '9999';
+                    loadingElement.querySelector('.MuiTypography-root').textContent = '検針完了処理中...';
+                }
+                
+                // 完了ボタンを無効化
+                const completeBtn = document.getElementById('completeInspectionBtn');
+                if (completeBtn) {
+                    completeBtn.disabled = true;
+                    completeBtn.style.opacity = '0.6';
+                    completeBtn.style.cursor = 'not-allowed';
+                }
+                
+                const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
+                const urlParams = new URLSearchParams(window.location.search);
+                const propertyId = urlParams.get('propertyId');
+                
+                if (!gasWebAppUrl || !propertyId) {
+                    throw new Error('必要なパラメータが不足しています');
+                }
+                
+                // 検針完了API呼び出し
+                const completeUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}`;
+                console.log('[room_select] 検針完了API呼び出し:', completeUrl);
+                
+                const response = await fetch(completeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        propertyId: propertyId,
+                        completedAt: new Date().toISOString(),
+                        completedBy: 'user' // 実際の環境ではユーザー情報を設定
+                    })
+                });
+                
+                console.log('[room_select] 検針完了APIレスポンス:', response.status, response.ok);
+                
+                if (!response.ok) {
+                    throw new Error(`検針完了処理でエラーが発生しました: ${response.status} ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('[room_select] 検針完了API結果:', result);
+                
+                if (!result.success) {
+                    throw new Error(result.message || '検針完了処理に失敗しました');
+                }
+                
+                // 成功時の処理
+                console.log('[room_select] 検針完了処理成功');
+                
+                // 成功メッセージ表示
+                const successMessage = document.createElement('div');
+                successMessage.className = 'MuiAlert-root MuiAlert-standardSuccess';
+                successMessage.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    padding: 16px;
+                    margin: 16px 0;
+                    border-radius: 16px;
+                    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+                    border: 1px solid #4caf50;
+                    color: #2e7d32;
+                    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.1);
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 10000;
+                    min-width: 300px;
+                    text-align: center;
+                    font-weight: 500;
+                `;
+                successMessage.innerHTML = `
+                    <span class="material-icons" style="margin-right: 8px; color: #4caf50;">check_circle</span>
+                    <span>検針が完了しました！</span>
+                `;
+                document.body.appendChild(successMessage);
+                
+                // 2秒後に成功メッセージを削除し、物件選択画面に戻る
+                setTimeout(() => {
+                    successMessage.remove();
+                    console.log('[room_select] 物件選択画面に戻ります');
+                    window.location.href = 'property_select.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('[room_select] 検針完了処理エラー:', error);
+                
+                // エラーメッセージ表示
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'MuiAlert-root MuiAlert-standardError';
+                errorMessage.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    padding: 16px;
+                    margin: 16px 0;
+                    border-radius: 16px;
+                    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+                    border: 1px solid #fecaca;
+                    color: #b91c1c;
+                    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.1);
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 10000;
+                    min-width: 300px;
+                    text-align: center;
+                    font-weight: 500;
+                `;
+                errorMessage.innerHTML = `
+                    <span class="material-icons" style="margin-right: 8px; color: #f44336;">error</span>
+                    <span>${error.message}</span>
+                `;
+                document.body.appendChild(errorMessage);
+                
+                // 3秒後にエラーメッセージを削除
+                setTimeout(() => {
+                    errorMessage.remove();
+                }, 3000);
+                
+                // 完了ボタンを再有効化
+                const completeBtn = document.getElementById('completeInspectionBtn');
+                if (completeBtn) {
+                    completeBtn.disabled = false;
+                    completeBtn.style.opacity = '1';
+                    completeBtn.style.cursor = 'pointer';
+                }
+                
+            } finally {
+                // ローディング終了
+                const loadingElement = document.getElementById('loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                    loadingElement.style.visibility = 'hidden';
+                    loadingElement.style.opacity = '0';
+                    loadingElement.style.pointerEvents = 'none';
+                    loadingElement.style.zIndex = '-1';
+                }
+                disableLoadingBlock();
+                console.log('[room_select] 検針完了処理終了');
+            }
         }
 
         function goBack() {

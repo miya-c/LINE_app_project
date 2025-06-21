@@ -135,7 +135,7 @@ function doGet(e) {
             error: `データ処理エラー: ${parseError.message}`
           });
         }
-        
+         case 'completeInspection':
       case 'completePropertyInspection':
         if (!e.parameter.propertyId) {
           return createCorsJsonResponse({ 
@@ -143,7 +143,7 @@ function doGet(e) {
             error: 'propertyIdが必要です'
           });
         }
-        
+
         try {
           const result = completePropertyInspection(e.parameter.propertyId);
           return createCorsJsonResponse(result);
@@ -172,15 +172,40 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  // 通常のPOSTリクエスト処理
+  // POST用のAPI処理
   try {
-    // POST用のAPI処理をここに追加可能
     console.log('[doPost] POSTリクエスト処理開始');
+    
+    // URLパラメータからactionを取得
+    const action = e?.parameter?.action;
+    
+    if (action === 'completeInspection' || action === 'completePropertyInspection') {
+      if (!e.parameter.propertyId) {
+        return createCorsJsonResponse({ 
+          success: false,
+          error: 'propertyIdが必要です'
+        });
+      }
+
+      try {
+        const result = completePropertyInspection(e.parameter.propertyId);
+        return createCorsJsonResponse(result);
+      } catch (error) {
+        Logger.log(`[doPost] completePropertyInspectionエラー: ${error.message}`);
+        return createCorsJsonResponse({
+          success: false,
+          error: `検針完了処理に失敗しました: ${error.message}`
+        });
+      }
+    }
+    
+    // その他のPOST処理
     return createCorsJsonResponse({ 
       success: true, 
       message: 'POST request received successfully',
       timestamp: new Date().toISOString(),
-      method: 'POST'
+      method: 'POST',
+      action: action || 'unknown'
     });
   } catch (error) {
     console.error('[doPost] エラー:', error);
