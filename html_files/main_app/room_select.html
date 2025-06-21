@@ -7,19 +7,7 @@
     
     <!-- PWA メタタグ -->
     <meta name="description" content="水道メーターの読み取りを管理するアプリケーション">
-    <meta    });
-    addRippleEffect(card);
-    roomGrid.appendChild(card);
-  });
-  
-  console.log('[room_select] 部屋カード作成完了 - 件数:', rooms.length);
-  loading.style.display = 'none';
-  roomGrid.style.display = 'grid';
-  
-  // 正常に完了した場合も操作制限を解除
-  disableLoadingBlock();
-  console.log('[room_select] displayRooms完了 - ローディング解除');
-}me-color" content="#007bff">
+    <meta name="theme-color" content="#007bff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="メーター読み取り">
@@ -167,60 +155,32 @@
 
         // ローディング終了時の操作ブロック解除
         function disableLoadingBlock() {
-            console.log('[room_select] disableLoadingBlock開始');
             document.body.style.overflow = '';
             document.body.style.pointerEvents = '';
             document.removeEventListener('keydown', blockAllKeyEvents, true);
             document.removeEventListener('keyup', blockAllKeyEvents, true);
             document.removeEventListener('keypress', blockAllKeyEvents, true);
-            
-            // ローディング要素も確実に非表示にする
-            const loadingElement = document.getElementById('loading');
-            if (loadingElement) {
-                loadingElement.style.display = 'none';
-                console.log('[room_select] loading要素を非表示に設定');
-            } else {
-                console.warn('[room_select] loading要素が見つかりません');
-            }
-            console.log('[room_select] disableLoadingBlock完了');
         }
 
         async function loadRoomData() {
+            let rooms = [];
             try {
-                // ローディング開始時に操作を完全にブロック
                 enableLoadingBlock();
-                
-                // 関数内でURLとパラメータを再取得
                 const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
                 const urlParams = new URLSearchParams(window.location.search);
                 const propertyId = urlParams.get('propertyId');
-                
-                console.log('[room_select] loadRoomData開始:', {
-                    gasWebAppUrl: gasWebAppUrl ? 'あり' : 'なし',
-                    propertyId: propertyId
-                });
-                
                 if (!gasWebAppUrl || !propertyId) {
                     throw new Error('必要なパラメータが不足しています');
                 }
-                
                 const fetchUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${encodeURIComponent(propertyId)}`;
-                console.log('[room_select] API呼び出しURL:', fetchUrl);
-                
                 const response = await fetch(fetchUrl);
-                
                 if (!response.ok) {
                     throw new Error(`API呼び出しに失敗しました: ${response.status}`);
                 }
-                
                 const data = await response.json();
-                console.log('[room_select] API応答:', data);
-                
                 if (!data.success) {
                     throw new Error(data.error || 'データの取得に失敗しました');
                 }
-                
-                // 物件名表示（複数パターンに対応）
                 let propertyName = '物件名不明';
                 if (data.data) {
                     propertyName = data.data.propertyName
@@ -230,55 +190,29 @@
                         || '物件名不明';
                 }
                 document.getElementById('propertyName').textContent = propertyName;
-                
-                // 部屋リスト取得
-                const rooms = (data.data && Array.isArray(data.data.rooms)) ? data.data.rooms : [];
+                rooms = (data.data && Array.isArray(data.data.rooms)) ? data.data.rooms : [];
                 if (!Array.isArray(rooms)) {
                     throw new Error('部屋データの取得に失敗しました（roomsが配列ではありません）');
                 }
-                // 部屋表示
                 displayRooms(rooms);
-                
-                // 完了ボタン表示判定
                 updateCompleteButton(rooms);
-                
             } catch (error) {
                 console.error('[room_select] エラー:', error);
                 showError(error.message);
+            } finally {
+                // 必ずローディング解除
                 document.getElementById('loading').style.display = 'none';
-                
-                // エラー時も操作制限を解除
                 disableLoadingBlock();
             }
         }
 
         function displayRooms(rooms) {
-  console.log('[room_select] displayRooms開始 - 部屋数:', rooms.length);
   const roomGrid = document.getElementById('roomGrid');
   const loading = document.getElementById('loading');
-  
-  if (!roomGrid) {
-    console.error('[room_select] roomGrid要素が見つかりません');
-    disableLoadingBlock();
-    return;
-  }
-  
-  if (!loading) {
-    console.error('[room_select] loading要素が見つかりません');
-    disableLoadingBlock();
-    return;
-  }
-  
   roomGrid.innerHTML = '';
   if (rooms.length === 0) {
-    console.log('[room_select] 部屋データが0件');
     roomGrid.innerHTML = '<div class="no-rooms-message">部屋データがありません</div>';
-    loading.style.display = 'none';
     roomGrid.style.display = 'block';
-    
-    // 操作制限を解除
-    disableLoadingBlock();
-    console.log('[room_select] displayRooms完了（0件）- ローディング解除');
     return;
   }
   const urlParams = new URLSearchParams(window.location.search);
@@ -308,14 +242,8 @@
     addRippleEffect(card);
     roomGrid.appendChild(card);
   });
-  
-  console.log('[room_select] 部屋カード作成完了 - 件数:', rooms.length);
   loading.style.display = 'none';
   roomGrid.style.display = 'grid';
-  
-  // 正常に完了した場合も操作制限を解除
-  disableLoadingBlock();
-  console.log('[room_select] displayRooms完了 - ローディング解除');
 }
 
         function updateCompleteButton(rooms) {
