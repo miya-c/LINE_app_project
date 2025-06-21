@@ -147,54 +147,28 @@ function doGet(e) {
         
       case 'completeInspection':
       case 'completePropertyInspection':
-        console.log(`[検針完了] 処理開始 - 物件ID: ${e.parameter.propertyId}`);
+        console.log(`[検針完了] 機能を実行します`);
         
-        if (!e.parameter.propertyId) {
-          return createCorsJsonResponse({ 
+        const propertyId = e.parameter.propertyId;
+        const completionDate = e.parameter.completionDate;
+        
+        if (!propertyId) {
+          return createCorsJsonResponse({
             success: false,
-            error: 'propertyIdが必要です'
+            error: 'propertyIdが必要です',
+            apiVersion: API_VERSION
           });
         }
-
+        
         try {
-          // 検針完了処理を実行（現在日付を追加）
-          const completionDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD形式
-          console.log(`[検針完了] 完了日: ${completionDate}`);
-          const result = completePropertyInspectionSimple(e.parameter.propertyId, completionDate);
-          
-          if (result.success) {
-            console.log(`[検針完了] 成功: ${result.message}`);
-            return createCorsJsonResponse(result);
-          } else {
-            console.log(`[検針完了] 失敗: ${result.error}`);
-            return createCorsJsonResponse(result);
-          }
-          
+          const result = completePropertyInspectionSimple(propertyId, completionDate);
+          return createCorsJsonResponse(result);
         } catch (error) {
           console.error(`[検針完了] エラー: ${error.message}`);
           return createCorsJsonResponse({
             success: false,
             error: `検針完了処理に失敗しました: ${error.message}`,
             apiVersion: API_VERSION
-          });
-        }
-        
-      case 'completePropertyInspection_OLD':
-        if (!e.parameter.propertyId) {
-          return createCorsJsonResponse({ 
-            success: false,
-            error: 'propertyIdが必要です'
-          });
-        }
-        
-        try {
-          const result = completePropertyInspection(e.parameter.propertyId);
-          return createCorsJsonResponse(result);
-        } catch (error) {
-          Logger.log(`[web_app_api] completePropertyInspectionエラー: ${error.message}`);
-          return createCorsJsonResponse({
-            success: false,
-            error: `検針完了処理に失敗しました: ${error.message}`
           });
         }
         
@@ -291,15 +265,32 @@ function doPost(e) {
   try {
     const params = JSON.parse(e.postData && e.postData.contents ? e.postData.contents : '{}');
     const action = params.action || (e.parameter && e.parameter.action);
+    
     if (action === 'completeInspection') {
       const propertyId = params.propertyId || (e.parameter && e.parameter.propertyId);
       const completionDate = params.completionDate || (e.parameter && e.parameter.completionDate);
+      
       if (!propertyId) {
-        return createCorsJsonResponse({ success: false, error: 'propertyIdが必要です' });
+        return createCorsJsonResponse({ 
+          success: false, 
+          error: 'propertyIdが必要です' 
+        });
       }
-      const result = completePropertyInspectionSimple(propertyId, completionDate);
-      return createCorsJsonResponse(result);
+      
+      try {
+        const result = completePropertyInspectionSimple(propertyId, completionDate);
+        return createCorsJsonResponse(result);
+      } catch (error) {
+        console.error(`[doPost] 検針完了エラー: ${error.message}`);
+        return createCorsJsonResponse({
+          success: false,
+          error: `検針完了処理に失敗しました: ${error.message}`,
+          timestamp: new Date().toISOString(),
+          method: 'POST'
+        });
+      }
     }
+    
     // 通常のPOSTリクエスト処理
     console.log('[doPost] POSTリクエスト処理開始');
     return createCorsJsonResponse({ 
