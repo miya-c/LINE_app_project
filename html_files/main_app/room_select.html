@@ -288,14 +288,9 @@
                 console.log('[room_select] 部屋データが0件のため、メッセージ表示');
                 roomGrid.innerHTML = '<div class="no-rooms-message">部屋データがありません</div>';
                 roomGrid.style.display = 'block';
-                // 部屋データが0件の場合もローディング完全非表示
                 if (loading) {
                     loading.style.display = 'none';
                     loading.style.visibility = 'hidden';
-                    loading.style.opacity = '0';
-                    loading.style.pointerEvents = 'none';
-                    loading.style.zIndex = '-1';
-                    console.log('[room_select] 0件時のloading完全非表示完了');
                 }
                 return;
             }
@@ -305,22 +300,19 @@
             
             console.log('[room_select] 部屋カード作成開始');
             rooms.forEach((room, index) => {
-                console.log(`[room_select] 部屋[${index}]処理:`, room.name || room['部屋名'] || room.id);
-                // Material UI Card構造
+                // 値の安全化（React error #418対策）
+                const roomName = String(room.name ?? room['部屋名'] ?? room.id ?? '不明');
+                const status = room.readingStatus === 'completed' || room.isCompleted ? '検針済み' : '未検針';
                 const card = document.createElement('div');
                 card.className = 'MuiCard-root MuiPaper-root MuiPaper-elevation1 MuiCardActionArea-root room-card' +
                   (room.readingStatus === 'completed' || room.isCompleted ? ' status-completed' : ' status-pending');
                 card.setAttribute('tabindex', '0');
                 card.setAttribute('role', 'button');
-                card.setAttribute('aria-label', `${String(room.name || room['部屋名'] || room.id || '不明')} ${room.readingStatus === 'completed' ? '検針済み' : '未検針'}`);
-                // 1行表示 - React Error #418対策（値の安全化）
+                card.setAttribute('aria-label', `${roomName} ${status}`);
                 card.innerHTML = `
-                  <div class="MuiCardContent-root room-info-row">
-                    <span class="material-icons MuiSvgIcon-root status-icon" aria-hidden="true" style="color:${room.readingStatus === 'completed' ? '#2e7d32' : '#ed6c02'};">
-                      ${room.readingStatus === 'completed' ? 'check_circle' : 'warning'}
-                    </span>
-                    <span class="MuiTypography-root MuiTypography-h6 room-name">${String(room.name || room['部屋名'] || room.id || '不明')}</span>
-                    <span class="MuiTypography-root MuiTypography-body2 room-status">${room.readingStatus === 'completed' && room.readingDateFormatted ? `検針済み：${String(room.readingDateFormatted)}` : '未検針'}</span>
+                  <div class="room-card-content">
+                    <span class="room-name">${roomName}</span>
+                    <span class="room-status">${status}</span>
                   </div>
                 `;
                 card.onclick = () => {
@@ -331,13 +323,9 @@
                 roomGrid.appendChild(card);
             });
             
-            console.log('[room_select] 部屋カード作成完了、ローディング非表示とグリッド表示');
             if (loading) {
                 loading.style.display = 'none';
                 loading.style.visibility = 'hidden';
-                loading.style.opacity = '0';
-                loading.style.pointerEvents = 'none';
-                console.log('[room_select] loading完全非表示設定完了');
             }
             roomGrid.style.display = 'grid';
             console.log('[room_select] displayRooms完了');
@@ -345,13 +333,14 @@
 
         function updateCompleteButton(rooms) {
             const completeBtn = document.getElementById('completeInspectionBtn');
-            // 部屋データが1件以上あれば常に表示・有効化
             if (rooms.length > 0) {
-                completeBtn.style.display = 'block';
-                completeBtn.disabled = false;
                 completeBtn.textContent = 'この物件の検針を完了する';
+                completeBtn.style.display = 'inline-block';
+                completeBtn.disabled = false;
             } else {
+                completeBtn.textContent = '';
                 completeBtn.style.display = 'none';
+                completeBtn.disabled = true;
             }
         }
 
@@ -362,32 +351,38 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const propertyId = urlParams.get('propertyId');
                 if (!gasWebAppUrl || !propertyId) {
-                    showError('物件IDまたはWebApp URLが取得できません');
+                    showError('Web App URLまたは物件IDが不正です');
                     return;
                 }
-                // 現在日時をYYYY-MM-DD形式で取得
+                // 現在日付（YYYY-MM-DD）
                 const now = new Date();
                 const yyyy = now.getFullYear();
                 const mm = String(now.getMonth() + 1).padStart(2, '0');
                 const dd = String(now.getDate()).padStart(2, '0');
-                const todayStr = `${yyyy}-${mm}-${dd}`;
-                console.log('[room_select] 送信日付:', todayStr);
-                // API呼び出し
-                const fetchUrl = `${gasWebAppUrl}?action=completeInspection`;
-                const response = await fetch(fetchUrl, {
+                const completionDate = `${yyyy}-${mm}-${dd}`;
+                const postData = {
+                    action: 'completeInspection',
+                    propertyId: propertyId,
+                    completionDate: completionDate
+                };
+                const response = await fetch(gasWebAppUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ propertyId, completionDate: todayStr })
+                    body: JSON.stringify(postData)
                 });
-                const data = await response.json();
-                if (!data.success) {
-                    showError(data.message || '検針完了処理に失敗しました');
+                const result = await response.json();
+                if (!result.success) {
+                    showError(result.error || '検針完了APIでエラーが発生しました');
+                    alert('検針完了APIエラー: ' + String(result.error || '不明なエラー'));
+                    console.error('[room_select] completeInspection API error:', result);
                     return;
                 }
-                alert('検針完了日を保存しました');
+                alert('検針完了が正常に記録されました');
                 window.location.reload();
             } catch (error) {
-                showError(error.message || '検針完了処理でエラーが発生しました');
+                showError(error.message);
+                alert('検針完了処理でエラー: ' + String(error.message));
+                console.error('[room_select] completeInspection エラー:', error);
             }
         }
 
