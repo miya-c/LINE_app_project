@@ -693,42 +693,30 @@ function completePropertyInspection(propertyId) {
  * @param {string} propertyId - 物件ID
  * @returns {Object} 更新結果
  */
-function completePropertyInspectionSimple(propertyId) {
+function completePropertyInspectionSimple(propertyId, completionDate) {
   try {
     console.log(`[完了処理] 開始 - 物件ID: ${propertyId}`);
-    
-    // 基本チェック
     if (!propertyId) {
       throw new Error('物件IDが指定されていません');
     }
-    
-    // スプレッドシート取得
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('物件マスタ');
-    
     if (!sheet) {
       throw new Error('物件マスタシートが見つかりません');
     }
-    
-    // データ取得
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) {
       throw new Error('物件マスタにデータがありません');
     }
-    
     const headers = data[0];
     const propertyIdCol = headers.indexOf('物件ID');
     const completionDateCol = headers.indexOf('検針完了日');
-    
-    // カラム存在チェック
     if (propertyIdCol === -1) {
       throw new Error('物件IDカラムが見つかりません');
     }
     if (completionDateCol === -1) {
       throw new Error('検針完了日カラムが見つかりません');
     }
-    
-    // 対象行を検索
     let targetRow = -1;
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][propertyIdCol]).trim() === String(propertyId).trim()) {
@@ -736,34 +724,40 @@ function completePropertyInspectionSimple(propertyId) {
         break;
       }
     }
-    
     if (targetRow === -1) {
       throw new Error(`物件ID「${propertyId}」が見つかりません`);
     }
-    
-    console.log(`[完了処理] 対象行: ${targetRow + 1}`);
-    
-    // 現在日時を取得
-    const now = new Date();
-    const jstDate = Utilities.formatDate(now, 'JST', 'yyyy-MM-dd HH:mm:ss');
-    
-    // セルに直接書き込み（シンプルな方法）
+    // completionDateが指定されていればそれを使う（YYYY-MM-DD形式で保存）
+    let saveDate = '';
+    if (completionDate) {
+      // 形式チェックと整形
+      if (/^\d{4}-\d{2}-\d{2}$/.test(completionDate)) {
+        saveDate = completionDate;
+      } else {
+        // 変換できる場合は変換
+        const d = new Date(completionDate);
+        if (!isNaN(d.getTime())) {
+          saveDate = Utilities.formatDate(d, 'JST', 'yyyy-MM-dd');
+        } else {
+          throw new Error('completionDateの形式が不正です');
+        }
+      }
+    } else {
+      // 指定がなければ現在日付（YYYY-MM-DD）
+      const now = new Date();
+      saveDate = Utilities.formatDate(now, 'JST', 'yyyy-MM-dd');
+    }
     const targetCell = sheet.getRange(targetRow + 1, completionDateCol + 1);
-    targetCell.setValue(jstDate);
-    
-    // 書き込み完了を確認
+    targetCell.setValue(saveDate);
     SpreadsheetApp.flush();
-    
-    console.log(`[完了処理] 成功 - ${jstDate} を記録しました`);
-    
+    console.log(`[完了処理] 成功 - ${saveDate} を記録しました`);
     return {
       success: true,
-      message: `物件 ${propertyId} の検針完了処理を受け付けました`,
+      message: `物件 ${propertyId} の検針完了日を ${saveDate} で保存しました`,
       propertyId: propertyId,
-      completionDate: now.toISOString(),
-      apiVersion: 'v2.7.0-simple'
+      completionDate: saveDate,
+      apiVersion: 'v2.8.0-simple-completion'
     };
-    
   } catch (error) {
     console.log(`[完了処理] エラー: ${error.message}`);
     return {

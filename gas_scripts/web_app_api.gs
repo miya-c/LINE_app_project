@@ -286,9 +286,19 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  // 通常のPOSTリクエスト処理
   try {
-    // POST用のAPI処理をここに追加可能
+    const params = JSON.parse(e.postData && e.postData.contents ? e.postData.contents : '{}');
+    const action = params.action || (e.parameter && e.parameter.action);
+    if (action === 'completeInspection') {
+      const propertyId = params.propertyId || (e.parameter && e.parameter.propertyId);
+      const completionDate = params.completionDate || (e.parameter && e.parameter.completionDate);
+      if (!propertyId) {
+        return createCorsJsonResponse({ success: false, error: 'propertyIdが必要です' });
+      }
+      const result = completePropertyInspectionSimple(propertyId, completionDate);
+      return createCorsJsonResponse(result);
+    }
+    // 通常のPOSTリクエスト処理
     console.log('[doPost] POSTリクエスト処理開始');
     return createCorsJsonResponse({ 
       success: true, 
