@@ -241,7 +241,11 @@
                 const loadingElement = document.getElementById('loading');
                 if (loadingElement) {
                     loadingElement.style.display = 'none';
-                    console.log('[room_select] loading要素非表示完了');
+                    loadingElement.style.visibility = 'hidden';
+                    loadingElement.style.opacity = '0';
+                    loadingElement.style.pointerEvents = 'none';
+                    loadingElement.style.zIndex = '-1';
+                    console.log('[room_select] loading要素完全非表示完了');
                 } else {
                     console.error('[room_select] loading要素が見つかりません');
                 }
@@ -266,6 +270,15 @@
                 console.log('[room_select] 部屋データが0件のため、メッセージ表示');
                 roomGrid.innerHTML = '<div class="no-rooms-message">部屋データがありません</div>';
                 roomGrid.style.display = 'block';
+                // 部屋データが0件の場合もローディング完全非表示
+                if (loading) {
+                    loading.style.display = 'none';
+                    loading.style.visibility = 'hidden';
+                    loading.style.opacity = '0';
+                    loading.style.pointerEvents = 'none';
+                    loading.style.zIndex = '-1';
+                    console.log('[room_select] 0件時のloading完全非表示完了');
+                }
                 return;
             }
             
@@ -303,6 +316,10 @@
             console.log('[room_select] 部屋カード作成完了、ローディング非表示とグリッド表示');
             if (loading) {
                 loading.style.display = 'none';
+                loading.style.visibility = 'hidden';
+                loading.style.opacity = '0';
+                loading.style.pointerEvents = 'none';
+                console.log('[room_select] loading完全非表示設定完了');
             }
             roomGrid.style.display = 'grid';
             console.log('[room_select] displayRooms完了');
