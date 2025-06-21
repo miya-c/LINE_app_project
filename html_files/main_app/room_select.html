@@ -357,153 +357,45 @@
         }
 
         async function completeInspection() {
-            console.log('[room_select] 検針完了ボタンクリック - 処理開始');
+            console.log('[room_select] 検針完了ボタンクリック - 必要最小限API送信');
             try {
-                enableLoadingBlock();
-                const loadingElement = document.getElementById('loading');
-                if (loadingElement) {
-                    loadingElement.style.display = 'flex';
-                    loadingElement.style.visibility = 'visible';
-                    loadingElement.style.opacity = '1';
-                    loadingElement.style.pointerEvents = 'all';
-                    loadingElement.style.zIndex = '9999';
-                    const loadingText = loadingElement.querySelector('.MuiTypography-root');
-                    if (loadingText) loadingText.textContent = '検針完了処理中...';
-                }
-                const completeBtn = document.getElementById('completeInspectionBtn');
-                if (completeBtn) {
-                    completeBtn.disabled = true;
-                    completeBtn.style.opacity = '0.6';
-                    completeBtn.style.cursor = 'not-allowed';
-                }
                 const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
                 const urlParams = new URLSearchParams(window.location.search);
                 const propertyId = urlParams.get('propertyId');
                 if (!gasWebAppUrl || !propertyId) {
-                    throw new Error('必要なパラメータが不足しています');
+                    showError('Web App URLまたは物件IDが不正です');
+                    return;
                 }
-                const currentDateTime = new Date().toISOString();
-                const completeUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}&completedAt=${encodeURIComponent(currentDateTime)}&completedBy=user`;
-                console.log('[room_select] 🎯 検針完了API呼び出しURL:', completeUrl);
-                console.log('[room_select] propertyId:', propertyId);
-                let response;
-                let retryCount = 0;
-                const maxRetries = 3;
-                while (retryCount < maxRetries) {
-                    try {
-                        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000));
-                        const fetchPromise = fetch(completeUrl, { method: 'GET', headers: { 'Accept': 'application/json' } });
-                        response = await Promise.race([fetchPromise, timeoutPromise]);
-                        console.log('[room_select] 📡 レスポンス受信:', {
-                            status: response.status,
-                            ok: response.ok,
-                            statusText: response.statusText,
-                            headers: Object.fromEntries(response.headers.entries())
-                        });
-                        if (response.ok) {
-                            break;
-                        } else {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                    } catch (fetchError) {
-                        retryCount++;
-                        console.warn(`[room_select] ⚠️ API呼び出し失敗 (試行 ${retryCount}/${maxRetries}):`, fetchError.message);
-                        if (retryCount >= maxRetries) {
-                            throw new Error(`API呼び出しに失敗しました (${maxRetries}回試行): ${fetchError.message}`);
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
-                }
-                console.log('[room_select] ✅ API呼び出し成功');
-                if (!response.ok) {
-                    throw new Error(`検針完了処理でエラーが発生しました: ${response.status} ${response.statusText}`);
-                }
+                // 現在日付（YYYY-MM-DD）
+                const now = new Date();
+                const yyyy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                const completionDate = `${yyyy}-${mm}-${dd}`;
+                // 必要最小限のデータのみ送信
+                const postData = {
+                    action: 'completeInspection',
+                    propertyId: propertyId,
+                    completionDate: completionDate
+                };
+                const response = await fetch(gasWebAppUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postData)
+                });
                 const result = await response.json();
-                console.log('[room_select] 📋 検針完了API結果解析:', result);
                 if (!result.success) {
-                    console.error('[room_select] ❌ API結果エラー:', result.error || result.message);
-                    alert('検針完了APIエラー: ' + (result.error || result.message));
-                    throw new Error(result.error || result.message || '検針完了処理に失敗しました');
+                    showError(result.error || '検針完了APIでエラーが発生しました');
+                    alert('検針完了APIエラー: ' + String(result.error || '不明なエラー'));
+                    console.error('[room_select] completeInspection API error:', result);
+                    return;
                 }
-                // 成功時の処理
-                const successMessage = document.createElement('div');
-                successMessage.className = 'MuiAlert-root MuiAlert-standardSuccess';
-                successMessage.style.cssText = `
-                    display: flex;
-                    align-items: center;
-                    padding: 16px;
-                    margin: 16px 0;
-                    border-radius: 16px;
-                    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-                    border: 1px solid #4caf50;
-                    color: #2e7d32;
-                    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.1);
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    z-index: 10000;
-                    min-width: 300px;
-                    text-align: center;
-                    font-weight: 500;
-                `;
-                successMessage.innerHTML = `
-                    <span class="material-icons" style="margin-right: 8px; color: #4caf50;">check_circle</span>
-                    <span>検針が完了しました！</span>
-                `;
-                document.body.appendChild(successMessage);
-                setTimeout(() => {
-                    successMessage.remove();
-                    window.location.href = '/property_select';
-                }, 2000);
+                alert('検針完了が正常に記録されました');
+                window.location.reload();
             } catch (error) {
-                console.error('[room_select] ❌ 検針完了処理エラー詳細:', error);
-                alert('検針完了処理に失敗しました: ' + (error && error.message ? error.message : error));
-                // エラーメッセージ表示
-                const errorMessage = document.createElement('div');
-                errorMessage.className = 'MuiAlert-root MuiAlert-standardError';
-                errorMessage.style.cssText = `
-                    display: flex;
-                    align-items: center;
-                    padding: 16px;
-                    margin: 16px 0;
-                    border-radius: 16px;
-                    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
-                    border: 1px solid #fecaca;
-                    color: #b91c1c;
-                    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.1);
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    z-index: 10000;
-                    min-width: 300px;
-                    text-align: center;
-                    font-weight: 500;
-                `;
-                errorMessage.innerHTML = `
-                    <span class="material-icons" style="margin-right: 8px; color: #f44336;">error</span>
-                    <span>${error && error.message ? error.message : error}</span>
-                `;
-                document.body.appendChild(errorMessage);
-                setTimeout(() => { errorMessage.remove(); }, 3000);
-                const completeBtn = document.getElementById('completeInspectionBtn');
-                if (completeBtn) {
-                    completeBtn.disabled = false;
-                    completeBtn.style.opacity = '1';
-                    completeBtn.style.cursor = 'pointer';
-                }
-            } finally {
-                const loadingElement = document.getElementById('loading');
-                if (loadingElement) {
-                    loadingElement.style.display = 'none';
-                    loadingElement.style.visibility = 'hidden';
-                    loadingElement.style.opacity = '0';
-                    loadingElement.style.pointerEvents = 'none';
-                    loadingElement.style.zIndex = '-1';
-                }
-                disableLoadingBlock();
-                console.log('[room_select] 検針完了処理終了');
+                showError(error.message);
+                alert('検針完了処理でエラー: ' + String(error.message));
+                console.error('[room_select] completeInspection エラー:', error);
             }
         }
 
