@@ -611,7 +611,7 @@
         window.scrollTo(0, 0);
         
         setIsNavigating(true);
-        setNavigationMessage('部屋情報を読み込んでいます...');
+        setNavigationMessage('');
         
         try {
           const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
@@ -748,7 +748,7 @@
             return;
           }
 
-          setNavigationMessage('画面を切り替えています...');
+          setNavigationMessage('');
           
           const targetUrl = `/room_select?propertyId=${encodeURIComponent(property.id)}`;
           console.log(`[ReactApp] Redirecting to: ${targetUrl}`);
@@ -774,7 +774,7 @@
             console.warn('[ReactApp] データ形式エラーですが、空配列で継続します:', error.message);
             
             // 空の状態で画面遷移を続行
-            setNavigationMessage('空の状態で画面を切り替えています...');
+            setNavigationMessage('');
             
             const targetUrl = `/room_select?propertyId=${encodeURIComponent(property.id)}`;
             console.log(`[ReactApp] エラー時でも画面遷移: ${targetUrl}`);
