@@ -264,15 +264,12 @@
                 loadingElement.style.pointerEvents = 'none';
                 loadingElement.style.zIndex = '-1';
             }
-            // 必要なら操作ブロックも解除
             document.body.style.overflow = '';
             document.body.style.pointerEvents = '';
         }
 
-        // ページ復元時にも初期化
         window.addEventListener('pageshow', function(event) {
             hideLoadingOnPageShow();
-            // 必要ならデータ再取得もここで呼び出し
         });
 
         function displayRooms(rooms) {
