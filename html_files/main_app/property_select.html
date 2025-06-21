@@ -440,6 +440,7 @@
       const [searchTerm, setSearchTerm] = React.useState('');
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState(null);
+      const [isFetched, setIsFetched] = React.useState(false); // ← 追加
       const [isNavigating, setIsNavigating] = React.useState(false);
       const [navigationMessage, setNavigationMessage] = React.useState('');
       const gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbzzK3mKFuP8KT5l_irp0kMPJv4-zZUUQSCG2ssVYlTmg9wtDwSZUAJ3eIQD1vbH4jKXQQ/exec';
@@ -499,6 +500,7 @@
         const fetchProperties = async () => {
           setLoading(true);
           setError(null);
+          setIsFetched(false); // ← 追加
           try {
             // キャッシュバスティング付きAPI呼び出し
             const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
@@ -598,6 +600,7 @@
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
           } finally {
             setLoading(false);
+            setIsFetched(true); // ← 追加：データ取得処理完了
           }
         };
 
@@ -895,7 +898,7 @@
       });
 
       // 物件データ取得中の初期ローディング（Material UI準拠）
-      if (loading && properties.length === 0) {
+      if (loading && !isFetched) {
         return (
           <div>
             {/* Material UI AppBar */}
@@ -940,7 +943,7 @@
       }
       
       // 物件データ取得エラー（Material UI準拠）
-      if (error && properties.length === 0) {
+      if (error && isFetched) {
         return (
           <div>
             {/* Material UI AppBar */}
@@ -1014,8 +1017,8 @@
                 />
               </div>
               
-              {/* Secondary Loading (処理中表示) */}
-              {loading && properties.length > 0 && (
+              {/* 処理中表示 */}
+              {loading && isFetched && (
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1058,8 +1061,8 @@
                 </div>
               )}
 
-              {/* No data messages */}
-              {!loading && properties.length === 0 && !error && (
+              {/* 修正：データ取得完了後かつ物件が0件の場合のみ表示 */}
+              {!loading && isFetched && properties.length === 0 && !error && (
                 <div className="MuiTypography-root" style={{
                   textAlign: 'center',
                   color: 'var(--mui-palette-grey-900)',
@@ -1070,7 +1073,8 @@
                 </div>
               )}
               
-              {!loading && properties.length > 0 && filteredProperties.length === 0 && (
+              {/* 検索結果が0件の場合 */}
+              {!loading && isFetched && properties.length > 0 && filteredProperties.length === 0 && (
                 <div className="MuiTypography-root" style={{
                   textAlign: 'center',
                   color: 'var(--mui-palette-grey-900)',
