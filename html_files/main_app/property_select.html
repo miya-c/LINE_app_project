@@ -788,8 +788,34 @@
         }
       };
 
-      // Material UI LoadingOverlayコンポーネント（ユーザーディスプレイ中央表示）
-      const LoadingOverlay = ({ message }) => (
+      // Material UI LoadingOverlayコンポーネント（ユーザーディスプレイ中央表示&操作完全ブロック）
+      const LoadingOverlay = ({ message }) => {
+        
+        // LoadingOverlay表示時に操作を完全ブロック
+        React.useEffect(() => {
+          document.body.style.overflow = 'hidden';
+          document.body.style.pointerEvents = 'none';
+          
+          const blockAllKeys = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          };
+          
+          document.addEventListener('keydown', blockAllKeys, true);
+          document.addEventListener('keyup', blockAllKeys, true);
+          document.addEventListener('keypress', blockAllKeys, true);
+          
+          return () => {
+            document.body.style.overflow = '';
+            document.body.style.pointerEvents = '';
+            document.removeEventListener('keydown', blockAllKeys, true);
+            document.removeEventListener('keyup', blockAllKeys, true);
+            document.removeEventListener('keypress', blockAllKeys, true);
+          };
+        }, []);
+        
+        return (
         <div className="MuiBackdrop-root" style={{
           position: 'fixed',
           top: '0',
@@ -800,11 +826,12 @@
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 2147483647,
           backdropFilter: 'blur(4px)',
           // ユーザーディスプレイ中央に確実に表示
           transform: 'translate3d(0, 0, 0)',
-          backfaceVisibility: 'hidden'
+          backfaceVisibility: 'hidden',
+          pointerEvents: 'all'
         }}>
           <div className="MuiPaper-root" style={{
             backgroundColor: '#fff',
@@ -833,7 +860,8 @@
             </div>
           </div>
         </div>
-      );
+        );
+      };
 
       const filteredProperties = properties.filter(property => {
         const propertyIdString = String(property.id != null ? property.id : ''); 

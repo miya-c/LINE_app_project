@@ -127,8 +127,46 @@
             errorDiv.style.display = 'flex';
         }
 
+        // ローディング中のキーボード操作を完全にブロックする関数
+        function blockAllKeyEvents(e) {
+            // ESC、Tab、Enter、Space、Arrow keys等を無効化
+            const blockedKeys = ['Escape', 'Tab', 'Enter', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+            if (blockedKeys.includes(e.key) || e.keyCode === 27 || e.keyCode === 9) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }
+
+        // ローディング開始時の操作ブロック設定
+        function enableLoadingBlock() {
+            document.body.style.overflow = 'hidden';
+            document.body.style.pointerEvents = 'none';
+            document.addEventListener('keydown', blockAllKeyEvents, true);
+            document.addEventListener('keyup', blockAllKeyEvents, true);
+            document.addEventListener('keypress', blockAllKeyEvents, true);
+            
+            // ローディング要素は操作可能にする
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.pointerEvents = 'all';
+            }
+        }
+
+        // ローディング終了時の操作ブロック解除
+        function disableLoadingBlock() {
+            document.body.style.overflow = '';
+            document.body.style.pointerEvents = '';
+            document.removeEventListener('keydown', blockAllKeyEvents, true);
+            document.removeEventListener('keyup', blockAllKeyEvents, true);
+            document.removeEventListener('keypress', blockAllKeyEvents, true);
+        }
+
         async function loadRoomData() {
             try {
+                // ローディング開始時に操作を完全にブロック
+                enableLoadingBlock();
+                
                 // 関数内でURLとパラメータを再取得
                 const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
                 const urlParams = new URLSearchParams(window.location.search);
@@ -185,6 +223,9 @@
                 console.error('[room_select] エラー:', error);
                 showError(error.message);
                 document.getElementById('loading').style.display = 'none';
+                
+                // エラー時も操作制限を解除
+                disableLoadingBlock();
             }
         }
 
@@ -196,6 +237,9 @@
     roomGrid.innerHTML = '<div class="no-rooms-message">部屋データがありません</div>';
     loading.style.display = 'none';
     roomGrid.style.display = 'block';
+    
+    // 操作制限を解除
+    disableLoadingBlock();
     return;
   }
   const urlParams = new URLSearchParams(window.location.search);
@@ -227,6 +271,9 @@
   });
   loading.style.display = 'none';
   roomGrid.style.display = 'grid';
+  
+  // 正常に完了した場合も操作制限を解除
+  disableLoadingBlock();
 }
 
         function updateCompleteButton(rooms) {
