@@ -342,20 +342,27 @@ body {
     overflow: auto;
 }
 
-/* === Material UI Loading Container === */
+/* === Material UI Loading Container (ユーザーディスプレイ中央表示) === */
 .loading-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
     flex-direction: column;
     gap: var(--mui-spacing-2);
-    background-color: rgba(255, 255, 255, 0.95);
-    z-index: 9999;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    z-index: 9999 !important;
+    /* GPU加速とユーザーディスプレイ中央配置を保証 */
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    /* スクロール位置やレイアウトの影響を受けないように */
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
 /* === Material UI Circular Progress (Loading) === */

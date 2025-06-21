@@ -89,20 +89,26 @@
     }
     .MuiCardContent-root { padding: 20px; }
     
-    /* Loading & Error States */
+    /* Loading & Error States (ユーザーディスプレイ中央表示) */
     .loading-container { 
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      display: flex !important; 
+      justify-content: center !important; 
+      align-items: center !important; 
       flex-direction: column; 
       gap: 16px;
-      background-color: rgba(255, 255, 255, 0.95);
-      z-index: 9999;
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      z-index: 9999 !important;
+      /* GPU加速とユーザーディスプレイ中央配置を保証 */
+      transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
     }
     .MuiCircularProgress-root {
       width: 40px; height: 40px; border: 4px solid #e0e0e0;
@@ -136,16 +142,22 @@
       background: linear-gradient(135deg, #f0f4f8 0%, #e1e8ed 100%); 
     }
     .loading-container { 
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      background-color: rgba(255, 255, 255, 0.95);
-      z-index: 9999;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      display: flex !important; 
+      justify-content: center !important; 
+      align-items: center !important; 
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      z-index: 9999 !important;
+      /* GPU加速とユーザーディスプレイ中央配置を保証 */
+      transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
     }
     .loading-spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -776,20 +788,23 @@
         }
       };
 
-      // Material UI LoadingOverlayコンポーネント（公式ガイドライン準拠）
+      // Material UI LoadingOverlayコンポーネント（ユーザーディスプレイ中央表示）
       const LoadingOverlay = ({ message }) => (
         <div className="MuiBackdrop-root" style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          top: '0',
+          left: '0',
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1300,
-          backdropFilter: 'blur(4px)'
+          zIndex: 9999,
+          backdropFilter: 'blur(4px)',
+          // ユーザーディスプレイ中央に確実に表示
+          transform: 'translate3d(0, 0, 0)',
+          backfaceVisibility: 'hidden'
         }}>
           <div className="MuiPaper-root" style={{
             backgroundColor: '#fff',
@@ -801,7 +816,10 @@
             gap: '24px',
             boxShadow: 'var(--mui-shadows-4)',
             maxWidth: '320px',
-            textAlign: 'center'
+            textAlign: 'center',
+            // 中央に確実に配置
+            position: 'relative',
+            margin: 'auto'
           }}>
             <div className="MuiCircularProgress-root"></div>
             <div className="MuiTypography-root" style={{
