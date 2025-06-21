@@ -695,67 +695,127 @@ function completePropertyInspection(propertyId) {
  */
 function completePropertyInspectionSimple(propertyId) {
   try {
-    Logger.log(`[completePropertyInspectionSimple] 開始 - propertyId: ${propertyId}`);
+    Logger.log(`[completePropertyInspectionSimple] 🚀 開始 - propertyId: ${propertyId}`);
+    console.log(`[completePropertyInspectionSimple] 🚀 開始 - propertyId: ${propertyId}`);
     
     if (!propertyId) {
       throw new Error('物件IDが指定されていません');
     }
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
+    Logger.log(`[completePropertyInspectionSimple] 📊 スプレッドシート取得成功: ${ss.getName()}`);
+    console.log(`[completePropertyInspectionSimple] 📊 スプレッドシート取得成功: ${ss.getName()}`);
+    
+    // 利用可能なシート一覧を取得
+    const allSheets = ss.getSheets().map(sheet => sheet.getName());
+    Logger.log(`[completePropertyInspectionSimple] 📋 利用可能シート: ${allSheets.join(', ')}`);
+    console.log(`[completePropertyInspectionSimple] 📋 利用可能シート: ${allSheets.join(', ')}`);
+    
     const propertySheet = ss.getSheetByName('物件マスタ');
     
     if (!propertySheet) {
-      throw new Error('物件マスタシートが見つかりません');
+      throw new Error(`物件マスタシートが見つかりません。利用可能シート: ${allSheets.join(', ')}`);
     }
+    
+    Logger.log(`[completePropertyInspectionSimple] ✅ 物件マスタシート取得成功`);
+    console.log(`[completePropertyInspectionSimple] ✅ 物件マスタシート取得成功`);
     
     const data = propertySheet.getDataRange().getValues();
     if (data.length <= 1) {
       throw new Error('物件マスタにデータがありません');
     }
     
+    Logger.log(`[completePropertyInspectionSimple] 📈 データ行数: ${data.length} (ヘッダー含む)`);
+    console.log(`[completePropertyInspectionSimple] 📈 データ行数: ${data.length} (ヘッダー含む)`);
+    
     const headers = data[0];
+    Logger.log(`[completePropertyInspectionSimple] 📋 ヘッダー: ${headers.join(', ')}`);
+    console.log(`[completePropertyInspectionSimple] 📋 ヘッダー: ${headers.join(', ')}`);
+    
     const propertyIdIndex = headers.indexOf('物件ID');
     const completionDateIndex = headers.indexOf('検針完了日');
     
+    Logger.log(`[completePropertyInspectionSimple] 📍 物件IDカラムインデックス: ${propertyIdIndex}`);
+    Logger.log(`[completePropertyInspectionSimple] 📍 検針完了日カラムインデックス: ${completionDateIndex}`);
+    console.log(`[completePropertyInspectionSimple] 📍 物件IDカラムインデックス: ${propertyIdIndex}`);
+    console.log(`[completePropertyInspectionSimple] 📍 検針完了日カラムインデックス: ${completionDateIndex}`);
+    
     if (propertyIdIndex === -1) {
-      throw new Error('物件マスタに「物件ID」列が見つかりません');
+      throw new Error(`物件マスタに「物件ID」列が見つかりません。利用可能ヘッダー: ${headers.join(', ')}`);
     }
     
     if (completionDateIndex === -1) {
-      throw new Error('物件マスタに「検針完了日」列が見つかりません');
+      throw new Error(`物件マスタに「検針完了日」列が見つかりません。利用可能ヘッダー: ${headers.join(', ')}`);
     }
     
     // 指定された物件IDの行を検索
-    const targetRowIndex = data.findIndex((row, index) => 
-      index > 0 && String(row[propertyIdIndex]).trim() === String(propertyId).trim()
-    );
+    Logger.log(`[completePropertyInspectionSimple] 🔍 物件ID「${propertyId}」を検索中...`);
+    console.log(`[completePropertyInspectionSimple] 🔍 物件ID「${propertyId}」を検索中...`);
+    
+    const targetRowIndex = data.findIndex((row, index) => {
+      if (index === 0) return false; // ヘッダー行をスキップ
+      const rowPropertyId = String(row[propertyIdIndex]).trim();
+      const searchPropertyId = String(propertyId).trim();
+      Logger.log(`[completePropertyInspectionSimple] 🔍 行${index}: "${rowPropertyId}" === "${searchPropertyId}" ? ${rowPropertyId === searchPropertyId}`);
+      return rowPropertyId === searchPropertyId;
+    });
     
     if (targetRowIndex === -1) {
-      throw new Error(`指定された物件ID「${propertyId}」が物件マスタに見つかりません`);
+      // 利用可能な物件IDを一覧表示
+      const availablePropertyIds = data.slice(1).map(row => String(row[propertyIdIndex]).trim()).filter(id => id);
+      Logger.log(`[completePropertyInspectionSimple] 📋 利用可能物件ID: ${availablePropertyIds.join(', ')}`);
+      console.log(`[completePropertyInspectionSimple] 📋 利用可能物件ID: ${availablePropertyIds.join(', ')}`);
+      throw new Error(`指定された物件ID「${propertyId}」が物件マスタに見つかりません。利用可能物件ID: ${availablePropertyIds.slice(0, 10).join(', ')}${availablePropertyIds.length > 10 ? '...' : ''}`);
     }
+    
+    Logger.log(`[completePropertyInspectionSimple] ✅ 対象行発見: ${targetRowIndex} (実行番号${targetRowIndex + 1})`);
+    console.log(`[completePropertyInspectionSimple] ✅ 対象行発見: ${targetRowIndex} (実行番号${targetRowIndex + 1})`);
     
     // 現在のJST日付を取得
     const currentDate = getCurrentJSTDate();
+    Logger.log(`[completePropertyInspectionSimple] 📅 設定する完了日: ${currentDate}`);
+    console.log(`[completePropertyInspectionSimple] 📅 設定する完了日: ${currentDate}`);
+    
+    // 更新前の値を記録
+    const oldValue = data[targetRowIndex][completionDateIndex];
+    Logger.log(`[completePropertyInspectionSimple] 🔄 更新前の値: "${oldValue}"`);
+    console.log(`[completePropertyInspectionSimple] 🔄 更新前の値: "${oldValue}"`);
     
     // 検針完了日を更新
     data[targetRowIndex][completionDateIndex] = currentDate;
+    
+    Logger.log(`[completePropertyInspectionSimple] 💾 スプレッドシートに書き込み開始...`);
+    console.log(`[completePropertyInspectionSimple] 💾 スプレッドシートに書き込み開始...`);
     
     // シートに書き込み
     propertySheet.clear();
     propertySheet.getRange(1, 1, data.length, headers.length).setValues(data);
     
-    Logger.log(`[completePropertyInspectionSimple] 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
+    // 書き込み確認
+    SpreadsheetApp.flush(); // 書き込みを強制実行
+    const updatedData = propertySheet.getDataRange().getValues();
+    const updatedValue = updatedData[targetRowIndex][completionDateIndex];
+    
+    Logger.log(`[completePropertyInspectionSimple] ✅ 書き込み後の値: "${updatedValue}"`);
+    console.log(`[completePropertyInspectionSimple] ✅ 書き込み後の値: "${updatedValue}"`);
+    
+    Logger.log(`[completePropertyInspectionSimple] 🎉 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
+    console.log(`[completePropertyInspectionSimple] 🎉 完了 - 物件ID: ${propertyId}, 完了日: ${currentDate}`);
     
     return {
       success: true,
       message: '検針完了日を更新しました',
       propertyId: propertyId,
       completionDate: currentDate,
+      oldValue: oldValue,
+      newValue: updatedValue,
+      rowIndex: targetRowIndex + 1,
       timestamp: Utilities.formatDate(new Date(), 'JST', 'yyyy-MM-dd HH:mm:ss')
     };
     
   } catch (error) {
-    Logger.log(`[completePropertyInspectionSimple] エラー: ${error.message}`);
+    Logger.log(`[completePropertyInspectionSimple] ❌ エラー: ${error.message}`);
+    console.log(`[completePropertyInspectionSimple] ❌ エラー: ${error.message}`);
     return {
       success: false,
       error: error.message,

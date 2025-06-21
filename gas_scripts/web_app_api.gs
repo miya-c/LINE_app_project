@@ -148,6 +148,13 @@ function doGet(e) {
       case 'completeInspection':
       case 'completePropertyInspection':
         console.log(`[doGet] 🎯 検針完了ケース到達 - action: ${action}`);
+        console.log(`[doGet] 📋 受信パラメータ:`, {
+          propertyId: e.parameter.propertyId,
+          completedAt: e.parameter.completedAt,
+          completedBy: e.parameter.completedBy,
+          allParameters: e.parameter
+        });
+        
         if (!e.parameter.propertyId) {
           console.log(`[doGet] ❌ propertyIdが不足`);
           return createCorsJsonResponse({ 
@@ -157,17 +164,22 @@ function doGet(e) {
         }
 
         try {
-          console.log(`[completeInspection] 処理開始 - propertyId: ${e.parameter.propertyId}`);
+          console.log(`[completeInspection] 🚀 処理開始 - propertyId: ${e.parameter.propertyId}`);
           console.log(`[completeInspection] 🔄 物件マスタ更新処理を実行中...`);
           
           // 検針完了処理を実行（物件マスタの更新のみ）
           const result = completePropertyInspectionSimple(e.parameter.propertyId);
           
+          console.log(`[completeInspection] 📊 実行結果:`, result);
+          
           if (result.success) {
             console.log(`[completeInspection] ✅ 成功: ${result.message}`);
             console.log(`[completeInspection] 📊 詳細情報:`, {
               propertyId: result.propertyId,
-              completionDate: result.completionDate
+              completionDate: result.completionDate,
+              oldValue: result.oldValue,
+              newValue: result.newValue,
+              rowIndex: result.rowIndex
             });
             
             // APIバージョン情報を追加
@@ -183,7 +195,8 @@ function doGet(e) {
           }
           
         } catch (error) {
-          console.error(`[completeInspection] エラー: ${error.message}`);
+          console.error(`[completeInspection] ❌ エラー: ${error.message}`);
+          console.error(`[completeInspection] ❌ スタックトレース:`, error.stack);
           return createCorsJsonResponse({
             success: false,
             error: `検針完了処理に失敗しました: ${error.message}`,
@@ -211,10 +224,83 @@ function doGet(e) {
         }
         
       default:
+        // 新しいデバッグ用API処理を追加
+        if (action === 'test') {
+          console.log('[doGet] 🧪 テスト接続要求');
+          return createCorsJsonResponse({
+            success: true,
+            message: 'API接続テスト成功',
+            timestamp: new Date().toISOString(),
+            apiVersion: API_VERSION
+          });
+        }
+        
+        if (action === 'getSpreadsheetInfo') {
+          console.log('[doGet] 📊 スプレッドシート情報取得要求');
+          try {
+            const ss = SpreadsheetApp.getActiveSpreadsheet();
+            const sheets = ss.getSheets().map(sheet => ({
+              name: sheet.getName(),
+              rowCount: sheet.getLastRow(),
+              columnCount: sheet.getLastColumn()
+            }));
+            
+            return createCorsJsonResponse({
+              success: true,
+              message: 'スプレッドシート情報取得成功',
+              data: {
+                spreadsheetId: ss.getId(),
+                spreadsheetName: ss.getName(),
+                sheets: sheets
+              },
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            return createCorsJsonResponse({
+              success: false,
+              error: `スプレッドシート情報取得エラー: ${error.message}`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+        
+        if (action === 'getPropertyMaster') {
+          console.log('[doGet] 🏠 物件マスタデータ取得要求');
+          try {
+            const ss = SpreadsheetApp.getActiveSpreadsheet();
+            const propertySheet = ss.getSheetByName('物件マスタ');
+            
+            if (!propertySheet) {
+              throw new Error('物件マスタシートが見つかりません');
+            }
+            
+            const data = propertySheet.getDataRange().getValues();
+            const headers = data[0];
+            const rows = data.slice(1);
+            
+            return createCorsJsonResponse({
+              success: true,
+              message: '物件マスタデータ取得成功',
+              data: {
+                headers: headers,
+                rowCount: rows.length,
+                sampleRows: rows.slice(0, 5) // 最初の5行のみ返す
+              },
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            return createCorsJsonResponse({
+              success: false,
+              error: `物件マスタデータ取得エラー: ${error.message}`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+        
+        console.log(`[doGet] ❌ 未知のアクション: ${action}`);
         return createCorsJsonResponse({ 
           success: false,
-          error: `未対応のAPI要求: ${action}`,
-          timestamp: new Date().toISOString()
+          error: `未知のアクション: ${action}`
         });
     }
     
