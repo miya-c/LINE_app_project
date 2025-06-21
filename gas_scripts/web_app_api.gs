@@ -147,16 +147,9 @@ function doGet(e) {
         
       case 'completeInspection':
       case 'completePropertyInspection':
-        console.log(`[doGet] 🎯 検針完了ケース到達 - action: ${action}`);
-        console.log(`[doGet] 📋 受信パラメータ:`, {
-          propertyId: e.parameter.propertyId,
-          completedAt: e.parameter.completedAt,
-          completedBy: e.parameter.completedBy,
-          allParameters: e.parameter
-        });
+        console.log(`[検針完了] 処理開始 - 物件ID: ${e.parameter.propertyId}`);
         
         if (!e.parameter.propertyId) {
-          console.log(`[doGet] ❌ propertyIdが不足`);
           return createCorsJsonResponse({ 
             success: false,
             error: 'propertyIdが必要です'
@@ -164,39 +157,19 @@ function doGet(e) {
         }
 
         try {
-          console.log(`[completeInspection] 🚀 処理開始 - propertyId: ${e.parameter.propertyId}`);
-          console.log(`[completeInspection] 🔄 物件マスタ更新処理を実行中...`);
-          
-          // 検針完了処理を実行（物件マスタの更新のみ）
+          // 検針完了処理を実行
           const result = completePropertyInspectionSimple(e.parameter.propertyId);
           
-          console.log(`[completeInspection] 📊 実行結果:`, result);
-          
           if (result.success) {
-            console.log(`[completeInspection] ✅ 成功: ${result.message}`);
-            console.log(`[completeInspection] 📊 詳細情報:`, {
-              propertyId: result.propertyId,
-              completionDate: result.completionDate,
-              oldValue: result.oldValue,
-              newValue: result.newValue,
-              rowIndex: result.rowIndex
-            });
-            
-            // APIバージョン情報を追加
-            result.apiVersion = API_VERSION;
-            result.processedAt = new Date().toISOString();
-            result.processedBy = 'web_app_api';
-            
-            console.log(`[completeInspection] 🚀 レスポンス送信準備完了`);
+            console.log(`[検針完了] 成功: ${result.message}`);
             return createCorsJsonResponse(result);
           } else {
-            console.error(`[completeInspection] ❌ 処理失敗: ${result.error}`);
-            throw new Error(result.error || '検針完了処理に失敗しました');
+            console.log(`[検針完了] 失敗: ${result.error}`);
+            return createCorsJsonResponse(result);
           }
           
         } catch (error) {
-          console.error(`[completeInspection] ❌ エラー: ${error.message}`);
-          console.error(`[completeInspection] ❌ スタックトレース:`, error.stack);
+          console.error(`[検針完了] エラー: ${error.message}`);
           return createCorsJsonResponse({
             success: false,
             error: `検針完了処理に失敗しました: ${error.message}`,
