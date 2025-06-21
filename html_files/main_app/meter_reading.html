@@ -1017,11 +1017,10 @@
               </button>
               <h1 className="header-title">検針情報</h1>
             </div>
-            <div className="content-area mantine-container">
-              <div className="mantine-stack">
+            <div className="content-area mantine-container">              <div className="mantine-stack">
                 <div className="mantine-alert">
                   <h3 className="mantine-text weight-600">エラー</h3>
-                  <p className="mantine-text">{error}</p>
+                  <p className="mantine-text">{String(error || 'エラーが発生しました')}</p>
                 </div>
               </div>
             </div>
@@ -1041,11 +1040,10 @@
           </div>
 
           <div className="content-area mantine-container">
-            <div className="mantine-stack">
-              <div className="property-info-card">
-                <h2 className="property-name">{propertyName}</h2>
-                <p className="room-info">部屋: {roomName}</p>
-              </div>              <div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>                <h3 className="mantine-subtitle desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
+            <div className="mantine-stack">              <div className="property-info-card">
+                <h2 className="property-name">{String(propertyName || '物件名未設定')}</h2>
+                <p className="room-info">部屋: {String(roomName || '部屋名未設定')}</p>
+              </div><div className="mantine-paper reading-history-container" style={{padding: 'var(--mantine-spacing-xs)', margin: '0'}}>                <h3 className="mantine-subtitle desktop-only" style={{ textAlign: 'center', marginBottom: 'var(--mantine-spacing-md)' }}>検針履歴</h3>
 
                 {Array.isArray(meterReadings) && meterReadings.length > 0 && 
                  meterReadings.some(reading => reading.previousReading && reading.previousReading !== '' && reading.previousReading !== 0) ? (
