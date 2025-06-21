@@ -21,7 +21,13 @@
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((choiceResult) => {
           if (choiceResult.outcome === 'accepted') {
-            window.location.href = '/property_select';
+            document.getElementById('install-btn').style.display = 'none';
+            const msg = document.createElement('div');
+            msg.textContent = 'インストールが完了しました。ホーム画面からアプリを起動できます。';
+            msg.style.marginTop = '24px';
+            msg.style.color = '#1976d2';
+            msg.style.fontWeight = 'bold';
+            document.querySelector('.container').appendChild(msg);
           }
           deferredPrompt = null;
         });
