@@ -157,8 +157,10 @@ function doGet(e) {
         }
 
         try {
-          // 検針完了処理を実行
-          const result = completePropertyInspectionSimple(e.parameter.propertyId);
+          // 検針完了処理を実行（現在日付を追加）
+          const completionDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD形式
+          console.log(`[検針完了] 完了日: ${completionDate}`);
+          const result = completePropertyInspectionSimple(e.parameter.propertyId, completionDate);
           
           if (result.success) {
             console.log(`[検針完了] 成功: ${result.message}`);
