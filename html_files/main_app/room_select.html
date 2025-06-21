@@ -382,8 +382,9 @@
                 if (!gasWebAppUrl || !propertyId) {
                     throw new Error('必要なパラメータが不足しています');
                 }
-                const currentDateTime = new Date().toISOString();
-                const completeUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}&completedAt=${encodeURIComponent(currentDateTime)}&completedBy=user`;
+                
+                // シンプルなAPI呼び出し（不要なパラメータを削除）
+                const completeUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}`;
                 console.log('[room_select] 🎯 検針完了API呼び出しURL:', completeUrl);
                 console.log('[room_select] propertyId:', propertyId);
                 let response;
