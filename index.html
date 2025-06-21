@@ -23,7 +23,7 @@
           if (choiceResult.outcome === 'accepted') {
             document.getElementById('install-btn').style.display = 'none';
             const msg = document.createElement('div');
-            msg.textContent = 'インストールが完了しました。'<br>'ホーム画面からアプリを起動できます。';
+            msg.innerHTML = 'インストールが完了しました。<br>ホーム画面からアプリを起動できます。';
             msg.style.marginTop = '24px';
             msg.style.color = '#1976d2';
             msg.style.fontWeight = 'bold';
