@@ -345,14 +345,13 @@
 
         function updateCompleteButton(rooms) {
             const completeBtn = document.getElementById('completeInspectionBtn');
-            const allCompleted = rooms.every(room => room.readingStatus === 'completed' || room.isCompleted === true);
-            
-            if (allCompleted && rooms.length > 0) {
-                completeBtn.style.display = 'flex';
-                completeBtn.innerHTML = `
-                    <span class="material-icons MuiSvgIcon-root">check_circle</span>
-                    <span class="MuiButton-label">この物件の検針を完了する</span>
-                `;
+            // 部屋データが1件以上あれば常に表示・有効化
+            if (rooms.length > 0) {
+                completeBtn.style.display = 'block';
+                completeBtn.disabled = false;
+                completeBtn.textContent = 'この物件の検針を完了する';
+            } else {
+                completeBtn.style.display = 'none';
             }
         }
 
