@@ -254,6 +254,27 @@
             }
         }
 
+        // ページ表示時にローディングを必ず非表示にする
+        function hideLoadingOnPageShow() {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+                loadingElement.style.visibility = 'hidden';
+                loadingElement.style.opacity = '0';
+                loadingElement.style.pointerEvents = 'none';
+                loadingElement.style.zIndex = '-1';
+            }
+            // 必要なら操作ブロックも解除
+            document.body.style.overflow = '';
+            document.body.style.pointerEvents = '';
+        }
+
+        // ページ復元時にも初期化
+        window.addEventListener('pageshow', function(event) {
+            hideLoadingOnPageShow();
+            // 必要ならデータ再取得もここで呼び出し
+        });
+
         function displayRooms(rooms) {
             console.log('[room_select] displayRooms開始:', rooms.length, '件');
             const roomGrid = document.getElementById('roomGrid');
