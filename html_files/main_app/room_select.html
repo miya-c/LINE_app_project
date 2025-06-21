@@ -345,9 +345,9 @@
 
         function updateCompleteButton(rooms) {
             const completeBtn = document.getElementById('completeInspectionBtn');
-            const allCompleted = rooms.every(room => room.readingStatus === 'completed' || room.isCompleted === true);
             
-            if (allCompleted && rooms.length > 0) {
+            // 部屋データが1件以上あれば常にボタンを表示
+            if (rooms.length > 0) {
                 completeBtn.style.display = 'flex';
                 completeBtn.innerHTML = `
                     <span class="material-icons MuiSvgIcon-root">check_circle</span>
@@ -357,40 +357,8 @@
         }
 
         async function completeInspection() {
-            console.log('[room_select] 検針完了ボタンクリック - 必要最小限API送信');
-            try {
-                const gasWebAppUrl = sessionStorage.getItem('gasWebAppUrl');
-                const urlParams = new URLSearchParams(window.location.search);
-                const propertyId = urlParams.get('propertyId');
-                if (!gasWebAppUrl || !propertyId) {
-                    showError('Web App URLまたは物件IDが不正です');
-                    return;
-                }
-                // 現在日付（YYYY-MM-DD）
-                const now = new Date();
-                const yyyy = now.getFullYear();
-                const mm = String(now.getMonth() + 1).padStart(2, '0');
-                const dd = String(now.getDate()).padStart(2, '0');
-                const completionDate = `${yyyy}-${mm}-${dd}`;
-                // GETリクエストに変更（POSTでCORSエラーが発生するため）
-                const fetchUrl = `${gasWebAppUrl}?action=completeInspection&propertyId=${encodeURIComponent(propertyId)}&completionDate=${encodeURIComponent(completionDate)}`;
-                console.log('[room_select] GETリクエスト送信:', fetchUrl);
-                
-                const response = await fetch(fetchUrl);
-                const result = await response.json();
-                if (!result.success) {
-                    showError(result.error || '検針完了APIでエラーが発生しました');
-                    alert('検針完了APIエラー: ' + String(result.error || '不明なエラー'));
-                    console.error('[room_select] completeInspection API error:', result);
-                    return;
-                }
-                alert('検針完了が正常に記録されました');
-                window.location.reload();
-            } catch (error) {
-                showError(error.message);
-                alert('検針完了処理でエラー: ' + String(error.message));
-                console.error('[room_select] completeInspection エラー:', error);
-            }
+            // 検針完了機能は削除済み - UIボタンのみ残存
+            alert('検針完了機能は削除されました');
         }
 
         function goBack() {
