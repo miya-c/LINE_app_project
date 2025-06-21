@@ -496,11 +496,18 @@
         // コンポーネントマウント時にスクロール位置をリセット
         window.scrollTo(0, 0);
         
+        console.log('[ReactApp] 🚀 物件データ取得開始 - ローディング状態確認');
+        console.log('[ReactApp] 初期状態:', { loading: true, isFetched: false });
+        
         // 直接プロパティを取得（WOFF初期化なし）
         const fetchProperties = async () => {
+          console.log('[ReactApp] 📡 fetchProperties関数開始');
           setLoading(true);
           setError(null);
           setIsFetched(false); // ← 追加
+          
+          console.log('[ReactApp] 📊 状態設定完了:', { loading: true, error: null, isFetched: false });
+          
           try {
             // キャッシュバスティング付きAPI呼び出し
             const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
@@ -594,13 +601,18 @@
               name: property.name || property['物件名']
             }));
             
+            console.log('[ReactApp] 📋 正規化データ設定開始:', normalizedData.length, '件');
             setProperties(normalizedData);
+            console.log('[ReactApp] ✅ 物件データ設定完了 - プロパティ数:', normalizedData.length);
+            
           } catch (fetchError) {
-            console.error('[ReactApp] Failed to fetch properties:', fetchError);
+            console.error('[ReactApp] ❌ 物件データ取得エラー:', fetchError);
             setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
           } finally {
+            console.log('[ReactApp] 🏁 データ取得処理完了 - ローディング終了');
             setLoading(false);
             setIsFetched(true); // ← 追加：データ取得処理完了
+            console.log('[ReactApp] 📊 最終状態:', { loading: false, isFetched: true });
           }
         };
 
@@ -899,6 +911,7 @@
 
       // 物件データ取得中の初期ローディング（Material UI準拠）
       if (loading && !isFetched) {
+        console.log('[ReactApp] 🔄 ローディング画面表示中:', { loading, isFetched });
         return (
           <div>
             {/* Material UI AppBar */}
@@ -911,29 +924,39 @@
             {/* Material UI Container */}
             <div className="MuiContainer-root">
               <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                {/* Material UI Search Field */}
+                {/* Material UI Search Field (Disabled during loading) */}
                 <div className="MuiTextField-root">
                   <input
                     type="text"
                     placeholder="物件IDまたは物件名で検索..."
-                    value={searchTerm}
-                    onChange={handleSearchChange}
+                    value=""
                     disabled
-                    style={{ opacity: 0.6 }}
+                    style={{ 
+                      opacity: 0.6,
+                      cursor: 'not-allowed'
+                    }}
                   />
                 </div>
                 
-                {/* Material UI Loading State */}
+                {/* Material UI Loading State (Full Screen) */}
                 <div className="loading-container">
                   <div className="MuiCircularProgress-root"></div>
                   <div className="MuiTypography-root" style={{
-                    fontSize: '1rem',
+                    fontSize: '1.1rem',
                     color: 'var(--mui-palette-grey-900)',
                     fontWeight: 500,
                     textAlign: 'center',
-                    margin: 0
+                    margin: '16px 0 0 0'
                   }}>
                     物件情報を読み込み中です...
+                  </div>
+                  <div className="MuiTypography-root" style={{
+                    fontSize: '0.875rem',
+                    color: 'var(--mui-palette-grey-600)',
+                    textAlign: 'center',
+                    margin: '8px 0 0 0'
+                  }}>
+                    しばらくお待ちください
                   </div>
                 </div>
               </div>
@@ -991,6 +1014,14 @@
           </div>
         );
       }
+      
+      // データ取得完了後のメイン表示
+      console.log('[ReactApp] 🎨 メイン画面レンダリング:', { 
+        loading, 
+        isFetched, 
+        propertiesCount: properties.length, 
+        filteredCount: filteredProperties.length 
+      });
       
       return (
         <div style={{ minHeight: '100vh' }}>
