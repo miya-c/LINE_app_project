@@ -1,11 +1,7 @@
 /**
  * web_app_api.gs - Web App API関数群（構文修正版）
- * Last Updated: 2024-12-19 22:30:00 JST - completeInspection API実装・デバッグ強化
- * バージョン: v2.5.3-complete-inspection-fix
+ * Last Updated: 2025-06-21 - Fixed switch statement syntax errors
  */
-
-const API_VERSION = "v2.5.3-complete-inspection-fix";
-const LAST_UPDATED = "2024-12-19 22:30:00 JST";
 
 function createCorsJsonResponse(data) {
   const response = ContentService
@@ -48,17 +44,11 @@ function doGet(e) {
           <head><title>水道検針アプリ API</title></head>
           <body>
             <h1>🚰 水道検針アプリ API</h1>
-            <p><strong>API バージョン:</strong> ${API_VERSION}</p>
-            <p><strong>最終更新:</strong> ${LAST_UPDATED}</p>
-            <p><strong>現在時刻:</strong> ${new Date().toISOString()}</p>
-            <h2>利用可能なAPIエンドポイント</h2>
+            <p>現在時刻: ${new Date().toISOString()}</p>
             <ul>
-              <li><a href="?action=version">バージョン情報</a></li>
-              <li><a href="?action=test">APIテスト</a></li>
               <li><a href="?action=getProperties">物件一覧を取得</a></li>
               <li>部屋一覧: ?action=getRooms&propertyId=物件ID</li>
               <li>検針データ: ?action=getMeterReadings&propertyId=物件ID&roomId=部屋ID</li>
-              <li>検針完了: ?action=completeInspection&propertyId=物件ID</li>
             </ul>
           </body>
         </html>
@@ -66,18 +56,7 @@ function doGet(e) {
     }
 
     // API処理
-    console.log(`[doGet] switch文開始 - action: ${action}, typeof: ${typeof action}, 全パラメータ:`, e.parameter);
     switch (action) {
-      case 'version':
-      case 'info':
-        return createCorsJsonResponse({
-          success: true,
-          apiVersion: API_VERSION,
-          lastUpdated: LAST_UPDATED,
-          timestamp: new Date().toISOString(),
-          availableActions: ['test', 'getProperties', 'getRooms', 'getMeterReadings', 'updateMeterReadings', 'completeInspection', 'completePropertyInspection', 'version', 'info']
-        });
-        
       case 'test':
         return createCorsJsonResponse({
           success: true,
@@ -182,7 +161,6 @@ function doGet(e) {
         
       case 'completeInspection':
       case 'completePropertyInspection':
-        console.log(`[doGet] 🎯 検針完了ケースに到達 - action: ${action}`);
         console.log(`[doGet] 検針完了処理開始 - action: ${action}`);
         if (!e.parameter.propertyId) {
           return createCorsJsonResponse({ 
@@ -217,15 +195,13 @@ function doGet(e) {
         }
         
       default:
-        console.log(`[doGet] ❌ 未対応のアクション: ${action}, typeof: ${typeof action}, 全パラメータ:`, e.parameter);
-        console.log(`[doGet] ❌ 利用可能なアクション: test, getProperties, getRooms, getMeterReadings, updateMeterReadings, completeInspection, completePropertyInspection`);
+        console.log(`[doGet] 未対応のアクション: ${action}, 全パラメータ:`, e.parameter);
         return createCorsJsonResponse({ 
           success: false,
           error: `未対応のAPI要求: ${action}`,
           timestamp: new Date().toISOString(),
           receivedAction: action,
-          allParameters: e.parameter,
-          availableActions: ['test', 'getProperties', 'getRooms', 'getMeterReadings', 'updateMeterReadings', 'completeInspection', 'completePropertyInspection']
+          allParameters: e.parameter
         });
     }
     

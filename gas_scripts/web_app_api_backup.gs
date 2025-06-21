@@ -1,11 +1,7 @@
 /**
- * web_app_api.gs - Web App API関数群（構文修正版）
- * Last Updated: 2024-12-19 22:30:00 JST - completeInspection API実装・デバッグ強化
- * バージョン: v2.5.3-complete-inspection-fix
+ * web_app_api.gs - Web App API関数群（軽量版）
+ * Last Updated: 2025-06-21 - Fixed completeInspection case break issue
  */
-
-const API_VERSION = "v2.5.3-complete-inspection-fix";
-const LAST_UPDATED = "2024-12-19 22:30:00 JST";
 
 function createCorsJsonResponse(data) {
   const response = ContentService
@@ -48,36 +44,19 @@ function doGet(e) {
           <head><title>水道検針アプリ API</title></head>
           <body>
             <h1>🚰 水道検針アプリ API</h1>
-            <p><strong>API バージョン:</strong> ${API_VERSION}</p>
-            <p><strong>最終更新:</strong> ${LAST_UPDATED}</p>
-            <p><strong>現在時刻:</strong> ${new Date().toISOString()}</p>
-            <h2>利用可能なAPIエンドポイント</h2>
+            <p>現在時刻: ${new Date().toISOString()}</p>
             <ul>
-              <li><a href="?action=version">バージョン情報</a></li>
-              <li><a href="?action=test">APIテスト</a></li>
               <li><a href="?action=getProperties">物件一覧を取得</a></li>
               <li>部屋一覧: ?action=getRooms&propertyId=物件ID</li>
               <li>検針データ: ?action=getMeterReadings&propertyId=物件ID&roomId=部屋ID</li>
-              <li>検針完了: ?action=completeInspection&propertyId=物件ID</li>
             </ul>
           </body>
         </html>
       `).setTitle('水道検針アプリ API');
     }
-
+    
     // API処理
-    console.log(`[doGet] switch文開始 - action: ${action}, typeof: ${typeof action}, 全パラメータ:`, e.parameter);
     switch (action) {
-      case 'version':
-      case 'info':
-        return createCorsJsonResponse({
-          success: true,
-          apiVersion: API_VERSION,
-          lastUpdated: LAST_UPDATED,
-          timestamp: new Date().toISOString(),
-          availableActions: ['test', 'getProperties', 'getRooms', 'getMeterReadings', 'updateMeterReadings', 'completeInspection', 'completePropertyInspection', 'version', 'info']
-        });
-        
       case 'test':
         return createCorsJsonResponse({
           success: true,
@@ -105,7 +84,7 @@ function doGet(e) {
           const roomsResult = getRooms(e.parameter.propertyId);
           return createCorsJsonResponse({
             success: true,
-            data: roomsResult,
+            data: roomsResult, // {property: {...}, rooms: [...]} 形式
             message: `${roomsResult.rooms ? roomsResult.rooms.length : 0}件の部屋データを取得しました`
           });
         } catch (error) {
@@ -123,11 +102,14 @@ function doGet(e) {
             error: 'propertyIdとroomIdが必要です'
           });
         }
-
+        
         try {
           const result = getMeterReadings(e.parameter.propertyId, e.parameter.roomId);
           console.log('[web_app_api] getMeterReadings結果:', result);
+          console.log('[web_app_api] result type:', typeof result);
+          console.log('[web_app_api] result isArray:', Array.isArray(result));
           
+          // 結果の形式を確認
           if (result && typeof result === 'object' && result.hasOwnProperty('propertyName')) {
             console.log('[web_app_api] ✅ 統合版の戻り値を検出');
             return createCorsJsonResponse({
@@ -140,6 +122,7 @@ function doGet(e) {
             });
           } else if (Array.isArray(result)) {
             console.log('[web_app_api] ⚠️ 旧形式（配列）の戻り値を検出');
+            // 後方互換性: 旧形式への対応
             return createCorsJsonResponse({
               success: true,
               data: result
@@ -163,7 +146,7 @@ function doGet(e) {
             error: '必須パラメータが不足しています'
           });
         }
-
+        
         try {
           const readings = JSON.parse(e.parameter.readings);
           if (!Array.isArray(readings) || readings.length === 0) {
@@ -182,7 +165,6 @@ function doGet(e) {
         
       case 'completeInspection':
       case 'completePropertyInspection':
-        console.log(`[doGet] 🎯 検針完了ケースに到達 - action: ${action}`);
         console.log(`[doGet] 検針完了処理開始 - action: ${action}`);
         if (!e.parameter.propertyId) {
           return createCorsJsonResponse({ 
@@ -192,17 +174,20 @@ function doGet(e) {
         }
 
         try {
+          // 追加のパラメータを取得（オプション）
           const completedAt = e.parameter.completedAt || new Date().toISOString();
           const completedBy = e.parameter.completedBy || 'user';
           
           console.log(`[completeInspection] 処理開始 - propertyId: ${e.parameter.propertyId}, completedAt: ${completedAt}, completedBy: ${completedBy}`);
           
+          // 関数の存在確認
           if (typeof completePropertyInspection !== 'function') {
             throw new Error('completePropertyInspection関数が見つかりません');
           }
           
           const result = completePropertyInspection(e.parameter.propertyId);
           
+          // 追加情報をログに記録
           if (result.success) {
             console.log(`[completeInspection] 成功 - ${result.message}`);
           }
@@ -217,15 +202,13 @@ function doGet(e) {
         }
         
       default:
-        console.log(`[doGet] ❌ 未対応のアクション: ${action}, typeof: ${typeof action}, 全パラメータ:`, e.parameter);
-        console.log(`[doGet] ❌ 利用可能なアクション: test, getProperties, getRooms, getMeterReadings, updateMeterReadings, completeInspection, completePropertyInspection`);
+        console.log(`[doGet] 未対応のアクション: ${action}, 全パラメータ:`, e.parameter);
         return createCorsJsonResponse({ 
           success: false,
           error: `未対応のAPI要求: ${action}`,
           timestamp: new Date().toISOString(),
           receivedAction: action,
-          allParameters: e.parameter,
-          availableActions: ['test', 'getProperties', 'getRooms', 'getMeterReadings', 'updateMeterReadings', 'completeInspection', 'completePropertyInspection']
+          allParameters: e.parameter
         });
     }
     
@@ -238,9 +221,11 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // POST用のAPI処理
   try {
     console.log('[doPost] POSTリクエスト処理開始');
     
+    // URLパラメータからactionを取得
     const action = e?.parameter?.action;
     
     if (action === 'completeInspection' || action === 'completePropertyInspection') {
@@ -263,6 +248,7 @@ function doPost(e) {
       }
     }
     
+    // その他のPOST処理
     return createCorsJsonResponse({ 
       success: true, 
       message: 'POST request received successfully',
@@ -273,10 +259,8 @@ function doPost(e) {
   } catch (error) {
     console.error('[doPost] エラー:', error);
     return createCorsJsonResponse({ 
-      success: false,
-      error: error.message,
+      success: false,      error: error.message,
       timestamp: new Date().toISOString(),
       method: 'POST'
-    });
-  }
+    });  }
 }
