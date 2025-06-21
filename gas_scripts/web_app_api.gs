@@ -1,26 +1,17 @@
 /**
- * web_app_api.gs - Web App API関数群（構文修正版）
- * Last Updated: 2024-12-19 22:30:00 JST - completeInspection API実装・デバッグ強化
- * バージョン: v2.5.3-complete-inspection-fix
+ * web_app_api.gs - Web App API関数群（最終修正版）
+ * Last Updated: 2025-06-21 13:00:00 JST - 検針完了ボタン実装・CORS完全修正
+ * バージョン: v2.5.5-final
  */
 
-const API_VERSION = "v2.5.3-complete-inspection-fix";
-const LAST_UPDATED = "2024-12-19 22:30:00 JST";
+const API_VERSION = "v2.5.5-final";
+const LAST_UPDATED = "2025-06-21 13:00:00 JST";
 
 function createCorsJsonResponse(data) {
-  const response = ContentService
+  console.log('[createCorsJsonResponse] データ返却開始 - APIバージョン:', API_VERSION);
+  return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-  
-  // CORSヘッダーを明示的に設定
-  response.setHeaders({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
-    'Access-Control-Max-Age': '86400'
-  });
-  
-  return response;
 }
 
 /**
@@ -39,7 +30,13 @@ function doGet(e) {
   try {
     const action = e?.parameter?.action;
     
-    console.log(`[doGet] 受信したアクション: ${action}`);
+    console.log(`[doGet] 🔍 受信したアクション詳細解析:`);
+    console.log(`[doGet] - action: "${action}"`);
+    console.log(`[doGet] - typeof action: ${typeof action}`);
+    console.log(`[doGet] - action === 'completeInspection': ${action === 'completeInspection'}`);
+    console.log(`[doGet] - action === 'completePropertyInspection': ${action === 'completePropertyInspection'}`);
+    console.log(`[doGet] - 全パラメータ:`, e.parameter);
+    console.log(`[doGet] - パラメータのキー一覧:`, Object.keys(e.parameter || {}));
     
     if (!action) {
       // テストページ表示（簡素版）
