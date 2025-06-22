@@ -588,11 +588,8 @@
           localStorage.setItem('userInfo', JSON.stringify(result.userInfo));
           localStorage.setItem('userSpreadsheetId', result.userInfo.spreadsheetId);
           
-          showSuccess('認証成功！物件選択画面に移動します...');
-          
-          setTimeout(() => {
-            redirectToPropertySelect();
-          }, 1500);
+          // ユーザーに移動先を選択してもらう
+          showSuccessWithOptions(result.userInfo);
           
         } else {
           debugLog(`認証失敗: ${result.message}`);
@@ -853,6 +850,77 @@
       console.log('[Navigation] Redirecting to property select...');
       debugLog('物件選択画面に移動中...');
       window.location.href = './html_files/main_app/property_select.html';
+    }
+
+    /**
+     * スプレッドシートに直接移動
+     */
+    function redirectToSpreadsheet(spreadsheetLink) {
+      console.log('[Navigation] Redirecting to spreadsheet:', spreadsheetLink);
+      debugLog(`スプレッドシートに移動中: ${spreadsheetLink}`);
+      
+      // URLをクリーンアップ（?usp=...パラメータを削除）
+      let cleanUrl = spreadsheetLink;
+      if (cleanUrl.includes('?')) {
+        const baseUrl = cleanUrl.split('?')[0];
+        cleanUrl = baseUrl;
+      }
+      
+      console.log('[Navigation] Clean URL:', cleanUrl);
+      window.open(cleanUrl, '_blank');
+    }
+
+    /**
+     * 認証成功時に選択肢を表示
+     */
+    function showSuccessWithOptions(userInfo) {
+      hideMessages();
+      setAuthenticating(false);
+      
+      const loginContainer = document.querySelector('.login-container');
+      
+      // 既存の選択肢UIを削除
+      const existingOptions = document.getElementById('successOptions');
+      if (existingOptions) {
+        existingOptions.remove();
+      }
+      
+      // 成功メッセージと選択肢を作成
+      const optionsDiv = document.createElement('div');
+      optionsDiv.id = 'successOptions';
+      optionsDiv.innerHTML = `
+        <div style="background: #e8f5e8; color: #388e3c; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #388e3c;">
+          <strong>✅ 認証成功！</strong><br>
+          ユーザー: ${userInfo.username}<br>
+          移動先を選択してください：
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button id="goToSpreadsheet" class="btn btn-primary" style="background: #28a745;">
+            📊 スプレッドシートを開く
+          </button>
+          
+          <button id="goToPropertySelect" class="btn btn-primary" style="background: #007bff;">
+            🏠 物件選択画面へ進む
+          </button>
+        </div>
+        
+        <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 0.9rem; color: #666;">
+          💡 <strong>スプレッドシートを開く:</strong> データ管理画面に直接移動<br>
+          💡 <strong>物件選択画面:</strong> 検針作業用のアプリ画面に移動
+        </div>
+      `;
+      
+      loginContainer.appendChild(optionsDiv);
+      
+      // ボタンイベントリスナーを追加
+      document.getElementById('goToSpreadsheet').addEventListener('click', function() {
+        redirectToSpreadsheet(userInfo.spreadsheetLink);
+      });
+      
+      document.getElementById('goToPropertySelect').addEventListener('click', function() {
+        redirectToPropertySelect();
+      });
     }
     
     /**
