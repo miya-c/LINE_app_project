@@ -367,10 +367,11 @@
         const response = await fetch(testUrl, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Cache-Control': 'no-cache'
           },
-          signal: controller.signal
+          signal: controller.signal,
+          redirect: 'follow' // リダイレクトを追跡
         });
         
         clearTimeout(timeoutId);
@@ -499,15 +500,13 @@
           response = await fetch(url, {
             method: 'GET',
             headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-              'Accept': 'application/json, text/plain, */*'
+              'Accept': 'application/json, text/plain, */*',
+              'Cache-Control': 'no-cache'
             },
             signal: controller.signal,
-            mode: 'cors', // CORS対応を明示
-            credentials: 'omit' // 認証情報は送信しない
+            mode: 'cors',
+            credentials: 'omit',
+            redirect: 'follow' // 重要: リダイレクトを追跡
           });
           debugLog('fetch完了');
         } catch (fetchError) {

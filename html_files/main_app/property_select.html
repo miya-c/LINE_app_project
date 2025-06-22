@@ -539,7 +539,16 @@
               fullUrl: requestUrl
             });
             
-            const response = await fetch(requestUrl);
+            const response = await fetch(requestUrl, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+              },
+              mode: 'cors',
+              credentials: 'omit',
+              redirect: 'follow' // リダイレクトを追跡
+            });
             console.log('[ReactApp] Response status:', response.status);
             console.log('[ReactApp] Response headers:', response.headers);
             
@@ -780,7 +789,16 @@
             fullUrl: requestUrl
           });
           
-          const roomResponse = await fetch(requestUrl);
+          const roomResponse = await fetch(requestUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache'
+            },
+            mode: 'cors',
+            credentials: 'omit',
+            redirect: 'follow' // リダイレクトを追跡
+          });
           
           console.log('[ReactApp] Room Response Status:', roomResponse.status);
           console.log('[ReactApp] Room Response Headers:', roomResponse.headers);
