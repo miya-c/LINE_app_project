@@ -536,8 +536,8 @@
             console.log('[ReactApp] Fetching properties from:', requestUrl);
             console.log('[ReactApp] Request URL breakdown:', {
               baseUrl: gasWebAppUrl,
-              parameters: requestUrl.split('?')[1],
-              fullUrl: requestUrl
+              parameters: requestUrl ? requestUrl.split('?')[1] : 'N/A',
+              fullUrl: requestUrl || 'URL not available'
             });
 
             // 503エラー対応の再試行ロジック
@@ -854,8 +854,8 @@
           console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id}`);
           console.log('[ReactApp] Room request URL breakdown:', {
             baseUrl: gasWebAppUrl,
-            parameters: requestUrl.split('?')[1],
-            fullUrl: requestUrl
+            parameters: requestUrl ? requestUrl.split('?')[1] : 'N/A',
+            fullUrl: requestUrl || 'URL not available'
           });
 
           // 503エラー対応の再試行ロジック（部屋データ）
