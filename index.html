@@ -271,6 +271,11 @@
       <button type="button" id="retryBtn" class="btn btn-primary hidden" style="margin-top: 1rem;">
         再試行
       </button>
+      
+      <!-- 接続テストボタン（デバッグ用） -->
+      <button type="button" id="testConnectionBtn" class="btn btn-primary" style="margin-top: 0.5rem; background: #6c757d;">
+        GAS接続テスト
+      </button>
     </form>
     
     <!-- サーバー状況表示 -->
@@ -296,10 +301,17 @@
     // GAS Web App URL（本番時は実際のURLに置き換え）
     const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw4dn-KCK-iafRzd2Oq0GGMwID6mPwA9C3uuBHYq4yKcjKjJJmkzrkodRMZIVcSy1eu3A/exec';
     
+    // 接続テスト用の代替URL（必要に応じて）
+    const BACKUP_GAS_URL = GAS_WEB_APP_URL; // 現在は同じURLを使用
+    
     // デバッグモード表示
     if (DEBUG_MODE) {
       document.getElementById('debugInfo').style.display = 'block';
       debugLog('デバッグモードが有効です');
+      debugLog(`GAS URL: ${GAS_WEB_APP_URL}`);
+      
+      // 接続テストを自動実行
+      setTimeout(testConnection, 2000);
     }
     
     // ページ読み込み時の初期化
@@ -325,6 +337,12 @@
         }
       });
       
+      // 接続テストボタンイベントリスナー
+      document.getElementById('testConnectionBtn').addEventListener('click', function() {
+        debugLog('手動接続テスト実行');
+        testConnection();
+      });
+      
       // エンターキーでログイン
       document.addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !isAuthenticating) {
@@ -332,6 +350,74 @@
         }
       });
     });
+    
+    /**
+     * GAS接続テスト関数
+     */
+    async function testConnection() {
+      debugLog('GAS接続テスト開始...');
+      
+      try {
+        const testUrl = `${GAS_WEB_APP_URL}?action=test&timestamp=${Date.now()}`;
+        debugLog(`テストURL: ${testUrl}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
+        
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        debugLog(`接続テスト結果: ${response.status} ${response.statusText}`);
+        
+        if (response.ok) {
+          const result = await response.json();
+          debugLog(`接続テスト成功: ${JSON.stringify(result)}`);
+          showConnectionStatus('success', 'GASサーバーとの接続が正常です');
+        } else {
+          debugLog(`接続テスト失敗: HTTPエラー ${response.status}`);
+          showConnectionStatus('error', `HTTPエラー: ${response.status}`);
+        }
+        
+      } catch (error) {
+        debugLog(`接続テストエラー: ${error.message}`);
+        showConnectionStatus('error', `接続エラー: ${error.message}`);
+      }
+    }
+    
+    /**
+     * 接続状況を表示
+     */
+    function showConnectionStatus(type, message) {
+      const statusElement = document.getElementById('connectionStatus');
+      if (!statusElement) {
+        // 動的に接続状況表示要素を作成
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'connectionStatus';
+        statusDiv.style.cssText = 'margin-top: 1rem; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;';
+        document.querySelector('.login-container').appendChild(statusDiv);
+      }
+      
+      const statusEl = document.getElementById('connectionStatus');
+      statusEl.textContent = message;
+      
+      if (type === 'success') {
+        statusEl.style.backgroundColor = '#d4edda';
+        statusEl.style.color = '#155724';
+        statusEl.style.border = '1px solid #c3e6cb';
+      } else {
+        statusEl.style.backgroundColor = '#f8d7da';
+        statusEl.style.color = '#721c24';
+        statusEl.style.border = '1px solid #f5c6cb';
+      }
+    }
     
     /**
      * 既存の認証情報をチェック
@@ -374,48 +460,65 @@
     }
     
     /**
-     * ユーザー認証API呼び出し（強化されたリトライ機能付き）
+     * ユーザー認証API呼び出し（ネットワークエラー対策強化版）
      */
     async function authenticateUser(username, password, retryCount = 0) {
-      const MAX_RETRIES = 5; // リトライ回数を増加
-      const BASE_DELAY = 1000; // ベース遅延時間
+      const MAX_RETRIES = 5;
+      const BASE_DELAY = 1000;
       
       setAuthenticating(true);
       hideMessages();
       
       try {
         debugLog(`認証開始: ${username} (試行: ${retryCount + 1}/${MAX_RETRIES + 1})`);
+        debugLog(`使用URL: ${GAS_WEB_APP_URL}`);
         
         // 指数バックオフ遅延（初回のみ除く）
         if (retryCount > 0) {
-          const delay = BASE_DELAY * Math.pow(2, retryCount - 1) + Math.random() * 1000; // ジッター追加
+          const delay = BASE_DELAY * Math.pow(2, retryCount - 1) + Math.random() * 1000;
           debugLog(`${delay.toFixed(0)}ms待機後にリトライします...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         
         // API呼び出し
         const url = `${GAS_WEB_APP_URL}?action=authenticate&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&t=${Date.now()}&retry=${retryCount}`;
+        debugLog(`リクエストURL: ${url.substring(0, 150)}...`);
         
         const controller = new AbortController();
-        const timeoutDuration = 20000 + (retryCount * 5000); // タイムアウトを徐々に延長
-        const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+        const timeoutDuration = 20000 + (retryCount * 5000);
+        const timeoutId = setTimeout(() => {
+          debugLog('リクエストタイムアウト - abort()を実行');
+          controller.abort();
+        }, timeoutDuration);
         
         debugLog(`タイムアウト設定: ${timeoutDuration}ms`);
         
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          },
-          signal: controller.signal
-        });
+        let response;
+        try {
+          debugLog('fetch開始...');
+          response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+              'Accept': 'application/json, text/plain, */*'
+            },
+            signal: controller.signal,
+            mode: 'cors', // CORS対応を明示
+            credentials: 'omit' // 認証情報は送信しない
+          });
+          debugLog('fetch完了');
+        } catch (fetchError) {
+          debugLog(`fetch エラー: ${fetchError.name} - ${fetchError.message}`);
+          throw fetchError;
+        }
         
         clearTimeout(timeoutId);
         
         debugLog(`レスポンス状況: ${response.status} ${response.statusText}`);
+        debugLog(`レスポンスヘッダー: ${JSON.stringify([...response.headers.entries()])}`);
         
         // 503エラーの特別処理
         if (response.status === 503) {
@@ -433,8 +536,14 @@
         let result;
         try {
           const responseText = await response.text();
-          debugLog(`レスポンス本文: ${responseText.substring(0, 200)}...`);
+          debugLog(`レスポンス本文（先頭200文字）: ${responseText.substring(0, 200)}...`);
+          
+          if (!responseText.trim()) {
+            throw new Error('EMPTY_RESPONSE');
+          }
+          
           result = JSON.parse(responseText);
+          debugLog(`パース結果: ${JSON.stringify(result, null, 2)}`);
         } catch (parseError) {
           debugLog(`JSON解析エラー: ${parseError.message}`);
           throw new Error('INVALID_RESPONSE_FORMAT');
@@ -444,9 +553,11 @@
         
         if (result.success && result.userInfo) {
           // 認証成功
+          debugLog('認証成功 - handleAuthSuccess()を呼び出し');
           await handleAuthSuccess(result.userInfo);
         } else {
           // 認証失敗（リトライしない）
+          debugLog(`認証失敗: ${result.message}`);
           showError(result.message || '認証に失敗しました');
         }
         
