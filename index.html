@@ -764,6 +764,137 @@
     }
     
     /**
+     * 認証状態の設定
+     */
+    function setAuthenticating(isAuthenticating) {
+      const loginBtn = document.getElementById('loginBtn');
+      const retryBtn = document.getElementById('retryBtn');
+      const loading = document.getElementById('loading');
+      
+      if (isAuthenticating) {
+        isAuthenticating = true;
+        loginBtn.style.display = 'none';
+        retryBtn.style.display = 'none';
+        loading.style.display = 'flex';
+      } else {
+        isAuthenticating = false;
+        loginBtn.style.display = 'block';
+        loading.style.display = 'none';
+      }
+    }
+    
+    /**
+     * エラーメッセージ表示
+     */
+    function showError(message) {
+      console.log('[UI Error]', message);
+      hideMessages();
+      
+      const errorElement = document.getElementById('errorMessage');
+      errorElement.textContent = message;
+      errorElement.classList.remove('hidden');
+      
+      // サーバー状況表示（503エラー関連）
+      if (message.includes('503') || message.includes('Service Unavailable') || message.includes('server')) {
+        const serverStatus = document.getElementById('serverStatus');
+        if (serverStatus) {
+          serverStatus.classList.remove('hidden');
+        }
+      }
+    }
+    
+    /**
+     * 成功メッセージ表示
+     */
+    function showSuccess(message) {
+      console.log('[UI Success]', message);
+      hideMessages();
+      
+      const successElement = document.getElementById('successMessage');
+      successElement.textContent = message;
+      successElement.classList.remove('hidden');
+    }
+    
+    /**
+     * メッセージ非表示
+     */
+    function hideMessages() {
+      const errorElement = document.getElementById('errorMessage');
+      const successElement = document.getElementById('successMessage');
+      
+      if (errorElement) errorElement.classList.add('hidden');
+      if (successElement) successElement.classList.add('hidden');
+    }
+    
+    /**
+     * リトライボタン表示
+     */
+    function showRetryButton() {
+      const retryBtn = document.getElementById('retryBtn');
+      if (retryBtn) {
+        retryBtn.classList.remove('hidden');
+      }
+    }
+    
+    /**
+     * リトライボタン非表示
+     */
+    function hideRetryButton() {
+      const retryBtn = document.getElementById('retryBtn');
+      if (retryBtn) {
+        retryBtn.classList.add('hidden');
+      }
+    }
+    
+    /**
+     * 物件選択画面にリダイレクト
+     */
+    function redirectToPropertySelect() {
+      console.log('[Navigation] Redirecting to property select...');
+      debugLog('物件選択画面に移動中...');
+      window.location.href = './html_files/main_app/property_select.html';
+    }
+    
+    /**
+     * CORS問題解決ガイド表示
+     */
+    function showDeploymentGuide() {
+      const guide = `
+🔧 CORS問題解決ガイド
+
+【現在の問題】
+• ブラウザから「Failed to fetch」エラーが発生
+• GAS Web App の CORS 設定に問題がある可能性
+
+【解決手順】
+
+1️⃣ Google Apps Script エディタを開く
+   - スプレッドシートから「拡張機能 > Apps Script」
+
+2️⃣ 新しいデプロイメントを作成
+   - 「デプロイ」→「新しいデプロイ」
+   - 種類：「ウェブアプリ」
+   - 実行者：「自分」
+   - アクセス：「全員」← 重要！
+
+3️⃣ 新しいURLをテスト
+   - 直接ブラウザでアクセスして動作確認
+   - JSONレスポンスが返ることを確認
+
+4️⃣ フロントエンド更新
+   - このページの設定を新しいURLに更新
+
+【診断ツール】
+下記URLで詳細な接続テストが可能：
+file:///Users/miya/Documents/GitHub/LINE_app_project/cors_fix_test.html
+
+問題が継続する場合は、GAS側のCORS設定を確認してください。
+      `;
+      
+      alert(guide);
+    }
+    
+    /**
      * デバッグログ
      */
     function debugLog(message) {
