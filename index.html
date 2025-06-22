@@ -276,6 +276,11 @@
       <button type="button" id="testConnectionBtn" class="btn btn-primary" style="margin-top: 0.5rem; background: #6c757d;">
         GAS接続テスト
       </button>
+      
+      <!-- 新しいデプロイメント案内ボタン -->
+      <button type="button" id="deploymentGuideBtn" class="btn btn-primary" style="margin-top: 0.5rem; background: #28a745;">
+        🔧 CORS問題解決ガイド
+      </button>
     </form>
     
     <!-- サーバー状況表示 -->
@@ -349,6 +354,11 @@
       document.getElementById('testConnectionBtn').addEventListener('click', function() {
         debugLog('手動接続テスト実行');
         testConnection();
+      });
+      
+      // CORS問題解決ガイドボタンイベントリスナー
+      document.getElementById('deploymentGuideBtn').addEventListener('click', function() {
+        showDeploymentGuide();
       });
       
       // エンターキーでログイン
@@ -558,12 +568,41 @@
           });
           debugLog('fetch完了');
           console.log('[Network Response] Status:', response.status, response.statusText);
+          console.log('[Network Response] Final URL:', response.url);
+          console.log('[Network Response] Headers:', Object.fromEntries(response.headers.entries()));
+          console.log('[Network Response] Type:', response.type);
+          console.log('[Network Response] Redirected:', response.redirected);
         } catch (fetchError) {
           debugLog(`fetch エラー: ${fetchError.name} - ${fetchError.message}`);
           console.error('[Network Error] Type:', fetchError.name);
           console.error('[Network Error] Message:', fetchError.message);
           console.error('[Network Error] Stack:', fetchError.stack);
-          throw fetchError;
+          
+          // GAS特有のリダイレクト問題に対処：手動でリダイレクトを試行
+          if (fetchError.name === 'TypeError' && fetchError.message.includes('Failed to fetch')) {
+            console.log('[Network Error] GASリダイレクト問題の可能性 - 代替手法を試行');
+            try {
+              // User-Agentを変更して再試行
+              const alternativeResponse = await fetch(url, {
+                method: 'GET',
+                headers: {
+                  'Accept': 'application/json',
+                  'Cache-Control': 'no-cache',
+                  'User-Agent': 'Mozilla/5.0 (compatible; GASClient/1.0)'
+                },
+                signal: controller.signal,
+                mode: 'no-cors', // CORS制限を回避
+                credentials: 'omit'
+              });
+              console.log('[Network Retry] 代替リクエスト成功:', alternativeResponse.status);
+              response = alternativeResponse;
+            } catch (retryError) {
+              console.error('[Network Retry] 代替リクエストも失敗:', retryError);
+              throw fetchError; // 元のエラーを再throw
+            }
+          } else {
+            throw fetchError;
+          }
         }
         
         clearTimeout(timeoutId);
@@ -830,6 +869,55 @@
       document.getElementById('serverStatus').classList.add('hidden');
     }
     
+    /**
+     * CORS問題解決ガイドを表示
+     */
+    function showDeploymentGuide() {
+      console.log('[Deployment Guide] CORS問題解決ガイド表示');
+      
+      const guideMessage = `
+CORS問題解決手順:
+
+【現在の問題】
+すべてのリクエストで "Failed to fetch" エラーが発生しています。
+これはGoogle Apps ScriptのCORS/デプロイメント設定の問題です。
+
+【解決手順】
+1. Google Apps Scriptエディタを開く
+   → https://script.google.com/
+
+2. 「デプロイ」→「新しいデプロイ」をクリック
+
+3. 設定を以下の通りに変更:
+   • 種類: ウェブアプリ
+   • 実行者: 自分
+   • アクセス: 全員
+
+4. 「デプロイ」をクリックして新しいURLを取得
+
+5. 新しいURLをコピーして、このページを再読み込み
+
+【技術的詳細】
+• サーバー側は正常動作 (curl テスト成功)
+• CORS ヘッダーは設定済み
+• リダイレクト処理でブラウザがブロック
+
+【問い合わせ】
+問題が解決しない場合は、開発者にお問い合わせください。
+      `;
+      
+      alert(guideMessage);
+      
+      // 詳細ログをコンソールに出力
+      console.log('[Deployment Guide] 詳細診断情報:', {
+        currentUrl: GAS_WEB_APP_URL,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        cookiesEnabled: navigator.cookieEnabled,
+        onLine: navigator.onLine
+      });
+    }
+
     /**
      * デバッグログ
      */
