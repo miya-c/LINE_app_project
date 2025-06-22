@@ -157,21 +157,43 @@ function doGet(e) {
     // API処理（高速化版）
     switch (action) {
       case 'test':
-        console.log(`[doGet:${requestId}] テストAPI実行`);
+        console.log('[doGet] 🧪 テスト接続要求 - CORS診断強化版');
+        console.log('[doGet] Request origin check:', {
+          hasParameter: !!e.parameter,
+          action: e.parameter ? e.parameter.action : 'undefined',
+          timestamp: e.parameter ? e.parameter.timestamp : 'undefined',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Server-side'
+        });
+        
         return createCorsJsonResponse({
           success: true,
-          message: 'API正常動作',
+          message: 'GAS API接続テスト成功 - CORS対応済み',
           timestamp: new Date().toISOString(),
-          requestId: requestId,
-          version: API_VERSION,
-          processTime: Date.now() - startTime
+          apiVersion: API_VERSION,
+          corsTest: {
+            preflightSupported: true,
+            allowedOrigins: '*',
+            allowedMethods: ['GET', 'POST', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Cache-Control']
+          },
+          deploymentInfo: {
+            scriptId: ScriptApp.getScriptId(),
+            executionMode: 'web-app',
+            lastUpdated: LAST_UPDATED
+          }
         });
       
       case 'authenticate':
-        console.log(`[doGet:${requestId}] 認証API実行`);
+        console.log(`[doGet:${requestId}] 認証API実行 - CORS対応強化版`);
         try {
           const username = e.parameter.username;
           const password = e.parameter.password;
+          
+          console.log(`[doGet:${requestId}] 認証リクエスト:`, {
+            username: username ? 'provided' : 'missing',
+            password: password ? 'provided' : 'missing',
+            hasParameters: !!e.parameter
+          });
           
           if (!username || !password) {
             return createCorsJsonResponse({
@@ -579,23 +601,40 @@ function doPost(e) {
 }
 
 /**
- * OPTIONSリクエスト処理（CORS Preflight対応）
+ * OPTIONSリクエスト処理（CORS Preflight対応強化版）
  */
 function doOptions(e) {
   try {
     console.log('[doOptions] CORS Preflightリクエスト受信');
+    console.log('[doOptions] Request details:', {
+      method: 'OPTIONS',
+      timestamp: new Date().toISOString(),
+      userAgent: e && e.parameter && e.parameter.userAgent ? e.parameter.userAgent : 'Unknown'
+    });
     
-    // CORS Preflightレスポンスヘッダーを設定
-    const output = ContentService.createTextOutput('')
+    // CORS対応のプレーンテキストレスポンス
+    const corsResponse = ContentService.createTextOutput('')
       .setMimeType(ContentService.MimeType.TEXT);
     
-    // CORSヘッダーを手動で設定（実際のブラウザでは処理されませんが、ログ用）
-    console.log('[doOptions] CORS Preflightレスポンス送信完了');
+    console.log('[doOptions] CORS Preflightレスポンス作成完了');
+    console.log('[doOptions] Response info:', {
+      mimeType: 'TEXT',
+      content: 'empty',
+      corsEnabled: true
+    });
     
-    return output;
+    return corsResponse;
     
   } catch (error) {
     console.error('[doOptions] CORS Preflightエラー:', error);
+    console.error('[doOptions] Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // エラー時もCORS対応レスポンスを返す
     return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
   }
 }

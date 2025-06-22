@@ -48,6 +48,11 @@ function onOpen() {
     systemMenu.addItem('3. エラーログ収集', 'collectErrorLogs');
     systemMenu.addSeparator();
     systemMenu.addItem('4. 統合作業サマリー表示', 'showIntegrationSummary');
+    systemMenu.addSeparator();
+    systemMenu.addItem('🔧 CORS診断とデプロイメント確認', 'checkCorsAndDeployment');
+    systemMenu.addItem('🌐 Web App URL取得ガイド', 'showWebAppUrlGuide');
+    systemMenu.addItem('🚀 新デプロイメント作成ガイド', 'showNewDeploymentGuide');
+    systemMenu.addItem('📊 現在のデプロイメント情報確認', 'checkCurrentDeploymentInfo');
     
     menu.addSubMenu(systemMenu);
       // ユーザー管理メニュー
@@ -626,5 +631,224 @@ function createSampleUser() {
     console.error('[createSampleUser] エラー:', error);
     const ui = SpreadsheetApp.getUi();
     ui.alert('エラー', `サンプルユーザー作成に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * CORS診断とデプロイメント情報確認（メニュー用）
+ */
+function checkCorsAndDeployment() {
+  try {
+    console.log('[checkCorsAndDeployment] CORS診断開始');
+    
+    const ui = SpreadsheetApp.getUi();
+    
+    // 現在のスクリプト情報を取得
+    const scriptId = ScriptApp.getScriptId();
+    const deploymentInfo = {
+      scriptId: scriptId,
+      lastUpdated: new Date().toISOString(),
+      currentUser: Session.getActiveUser().getEmail(),
+      timeZone: Session.getScriptTimeZone()
+    };
+    
+    // デバッグ用のWeb App URLテスト
+    const testUrl = `https://script.google.com/macros/s/{DEPLOYMENT_ID}/exec?action=test&timestamp=${Date.now()}`;
+    
+    let message = 'CORS診断とデプロイメント情報:\n\n';
+    message += `スクリプトID: ${scriptId}\n`;
+    message += `最終更新: ${deploymentInfo.lastUpdated}\n`;
+    message += `実行ユーザー: ${deploymentInfo.currentUser}\n`;
+    message += `タイムゾーン: ${deploymentInfo.timeZone}\n\n`;
+    
+    message += '【重要】現在のデプロイメント確認手順:\n';
+    message += '1. 「デプロイ」 → 「デプロイを管理」を開く\n';
+    message += '2. 現在のデプロイメントURLを確認\n';
+    message += '3. 必要に応じて新しいデプロイメントを作成\n\n';
+    
+    message += '【CORS問題の解決策】:\n';
+    message += '• 新しいWeb Appデプロイメントを作成\n';
+    message += '• アクセス権限を「全員」に設定\n';
+    message += '• 新しいURLをindex.htmlに更新\n';
+    
+    ui.alert('CORS診断結果', message, ui.ButtonSet.OK);
+    
+    // コンソールにも詳細を出力
+    console.log('[checkCorsAndDeployment] 診断完了:', deploymentInfo);
+    
+  } catch (error) {
+    console.error('[checkCorsAndDeployment] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `CORS診断に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Web App URL案内（メニュー用）
+ */
+function showWebAppUrlGuide() {
+  try {
+    console.log('[showWebAppUrlGuide] Web App URL案内表示');
+    
+    const ui = SpreadsheetApp.getUi();
+    const scriptId = ScriptApp.getScriptId();
+    
+    const message = `
+Web App URL取得手順:
+
+【手順1】デプロイメント確認
+1. Google Apps Script エディタで「デプロイ」をクリック
+2. 「デプロイを管理」を選択
+3. 現在のWeb AppのURLを確認
+
+【手順2】新しいデプロイが必要な場合
+1. 「新しいデプロイ」をクリック
+2. 種類：「ウェブアプリ」を選択
+3. 実行者：「自分」を選択
+4. アクセス：「全員」を選択
+5. 「デプロイ」をクリック
+6. 新しいWeb App URLをコピー
+
+【手順3】フロントエンドの更新
+1. index.htmlを開く
+2. GAS_WEB_APP_URL変数を新しいURLに更新
+3. 変更を保存
+
+現在のスクリプトID: ${scriptId}
+
+【重要】CORS問題解決のため、必ず新しいデプロイメントを作成してください。
+    `;
+    
+    ui.alert('Web App URL取得ガイド', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[showWebAppUrlGuide] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `URL案内表示に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * 新しいデプロイメント作成ガイド（メニュー用）
+ */
+function showNewDeploymentGuide() {
+  try {
+    console.log('[showNewDeploymentGuide] 新デプロイメントガイド表示開始');
+    
+    const ui = SpreadsheetApp.getUi();
+    const scriptId = ScriptApp.newTrigger("dummy").getUniqueId().slice(0, 10);
+    
+    const message = `
+【緊急】新しいWeb Appデプロイメント作成手順
+
+現在のエラー状況：
+• フロントエンドから「Failed to fetch」エラーが発生
+• Web Appへの接続が完全に失敗している
+• 既存のデプロイメントが「Anyone」アクセスでない可能性
+
+【ステップ1】Google Apps Script エディタを開く
+1. このスプレッドシートから「拡張機能 > Apps Script」をクリック
+2. 新しいタブでGASエディタが開きます
+
+【ステップ2】新しいデプロイメントを作成
+1. 右上の「デプロイ」ボタンをクリック
+2. 「新しいデプロイ」を選択
+3. 設定画面で以下を確実に設定：
+   - 種類：「ウェブアプリ」
+   - 説明：「水道検針アプリ（パブリックアクセス版）」
+   - 実行者：「自分（${Session.getActiveUser().getEmail()}）」
+   - アクセス：「全員」← ここが最重要！
+4. 「デプロイ」をクリック
+
+【ステップ3】新しいURLを取得
+1. デプロイ完了後に表示されるWeb App URLをコピー
+   例：https://script.google.com/macros/s/[新しいID]/exec
+
+【ステップ4】フロントエンドを更新
+1. index.html、property_select.html、room_select.html、meter_reading.htmlを開く
+2. 各ファイルの「GAS_WEB_APP_URL」を新しいURLに変更
+3. 変更を保存
+
+【確認テスト】
+新しいURLが動作するかブラウザで直接アクセス：
+https://script.google.com/macros/s/[新しいID]/exec
+
+正常なら：{"status":"success","message":"Web App is running"}
+エラーなら：アクセス権限を再確認
+
+【重要】このガイドを完了後、再度フロントエンドをテストしてください。
+    `;
+    
+    ui.alert('🚀 新デプロイメント作成ガイド', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[showNewDeploymentGuide] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `新デプロイメントガイド表示に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * 現在のデプロイメント情報を確認
+ */
+function checkCurrentDeploymentInfo() {
+  try {
+    console.log('[checkCurrentDeploymentInfo] デプロイメント情報確認開始');
+    
+    const ui = SpreadsheetApp.getUi();
+    
+    // スクリプト情報を取得
+    const scriptId = ScriptApp.getScriptId();
+    const projectName = DriveApp.getFileById(scriptId).getName();
+    
+    // 現在の実行情報
+    const currentUser = Session.getActiveUser().getEmail();
+    const timeZone = Session.getScriptTimeZone();
+    
+    // Web App URLの構成情報
+    const baseUrl = 'https://script.google.com/macros/s/' + scriptId + '/exec';
+    
+    const message = `
+【現在のデプロイメント情報】
+
+プロジェクト名：${projectName}
+スクリプトID：${scriptId}
+実行ユーザー：${currentUser}
+タイムゾーン：${timeZone}
+
+Web App URL（予想）：
+${baseUrl}
+
+【診断結果】
+✅ スクリプトID: 正常に取得
+✅ ユーザー情報: 正常に取得
+✅ プロジェクト名: 正常に取得
+
+【確認すべき点】
+1. 上記URLにブラウザでアクセスできるか
+2. アクセス時に認証画面が表示されるか
+3. 最終的にJSON形式のレスポンスが返るか
+
+【次のステップ】
+• URLアクセステスト実行
+• 問題があれば新デプロイメント作成
+• フロントエンドURLの更新
+
+現在のフロントエンドURL設定をブラウザで確認してください。
+「Failed to fetch」が継続する場合は新デプロイメントが必要です。
+    `;
+    
+    ui.alert('📊 現在のデプロイメント情報', message, ui.ButtonSet.OK);
+    
+    // コンソールにも詳細ログを出力
+    console.log('[checkCurrentDeploymentInfo] スクリプトID:', scriptId);
+    console.log('[checkCurrentDeploymentInfo] プロジェクト名:', projectName);
+    console.log('[checkCurrentDeploymentInfo] Web App URL:', baseUrl);
+    console.log('[checkCurrentDeploymentInfo] ユーザー:', currentUser);
+    
+  } catch (error) {
+    console.error('[checkCurrentDeploymentInfo] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `デプロイメント情報取得に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
   }
 }
