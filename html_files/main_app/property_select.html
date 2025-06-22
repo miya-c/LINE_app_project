@@ -695,7 +695,7 @@
               name: fetchError.name,
               message: fetchError.message,
               stack: fetchError.stack,
-              requestUrl: requestUrl,
+              requestUrl: requestUrl || 'URL not available',
               timestamp: new Date().toISOString()
             });
             
@@ -1344,6 +1344,25 @@
                       • ページを再読み込みしてください<br/>
                       • 数分待ってから再度お試しください<br/>
                       • Google Apps Scriptサーバーの自動復旧をお待ちください
+                      
+                      {/* リロードボタン */}
+                      <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                        <button 
+                          onClick={() => window.location.reload()}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#1976d2',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            cursor: 'pointer',
+                            fontWeight: 500
+                          }}
+                        >
+                          🔄 ページを再読み込み
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
