@@ -507,10 +507,10 @@
     }
     
     /**
-     * ユーザー認証API呼び出し（ネットワークエラー対策強化版）
+     * ユーザー認証API呼び出し（CORS問題対応版）
      */
     async function authenticateUser(username, password, retryCount = 0) {
-      const MAX_RETRIES = 5;
+      const MAX_RETRIES = 3; // リトライ回数を減少
       const BASE_DELAY = 1000;
       
       setAuthenticating(true);
@@ -522,402 +522,247 @@
         
         // 指数バックオフ遅延（初回のみ除く）
         if (retryCount > 0) {
-          const delay = BASE_DELAY * Math.pow(2, retryCount - 1) + Math.random() * 1000;
-          debugLog(`${delay.toFixed(0)}ms待機後にリトライします...`);
+          const delay = Math.min(BASE_DELAY * Math.pow(2, retryCount - 1) + Math.random() * 1000, 30000);
+          debugLog(`${Math.round(delay)}ms待機後にリトライします...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         
-        // API呼び出し
-        const url = `${GAS_WEB_APP_URL}?action=authenticate&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&t=${Date.now()}&retry=${retryCount}`;
-        debugLog(`リクエストURL: ${url.substring(0, 150)}...`);
+        // CORS プリフライト問題回避のため、シンプルなリクエストを使用
+        const authUrl = `${GAS_WEB_APP_URL}?action=authenticate&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&timestamp=${Date.now()}`;
+        
+        debugLog(`リクエストURL: ${authUrl.substring(0, authUrl.indexOf('&password=') + 10)}...`);
+        
+        // タイムアウト設定（累進的に増加）
+        const timeout = Math.min(20000 + (retryCount * 5000), 45000);
+        debugLog(`タイムアウト設定: ${timeout}ms`);
         
         const controller = new AbortController();
-        const timeoutDuration = 20000 + (retryCount * 5000);
         const timeoutId = setTimeout(() => {
           debugLog('リクエストタイムアウト - abort()を実行');
           controller.abort();
-        }, timeoutDuration);
+        }, timeout);
         
-        debugLog(`タイムアウト設定: ${timeoutDuration}ms`);
+        debugLog('fetch開始...');
         
-        let response;
-        try {
-          debugLog('fetch開始...');
-          console.log('[Network Request] URL:', url.substring(0, 150) + '...');
-          console.log('[Network Request] Options:', {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json, text/plain, */*',
-              'Cache-Control': 'no-cache'
-            },
-            mode: 'cors',
-            credentials: 'omit',
-            redirect: 'follow'
-          });
-          
-          response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json, text/plain, */*',
-              'Cache-Control': 'no-cache'
-            },
-            signal: controller.signal,
-            mode: 'cors',
-            credentials: 'omit',
-            redirect: 'follow' // 重要: リダイレクトを追跡
-          });
-          debugLog('fetch完了');
-          console.log('[Network Response] Status:', response.status, response.statusText);
-          console.log('[Network Response] Final URL:', response.url);
-          console.log('[Network Response] Headers:', Object.fromEntries(response.headers.entries()));
-          console.log('[Network Response] Type:', response.type);
-          console.log('[Network Response] Redirected:', response.redirected);
-        } catch (fetchError) {
-          debugLog(`fetch エラー: ${fetchError.name} - ${fetchError.message}`);
-          console.error('[Network Error] Type:', fetchError.name);
-          console.error('[Network Error] Message:', fetchError.message);
-          console.error('[Network Error] Stack:', fetchError.stack);
-          
-          // GAS特有のリダイレクト問題に対処：手動でリダイレクトを試行
-          if (fetchError.name === 'TypeError' && fetchError.message.includes('Failed to fetch')) {
-            console.log('[Network Error] GASリダイレクト問題の可能性 - 代替手法を試行');
-            try {
-              // User-Agentを変更して再試行
-              const alternativeResponse = await fetch(url, {
-                method: 'GET',
-                headers: {
-                  'Accept': 'application/json',
-                  'Cache-Control': 'no-cache',
-                  'User-Agent': 'Mozilla/5.0 (compatible; GASClient/1.0)'
-                },
-                signal: controller.signal,
-                mode: 'no-cors', // CORS制限を回避
-                credentials: 'omit'
-              });
-              console.log('[Network Retry] 代替リクエスト成功:', alternativeResponse.status);
-              response = alternativeResponse;
-            } catch (retryError) {
-              console.error('[Network Retry] 代替リクエストも失敗:', retryError);
-              throw fetchError; // 元のエラーを再throw
-            }
-          } else {
-            throw fetchError;
-          }
-        }
+        // CORS プリフライトを避けるため、シンプルなヘッダーのみ使用
+        const response = await fetch(authUrl, {
+          method: 'GET', // GETリクエストでCORS プリフライトを回避
+          headers: {
+            'Accept': 'application/json'
+            // Content-Type ヘッダーを削除（プリフライトトリガーを回避）
+          },
+          mode: 'cors',
+          credentials: 'omit', // 認証情報を送信しない
+          redirect: 'follow'
+        });
         
         clearTimeout(timeoutId);
         
+        debugLog(`fetch エラー検出なし - ステータス確認中`);
+        
+        console.log('[Network Request] URL:', authUrl.substring(0, authUrl.indexOf('&password=') + 10) + '...');
+        console.log('[Network Request] Options:', {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit',
+          redirect: 'follow'
+        });
+        
+        // レスポンス確認
         debugLog(`レスポンス状況: ${response.status} ${response.statusText}`);
-        debugLog(`レスポンスヘッダー: ${JSON.stringify([...response.headers.entries()])}`);
+        debugLog(`レスポンスヘッダー: ${Array.from(response.headers.entries())}`);
         
-        // 503エラーの特別処理
-        if (response.status === 503) {
-          debugLog('503エラー検出 - サーバー過負荷状態');
-          throw new Error('SERVICE_UNAVAILABLE');
-        }
-        
-        // その他のHTTPエラー
         if (!response.ok) {
           debugLog(`HTTPエラー: ${response.status} - ${response.statusText}`);
           throw new Error(`HTTP_ERROR_${response.status}`);
         }
         
-        // レスポンス本文の取得
-        let result;
-        try {
-          const responseText = await response.text();
-          debugLog(`レスポンス本文（先頭200文字）: ${responseText.substring(0, 200)}...`);
-          
-          if (!responseText.trim()) {
-            throw new Error('EMPTY_RESPONSE');
-          }
-          
-          result = JSON.parse(responseText);
-          debugLog(`パース結果: ${JSON.stringify(result, null, 2)}`);
-        } catch (parseError) {
-          debugLog(`JSON解析エラー: ${parseError.message}`);
-          throw new Error('INVALID_RESPONSE_FORMAT');
-        }
+        // JSONレスポンス解析
+        const result = await response.json();
+        debugLog(`認証レスポンス: ${JSON.stringify(result, null, 2)}`);
         
-        debugLog('認証レスポンス: ' + JSON.stringify(result));
-        
-        if (result.success && result.userInfo) {
-          // 認証成功
-          debugLog('認証成功 - handleAuthSuccess()を呼び出し');
-          await handleAuthSuccess(result.userInfo);
+        if (result.success) {
+          debugLog('認証成功 - ユーザー情報保存中');
+          // 認証成功の処理
+          localStorage.setItem('userInfo', JSON.stringify(result.userInfo));
+          localStorage.setItem('userSpreadsheetId', result.userInfo.spreadsheetId);
+          
+          showSuccess('認証成功！物件選択画面に移動します...');
+          
+          setTimeout(() => {
+            redirectToPropertySelect();
+          }, 1500);
+          
         } else {
-          // 認証失敗（リトライしない）
           debugLog(`認証失敗: ${result.message}`);
-          showError(result.message || '認証に失敗しました');
+          throw new Error(result.message || '認証に失敗しました');
         }
         
       } catch (error) {
+        clearTimeout(timeoutId);
+        
+        debugLog(`fetch エラー: ${error.name} - ${error.message}`);
+        
+        console.error('[Network Error] Type:', error.name);
+        console.error('[Network Error] Message:', error.message);
+        console.error('[Network Error] Stack:', error.stack);
+        
+        // CORS または接続エラーの詳細分析
+        if (error.message.includes('Failed to fetch')) {
+          console.log('[Network Error] GASリダイレクト問題の可能性 - 代替手法を試行');
+          
+          // 代替手法: iframe を使用したリクエスト（CORS回避）
+          try {
+            const iframeResult = await tryIframeRequest(authUrl);
+            console.log('[Network Retry] iframe手法結果:', iframeResult);
+            
+            if (iframeResult && iframeResult.success) {
+              debugLog('iframe手法で認証成功');
+              localStorage.setItem('userInfo', JSON.stringify(iframeResult.userInfo));
+              localStorage.setItem('userSpreadsheetId', iframeResult.userInfo.spreadsheetId);
+              showSuccess('認証成功！物件選択画面に移動します...');
+              setTimeout(() => redirectToPropertySelect(), 1500);
+              return;
+            }
+          } catch (iframeError) {
+            console.log('[Network Retry] iframe手法も失敗:', iframeError.message);
+          }
+          
+          // さらなる代替手法: JSONP風アプローチ
+          try {
+            const jsonpResult = await tryJSONPRequest(username, password);
+            console.log('[Network Retry] JSONP手法結果:', jsonpResult);
+            
+            if (jsonpResult && jsonpResult.success) {
+              debugLog('JSONP手法で認証成功');
+              localStorage.setItem('userInfo', JSON.stringify(jsonpResult.userInfo));
+              localStorage.setItem('userSpreadsheetId', jsonpResult.userInfo.spreadsheetId);
+              showSuccess('認証成功！物件選択画面に移動します...');
+              setTimeout(() => redirectToPropertySelect(), 1500);
+              return;
+            }
+          } catch (jsonpError) {
+            console.log('[Network Retry] JSONP手法も失敗:', jsonpError.message);
+          }
+        }
+        
         debugLog(`認証エラー (試行${retryCount + 1}): ${error.message}`);
+        
         console.error('[Authentication Error]', {
           type: error.name,
           message: error.message,
           stack: error.stack,
           retryAttempt: retryCount + 1,
           maxRetries: MAX_RETRIES + 1,
+          url: GAS_WEB_APP_URL,
           timestamp: new Date().toISOString()
         });
         
-        // 特定のエラーに対するリトライ処理
-        if (retryCount < MAX_RETRIES && shouldRetry(error)) {
+        // リトライ判定
+        if (retryCount < MAX_RETRIES) {
           const nextRetry = retryCount + 1;
-          const nextDelay = BASE_DELAY * Math.pow(2, retryCount);
+          const retryDelay = Math.min(BASE_DELAY * Math.pow(2, retryCount), 16000);
           
-          showError(`サーバーに接続中です... (${nextRetry}/${MAX_RETRIES + 1}) ${Math.ceil(nextDelay/1000)}秒後にリトライ`);
+          showError(`サーバーに接続中です... (${nextRetry}/${MAX_RETRIES + 1}) ${Math.round(retryDelay/1000)}秒後にリトライ`);
           
-          // 非同期でリトライ実行
-          setTimeout(() => {
-            authenticateUser(username, password, nextRetry);
-          }, 100); // UI更新のため短い遅延
+          setTimeout(async () => {
+            await authenticateUser(username, password, nextRetry);
+          }, retryDelay);
           
-          return;
-        }
-        
-        // 最終エラー表示
-        const errorMessage = getErrorMessage(error);
-        showError(errorMessage);
-        
-        // 最終エラーでもリトライ可能なエラーの場合はリトライボタンを表示
-        if (shouldRetry(error)) {
+        } else {
+          // 最終的な失敗
+          showError('ネットワークエラーが発生しました。インターネット接続を確認してください。');
           showRetryButton();
+          setAuthenticating(false);
         }
         
       } finally {
-        if (retryCount === 0 || retryCount >= MAX_RETRIES) {
-          setAuthenticating(false);
-        }
+        // timeout ID のクリアは既に各分岐で実行済み
       }
     }
     
     /**
-     * エラーがリトライ可能かどうかを判定（強化版）
+     * iframe を使用した代替リクエスト手法（CORS回避）
      */
-    function shouldRetry(error) {
-      const retryableErrors = [
-        'SERVICE_UNAVAILABLE',
-        'HTTP_ERROR_503',
-        'HTTP_ERROR_502',
-        'HTTP_ERROR_504',
-        'HTTP_ERROR_429', // Rate limiting
-        'HTTP_ERROR_408', // Request timeout
-        'INVALID_RESPONSE_FORMAT',
-        'NetworkError',
-        'TypeError',
-        'Failed to fetch'
-      ];
-      
-      return retryableErrors.some(retryableError => 
-        error.message.includes(retryableError) || 
-        error.name === 'AbortError' ||
-        error.name === 'TypeError' ||
-        error.name === 'NetworkError'
-      );
-    }
-    
-    /**
-     * エラーメッセージを取得（強化版）
-     */
-    function getErrorMessage(error) {
-      if (error.message.includes('SERVICE_UNAVAILABLE') || error.message.includes('503')) {
-        showServerStatus(); // サーバー状況表示
-        return 'サーバーが一時的に利用できません。Google Apps Scriptサーバーが過負荷状態の可能性があります。数分待ってから再度お試しください。';
-      }
-      
-      if (error.message.includes('HTTP_ERROR_502') || error.message.includes('HTTP_ERROR_504')) {
-        showServerStatus();
-        return 'サーバーゲートウェイエラーが発生しました。ネットワーク接続を確認してください。';
-      }
-      
-      if (error.message.includes('HTTP_ERROR_429')) {
-        showServerStatus();
-        return 'リクエスト制限に達しました。しばらく待ってから再度お試しください。';
-      }
-      
-      if (error.message.includes('INVALID_RESPONSE_FORMAT')) {
-        return 'サーバーからの応答形式が正しくありません。管理者にお問い合わせください。';
-      }
-      
-      if (error.name === 'AbortError') {
-        showServerStatus();
-        return 'リクエストがタイムアウトしました。ネットワーク接続が不安定な可能性があります。';
-      }
-      
-      if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-        return 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-      }
-      
-      return `認証処理中にエラーが発生しました: ${error.message}`;
-    }
-    
-    /**
-     * 認証成功時の処理
-     */
-    async function handleAuthSuccess(userInfo) {
-      try {
-        debugLog('認証成功: ' + JSON.stringify(userInfo));
-        console.log('[Auth Success] User info received:', userInfo);
+    async function tryIframeRequest(url) {
+      return new Promise((resolve, reject) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
         
-        // ユーザー情報を保存
-        console.log('[Auth Success] Saving user info to localStorage...');
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
-        localStorage.setItem('userSpreadsheetId', userInfo.spreadsheetId);
-        localStorage.setItem('userSpreadsheetLink', userInfo.spreadsheetLink);
-        console.log('[Auth Success] User info saved successfully');
+        const timeout = setTimeout(() => {
+          document.body.removeChild(iframe);
+          reject(new Error('iframe timeout'));
+        }, 10000);
         
-        showSuccess(`ようこそ、${userInfo.username}さん！`);
+        iframe.onload = () => {
+          try {
+            clearTimeout(timeout);
+            const result = iframe.contentDocument || iframe.contentWindow.document;
+            console.log('[Network Retry] iframe content:', result.body.innerText);
+            
+            const jsonText = result.body.innerText;
+            const parsed = JSON.parse(jsonText);
+            
+            document.body.removeChild(iframe);
+            resolve(parsed);
+          } catch (e) {
+            document.body.removeChild(iframe);
+            reject(e);
+          }
+        };
         
-        // 物件選択画面に移動
-        setTimeout(() => {
-          redirectToPropertySelect();
-        }, 1500);
+        iframe.onerror = () => {
+          clearTimeout(timeout);
+          document.body.removeChild(iframe);
+          reject(new Error('iframe error'));
+        };
         
-      } catch (error) {
-        debugLog('認証成功処理エラー: ' + error.message);
-        console.error('[Auth Success] Error saving user info:', error);
-        showError('ユーザー情報の保存に失敗しました');
-      }
-    }
-    
-    /**
-     * 物件選択画面にリダイレクト
-     */
-    function redirectToPropertySelect() {
-      debugLog('物件選択画面に移動');
-      window.location.href = './property_select.html';
-    }
-    
-    /**
-     * UI状態管理
-     */
-    function setAuthenticating(authenticating) {
-      isAuthenticating = authenticating;
-      const loginBtn = document.getElementById('loginBtn');
-      const loading = document.getElementById('loading');
-      const form = document.getElementById('loginForm');
-      
-      if (authenticating) {
-        loginBtn.disabled = true;
-        loginBtn.textContent = '認証中...';
-        loading.style.display = 'block';
-        form.style.opacity = '0.7';
-      } else {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'ログイン';
-        loading.style.display = 'none';
-        form.style.opacity = '1';
-      }
-    }
-    
-    /**
-     * メッセージ表示
-     */
-    function showError(message) {
-      console.error('[UI Error]', message);
-      const errorDiv = document.getElementById('errorMessage');
-      errorDiv.textContent = message;
-      errorDiv.classList.remove('hidden');
-      
-      document.getElementById('successMessage').classList.add('hidden');
-      
-      // 503エラーの場合はリトライボタンを表示
-      if (message.includes('503') || message.includes('サーバーが一時的に') || message.includes('タイムアウト')) {
-        showRetryButton();
-      }
-    }
-    
-    function showSuccess(message) {
-      console.log('[UI Success]', message);
-      const successDiv = document.getElementById('successMessage');
-      successDiv.textContent = message;
-      successDiv.classList.remove('hidden');
-      
-      document.getElementById('errorMessage').classList.add('hidden');
-      hideRetryButton();
-      hideServerStatus();
-    }
-    
-    function hideMessages() {
-      document.getElementById('errorMessage').classList.add('hidden');
-      document.getElementById('successMessage').classList.add('hidden');
-      hideRetryButton();
-      hideServerStatus();
-    }
-    
-    /**
-     * リトライボタン制御
-     */
-    function showRetryButton() {
-      document.getElementById('retryBtn').classList.remove('hidden');
-    }
-    
-    function hideRetryButton() {
-      document.getElementById('retryBtn').classList.add('hidden');
-    }
-    
-    /**
-     * サーバー状況表示制御
-     */
-    function showServerStatus() {
-      document.getElementById('serverStatus').classList.remove('hidden');
-    }
-    
-    function hideServerStatus() {
-      document.getElementById('serverStatus').classList.add('hidden');
-    }
-    
-    /**
-     * CORS問題解決ガイドを表示
-     */
-    function showDeploymentGuide() {
-      console.log('[Deployment Guide] CORS問題解決ガイド表示');
-      
-      const guideMessage = `
-CORS問題解決手順:
-
-【現在の問題】
-すべてのリクエストで "Failed to fetch" エラーが発生しています。
-これはGoogle Apps ScriptのCORS/デプロイメント設定の問題です。
-
-【解決手順】
-1. Google Apps Scriptエディタを開く
-   → https://script.google.com/
-
-2. 「デプロイ」→「新しいデプロイ」をクリック
-
-3. 設定を以下の通りに変更:
-   • 種類: ウェブアプリ
-   • 実行者: 自分
-   • アクセス: 全員
-
-4. 「デプロイ」をクリックして新しいURLを取得
-
-5. 新しいURLをコピーして、このページを再読み込み
-
-【技術的詳細】
-• サーバー側は正常動作 (curl テスト成功)
-• CORS ヘッダーは設定済み
-• リダイレクト処理でブラウザがブロック
-
-【問い合わせ】
-問題が解決しない場合は、開発者にお問い合わせください。
-      `;
-      
-      alert(guideMessage);
-      
-      // 詳細ログをコンソールに出力
-      console.log('[Deployment Guide] 詳細診断情報:', {
-        currentUrl: GAS_WEB_APP_URL,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        cookiesEnabled: navigator.cookieEnabled,
-        onLine: navigator.onLine
+        document.body.appendChild(iframe);
       });
     }
-
+    
+    /**
+     * JSONP風代替リクエスト手法
+     */
+    async function tryJSONPRequest(username, password) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonpCallback_' + Date.now();
+        const script = document.createElement('script');
+        
+        // グローバルコールバック関数を定義
+        window[callbackName] = function(data) {
+          cleanup();
+          resolve(data);
+        };
+        
+        const cleanup = () => {
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+          delete window[callbackName];
+        };
+        
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error('JSONP timeout'));
+        }, 10000);
+        
+        script.onerror = () => {
+          clearTimeout(timeout);
+          cleanup();
+          reject(new Error('JSONP script error'));
+        };
+        
+        // GAS側でJSONPコールバックをサポートしている場合
+        const jsonpUrl = `${GAS_WEB_APP_URL}?action=authenticate&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=${callbackName}&timestamp=${Date.now()}`;
+        
+        script.src = jsonpUrl;
+        document.head.appendChild(script);
+      });
+    }
+    
     /**
      * デバッグログ
      */
