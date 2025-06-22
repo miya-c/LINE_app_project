@@ -130,12 +130,12 @@
                 const response = await fetch(testUrl, {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache'
+                        'Accept': 'text/plain, */*'
+                        // Cache-Controlヘッダーを削除してSimple Requestにする
                     },
                     mode: 'cors',
                     credentials: 'omit',
-                    redirect: 'follow' // 修正: リダイレクトを追跡
+                    redirect: 'follow'
                 });
                 
                 log(`レスポンス状況: ${response.status} ${response.statusText}`);
@@ -176,12 +176,12 @@
                 const response = await fetch(authUrl, {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache'
+                        'Accept': 'text/plain, */*'
+                        // Cache-Controlヘッダーを削除してSimple Requestにする
                     },
                     mode: 'cors',
                     credentials: 'omit',
-                    redirect: 'follow' // 修正: リダイレクトを追跡
+                    redirect: 'follow'
                 });
                 
                 log(`レスポンス状況: ${response.status} ${response.statusText}`);

@@ -1,6 +1,16 @@
 /**
  * web_app_api.gs - Web App API関数群（503エラー対策強化版）
- * Last Updated: 2025-06-22 JST
+ * Last Updat    // ContentServiceでレスポンス作成（高速化）
+    const output = ContentService
+      .createTextOutput(jsonString)
+      .setMimeType(ContentService.MimeType.JSON);
+    
+    // 重要：CORS ヘッダーを設定（簡易版）
+    // 注意：GAS Web Appは実際にはCORSヘッダーを自動的に設定するため、
+    // この設定は主にログ記録用です
+    
+    console.log(`[createCorsJsonResponse] レスポンス作成完了 - ${Date.now() - startTime}ms`);
+    return output;5-06-22 JST
  * バージョン: v3.0.0-error-resilient
  */
 
@@ -565,5 +575,27 @@ function doPost(e) {
       method: 'POST',
       emergency: true
     });
+  }
+}
+
+/**
+ * OPTIONSリクエスト処理（CORS Preflight対応）
+ */
+function doOptions(e) {
+  try {
+    console.log('[doOptions] CORS Preflightリクエスト受信');
+    
+    // CORS Preflightレスポンスヘッダーを設定
+    const output = ContentService.createTextOutput('')
+      .setMimeType(ContentService.MimeType.TEXT);
+    
+    // CORSヘッダーを手動で設定（実際のブラウザでは処理されませんが、ログ用）
+    console.log('[doOptions] CORS Preflightレスポンス送信完了');
+    
+    return output;
+    
+  } catch (error) {
+    console.error('[doOptions] CORS Preflightエラー:', error);
+    return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
   }
 }

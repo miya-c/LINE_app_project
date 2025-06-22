@@ -464,9 +464,14 @@
             console.log('[meter_reading] 初期化完了しました。');
 
             // URLパラメータからデータを読み込み開始
-            loadUrlParams();
-          } catch (error) {
+            loadUrlParams();          } catch (error) {
             console.error('[meter_reading] アプリの初期化に失敗しました:', error);
+            console.error('[meter_reading] Initialization error details:', {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+              timestamp: new Date().toISOString()
+            });
             setError('アプリの起動に失敗しました。ページを再読み込みしてください。');
             setLoading(false);
           }

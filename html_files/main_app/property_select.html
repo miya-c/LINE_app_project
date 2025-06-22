@@ -550,7 +550,10 @@
               redirect: 'follow' // リダイレクトを追跡
             });
             console.log('[ReactApp] Response status:', response.status);
-            console.log('[ReactApp] Response headers:', response.headers);
+            console.log('[ReactApp] Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('[ReactApp] Response URL:', response.url);
+            console.log('[ReactApp] Response type:', response.type);
+            console.log('[ReactApp] Response redirected:', response.redirected);
             
             if (!response.ok) {
               throw new Error(`Network response was not ok. Status: ${response.status}`);
@@ -652,7 +655,25 @@
             
           } catch (fetchError) {
             console.error('[ReactApp] ❌ 物件データ取得エラー:', fetchError);
-            setError(`物件情報の取得に失敗しました: ${fetchError.message}`);
+            console.error('[ReactApp] Error details:', {
+              name: fetchError.name,
+              message: fetchError.message,
+              stack: fetchError.stack,
+              requestUrl: requestUrl,
+              timestamp: new Date().toISOString()
+            });
+            
+            // ネットワークエラーの種類に応じたメッセージ
+            let errorMessage = `物件情報の取得に失敗しました: ${fetchError.message}`;
+            if (fetchError.name === 'TypeError' && fetchError.message.includes('Failed to fetch')) {
+              errorMessage = 'ネットワークエラー: サーバーに接続できません。インターネット接続を確認してください。';
+            } else if (fetchError.message.includes('CORS')) {
+              errorMessage = 'セキュリティエラー: CORS設定の問題です。管理者に連絡してください。';
+            } else if (fetchError.message.includes('503')) {
+              errorMessage = 'サーバーエラー: Google Apps Scriptサーバーが一時的に利用できません。しばらく待ってから再度お試しください。';
+            }
+            
+            setError(errorMessage);
             // エラー時は即座にローディング解除
             setLoading(false);
           } finally {

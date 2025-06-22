@@ -234,6 +234,12 @@
                 
             } catch (error) {
                 console.error('[room_select] エラー発生:', error);
+                console.error('[room_select] Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                    timestamp: new Date().toISOString()
+                });
                 showError(error.message);
             } finally {
                 console.log('[room_select] finally処理開始 - ローディング解除');
@@ -410,6 +416,12 @@
                 
             } catch (error) {
                 console.error('[completeInspection] エラー:', error);
+                console.error('[completeInspection] Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                    timestamp: new Date().toISOString()
+                });
                 alert(`検針完了処理でエラーが発生しました: ${error.message}`);
             }
         }
