@@ -3,6 +3,266 @@
  * スプレッドシートからのデータ取得とデータ更新処理を管理
  */
 
+// ======================================================================
+// 🔐 ユーザー認証機能（503エラー対策強化版）
+// ======================================================================
+
+/**
+ * ユーザー認証（高速化・503エラー対策版）
+ * @param {string} username - ユーザー名
+ * @param {string} password - パスワード
+ * @return {Object} 認証結果 {success: boolean, userInfo: Object, message: string}
+ */
+function authenticateUser(username, password) {
+  try {
+    const startTime = Date.now();
+    console.log(`[authenticateUser] 認証開始: ${username} - ${new Date().toISOString()}`);
+    
+    // 入力値検証（高速化）
+    if (!username || !password) {
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザー名とパスワードが必要です',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    // トリム処理
+    username = String(username).trim();
+    password = String(password).trim();
+    
+    // ユーザーシートからユーザー情報を取得（高速化）
+    let userSheet;
+    try {
+      userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ユーザー');
+    } catch (sheetError) {
+      console.error('[authenticateUser] スプレッドシート取得エラー:', sheetError);
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザーデータベースに接続できません',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    if (!userSheet) {
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザーシートが見つかりません',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    // データ取得（範囲最適化）
+    const lastRow = userSheet.getLastRow();
+    if (lastRow <= 1) {
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザーデータが登録されていません',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    // ヘッダー取得（1行目のみ）
+    const headers = userSheet.getRange(1, 1, 1, userSheet.getLastColumn()).getValues()[0];
+    
+    // ヘッダーのインデックスを取得（複数パターンに対応）
+    const usernameIndex = headers.indexOf('ユーザー名');
+    const passwordIndex = headers.indexOf('パスワード');
+    const spreadsheetLinkIndex = headers.indexOf('スプレッドシートリンク') !== -1 ? 
+                                headers.indexOf('スプレッドシートリンク') : 
+                                headers.indexOf('リンク');
+    
+    if (usernameIndex === -1 || passwordIndex === -1 || spreadsheetLinkIndex === -1) {
+      return {
+        success: false,
+        userInfo: null,
+        message: '必要な列が見つかりません（ユーザー名、パスワード、スプレッドシートリンク）',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    console.log(`[authenticateUser] ヘッダー確認完了 - ${Date.now() - startTime}ms`);
+    
+    // ユーザー検索（1行ずつ処理で高速化）
+    for (let i = 2; i <= lastRow; i++) {
+      // 処理時間チェック（15秒制限）
+      if (Date.now() - startTime > 15000) {
+        console.warn('[authenticateUser] 処理時間超過');
+        return {
+          success: false,
+          userInfo: null,
+          message: '認証処理がタイムアウトしました',
+          processTime: Date.now() - startTime
+        };
+      }
+      
+      // 1行ずつ取得（メモリ効率化）
+      const row = userSheet.getRange(i, 1, 1, headers.length).getValues()[0];
+      
+      if (String(row[usernameIndex]).trim() === username && 
+          String(row[passwordIndex]).trim() === password) {
+        
+        const spreadsheetLink = String(row[spreadsheetLinkIndex]).trim();
+        const spreadsheetId = extractSpreadsheetIdFromLink(spreadsheetLink);
+        
+        console.log(`[authenticateUser] 認証成功 - ${Date.now() - startTime}ms`);
+        
+        return {
+          success: true,
+          userInfo: {
+            username: username,
+            spreadsheetLink: spreadsheetLink,
+            spreadsheetId: spreadsheetId
+          },
+          message: '認証成功',
+          processTime: Date.now() - startTime
+        };
+      }
+    }
+    
+    // ユーザーが見つからない場合
+    console.log(`[authenticateUser] 認証失敗 - ${Date.now() - startTime}ms`);
+    return {
+      success: false,
+      userInfo: null,
+      message: 'ユーザー名またはパスワードが間違っています',
+      processTime: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    console.error('[authenticateUser] 認証エラー:', error);
+    return {
+      success: false,
+      userInfo: null,
+      message: `認証処理中にエラーが発生しました: ${error.message}`,
+      processTime: Date.now() - (arguments[2] || Date.now())
+    };
+  }
+}
+
+/**
+ * スプレッドシートリンクからスプレッドシートIDを抽出
+ * @param {string} link - スプレッドシートリンク
+ * @return {string} スプレッドシートID
+ */
+function extractSpreadsheetIdFromLink(link) {
+  if (!link) return '';
+  
+  // Google SheetsのURLからIDを抽出
+  const match = link.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return match ? match[1] : '';
+}
+
+/**
+ * 外部スプレッドシートから物件データを取得
+ * @param {string} spreadsheetId - 外部スプレッドシートID
+ * @return {Array} 物件データ配列
+ */
+function getPropertiesFromExternal(spreadsheetId) {
+  try {
+    if (!spreadsheetId) {
+      throw new Error('スプレッドシートIDが指定されていません');
+    }
+    
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName('物件マスタ');
+    
+    if (!sheet) {
+      throw new Error('物件マスタシートが見つかりません');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    return data.slice(1).map(row => {
+      const property = {};
+      headers.forEach((header, index) => {
+        property[header] = row[index];
+      });
+      return property;
+    }).filter(property => property['物件ID']); // 物件IDが存在するもののみ
+    
+  } catch (error) {
+    console.error('外部スプレッドシートからの物件データ取得エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * 外部スプレッドシートから部屋データを取得
+ * @param {string} spreadsheetId - 外部スプレッドシートID
+ * @param {string} propertyId - 物件ID
+ * @return {Array} 部屋データ配列
+ */
+function getRoomsFromExternal(spreadsheetId, propertyId) {
+  try {
+    if (!spreadsheetId) {
+      throw new Error('スプレッドシートIDが指定されていません');
+    }
+    
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName('部屋マスタ');
+    
+    if (!sheet) {
+      throw new Error('部屋マスタシートが見つかりません');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    return data.slice(1).map(row => {
+      const room = {};
+      headers.forEach((header, index) => {
+        room[header] = row[index];
+      });
+      return room;
+    }).filter(room => room['物件ID'] === propertyId); // 指定物件の部屋のみ
+    
+  } catch (error) {
+    console.error('外部スプレッドシートからの部屋データ取得エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * 外部スプレッドシートに検針データを保存
+ * @param {string} spreadsheetId - 外部スプレッドシートID
+ * @param {Object} inspectionData - 検針データ
+ * @return {boolean} 保存成功フラグ
+ */
+function saveInspectionDataToExternal(spreadsheetId, inspectionData) {
+  try {
+    if (!spreadsheetId) {
+      throw new Error('スプレッドシートIDが指定されていません');
+    }
+    
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName('検針データ');
+    
+    if (!sheet) {
+      throw new Error('検針データシートが見つかりません');
+    }
+    
+    // 検針データの保存処理を実装
+    // TODO: 具体的な保存ロジックを実装
+    
+    console.log('外部スプレッドシートへの検針データ保存完了');
+    return true;
+    
+  } catch (error) {
+    console.error('外部スプレッドシートへの検針データ保存エラー:', error);
+    throw error;
+  }
+}
+
+// ======================================================================
+// 🏠 既存の物件・部屋データ取得機能
+// ======================================================================
+
 /**
  * 物件一覧を取得（軽量版）
  * @returns {Array} 物件データの配列

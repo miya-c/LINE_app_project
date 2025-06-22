@@ -266,7 +266,20 @@
       <button type="submit" id="loginBtn" class="btn btn-primary">
         ログイン
       </button>
+      
+      <!-- 手動リトライボタン（エラー時のみ表示） -->
+      <button type="button" id="retryBtn" class="btn btn-primary hidden" style="margin-top: 1rem;">
+        再試行
+      </button>
     </form>
+    
+    <!-- サーバー状況表示 -->
+    <div id="serverStatus" class="hidden" style="margin-top: 1rem; padding: 1rem; background: #f0f8ff; border-radius: 8px; font-size: 0.9rem;">
+      <strong>💡 503エラーが発生した場合:</strong><br>
+      • Google Apps Scriptサーバーが一時的に過負荷状態です<br>
+      • 数分待ってから再度お試しください<br>
+      • 問題が継続する場合は管理者にお問い合わせください
+    </div>
     
     <!-- デバッグ情報（開発時のみ） -->
     <div id="debugInfo" style="margin-top: 2rem; padding: 1rem; background: #f5f5f5; border-radius: 8px; font-size: 0.8rem; color: #666; display: none;">
@@ -298,6 +311,19 @@
       
       // フォーム送信イベントリスナー
       document.getElementById('loginForm').addEventListener('submit', handleLogin);
+      
+      // 手動リトライボタンイベントリスナー
+      document.getElementById('retryBtn').addEventListener('click', function() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        
+        if (username && password) {
+          hideRetryButton();
+          authenticateUser(username, password);
+        } else {
+          showError('ユーザー名とパスワードを入力してください');
+        }
+      });
       
       // エンターキーでログイン
       document.addEventListener('keypress', function(e) {
@@ -348,46 +374,174 @@
     }
     
     /**
-     * ユーザー認証API呼び出し
+     * ユーザー認証API呼び出し（強化されたリトライ機能付き）
      */
-    async function authenticateUser(username, password) {
+    async function authenticateUser(username, password, retryCount = 0) {
+      const MAX_RETRIES = 5; // リトライ回数を増加
+      const BASE_DELAY = 1000; // ベース遅延時間
+      
       setAuthenticating(true);
       hideMessages();
       
       try {
-        debugLog(`認証開始: ${username}`);
+        debugLog(`認証開始: ${username} (試行: ${retryCount + 1}/${MAX_RETRIES + 1})`);
+        
+        // 指数バックオフ遅延（初回のみ除く）
+        if (retryCount > 0) {
+          const delay = BASE_DELAY * Math.pow(2, retryCount - 1) + Math.random() * 1000; // ジッター追加
+          debugLog(`${delay.toFixed(0)}ms待機後にリトライします...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
         
         // API呼び出し
-        const url = `${GAS_WEB_APP_URL}?action=authenticate&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+        const url = `${GAS_WEB_APP_URL}?action=authenticate&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&t=${Date.now()}&retry=${retryCount}`;
+        
+        const controller = new AbortController();
+        const timeoutDuration = 20000 + (retryCount * 5000); // タイムアウトを徐々に延長
+        const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+        
+        debugLog(`タイムアウト設定: ${timeoutDuration}ms`);
         
         const response = await fetch(url, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          }
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          signal: controller.signal
         });
         
-        if (!response.ok) {
-          throw new Error(`HTTP エラー: ${response.status}`);
+        clearTimeout(timeoutId);
+        
+        debugLog(`レスポンス状況: ${response.status} ${response.statusText}`);
+        
+        // 503エラーの特別処理
+        if (response.status === 503) {
+          debugLog('503エラー検出 - サーバー過負荷状態');
+          throw new Error('SERVICE_UNAVAILABLE');
         }
         
-        const result = await response.json();
+        // その他のHTTPエラー
+        if (!response.ok) {
+          debugLog(`HTTPエラー: ${response.status} - ${response.statusText}`);
+          throw new Error(`HTTP_ERROR_${response.status}`);
+        }
+        
+        // レスポンス本文の取得
+        let result;
+        try {
+          const responseText = await response.text();
+          debugLog(`レスポンス本文: ${responseText.substring(0, 200)}...`);
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          debugLog(`JSON解析エラー: ${parseError.message}`);
+          throw new Error('INVALID_RESPONSE_FORMAT');
+        }
+        
         debugLog('認証レスポンス: ' + JSON.stringify(result));
         
         if (result.success && result.userInfo) {
           // 認証成功
           await handleAuthSuccess(result.userInfo);
         } else {
-          // 認証失敗
+          // 認証失敗（リトライしない）
           showError(result.message || '認証に失敗しました');
         }
         
       } catch (error) {
-        debugLog('認証エラー: ' + error.message);
-        showError('認証処理中にエラーが発生しました: ' + error.message);
+        debugLog(`認証エラー (試行${retryCount + 1}): ${error.message}`);
+        
+        // 特定のエラーに対するリトライ処理
+        if (retryCount < MAX_RETRIES && shouldRetry(error)) {
+          const nextRetry = retryCount + 1;
+          const nextDelay = BASE_DELAY * Math.pow(2, retryCount);
+          
+          showError(`サーバーに接続中です... (${nextRetry}/${MAX_RETRIES + 1}) ${Math.ceil(nextDelay/1000)}秒後にリトライ`);
+          
+          // 非同期でリトライ実行
+          setTimeout(() => {
+            authenticateUser(username, password, nextRetry);
+          }, 100); // UI更新のため短い遅延
+          
+          return;
+        }
+        
+        // 最終エラー表示
+        const errorMessage = getErrorMessage(error);
+        showError(errorMessage);
+        
+        // 最終エラーでもリトライ可能なエラーの場合はリトライボタンを表示
+        if (shouldRetry(error)) {
+          showRetryButton();
+        }
+        
       } finally {
-        setAuthenticating(false);
+        if (retryCount === 0 || retryCount >= MAX_RETRIES) {
+          setAuthenticating(false);
+        }
       }
+    }
+    
+    /**
+     * エラーがリトライ可能かどうかを判定（強化版）
+     */
+    function shouldRetry(error) {
+      const retryableErrors = [
+        'SERVICE_UNAVAILABLE',
+        'HTTP_ERROR_503',
+        'HTTP_ERROR_502',
+        'HTTP_ERROR_504',
+        'HTTP_ERROR_429', // Rate limiting
+        'HTTP_ERROR_408', // Request timeout
+        'INVALID_RESPONSE_FORMAT',
+        'NetworkError',
+        'TypeError',
+        'Failed to fetch'
+      ];
+      
+      return retryableErrors.some(retryableError => 
+        error.message.includes(retryableError) || 
+        error.name === 'AbortError' ||
+        error.name === 'TypeError' ||
+        error.name === 'NetworkError'
+      );
+    }
+    
+    /**
+     * エラーメッセージを取得（強化版）
+     */
+    function getErrorMessage(error) {
+      if (error.message.includes('SERVICE_UNAVAILABLE') || error.message.includes('503')) {
+        showServerStatus(); // サーバー状況表示
+        return 'サーバーが一時的に利用できません。Google Apps Scriptサーバーが過負荷状態の可能性があります。数分待ってから再度お試しください。';
+      }
+      
+      if (error.message.includes('HTTP_ERROR_502') || error.message.includes('HTTP_ERROR_504')) {
+        showServerStatus();
+        return 'サーバーゲートウェイエラーが発生しました。ネットワーク接続を確認してください。';
+      }
+      
+      if (error.message.includes('HTTP_ERROR_429')) {
+        showServerStatus();
+        return 'リクエスト制限に達しました。しばらく待ってから再度お試しください。';
+      }
+      
+      if (error.message.includes('INVALID_RESPONSE_FORMAT')) {
+        return 'サーバーからの応答形式が正しくありません。管理者にお問い合わせください。';
+      }
+      
+      if (error.name === 'AbortError') {
+        showServerStatus();
+        return 'リクエストがタイムアウトしました。ネットワーク接続が不安定な可能性があります。';
+      }
+      
+      if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        return 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+      }
+      
+      return `認証処理中にエラーが発生しました: ${error.message}`;
     }
     
     /**
@@ -454,6 +608,11 @@
       errorDiv.classList.remove('hidden');
       
       document.getElementById('successMessage').classList.add('hidden');
+      
+      // 503エラーの場合はリトライボタンを表示
+      if (message.includes('503') || message.includes('サーバーが一時的に') || message.includes('タイムアウト')) {
+        showRetryButton();
+      }
     }
     
     function showSuccess(message) {
@@ -462,11 +621,37 @@
       successDiv.classList.remove('hidden');
       
       document.getElementById('errorMessage').classList.add('hidden');
+      hideRetryButton();
+      hideServerStatus();
     }
     
     function hideMessages() {
       document.getElementById('errorMessage').classList.add('hidden');
       document.getElementById('successMessage').classList.add('hidden');
+      hideRetryButton();
+      hideServerStatus();
+    }
+    
+    /**
+     * リトライボタン制御
+     */
+    function showRetryButton() {
+      document.getElementById('retryBtn').classList.remove('hidden');
+    }
+    
+    function hideRetryButton() {
+      document.getElementById('retryBtn').classList.add('hidden');
+    }
+    
+    /**
+     * サーバー状況表示制御
+     */
+    function showServerStatus() {
+      document.getElementById('serverStatus').classList.remove('hidden');
+    }
+    
+    function hideServerStatus() {
+      document.getElementById('serverStatus').classList.add('hidden');
     }
     
     /**

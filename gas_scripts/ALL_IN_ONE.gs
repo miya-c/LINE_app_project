@@ -38,18 +38,59 @@
  */
 function authenticateUser(username, password) {
   try {
-    // ユーザーシートからユーザー情報を取得
-    const userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ユーザー');
+    const startTime = Date.now();
+    console.log(`[authenticateUser] 認証開始: ${username} - ${new Date().toISOString()}`);
+    
+    // 入力値検証（高速化）
+    if (!username || !password) {
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザー名とパスワードが必要です',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    // トリム処理
+    username = String(username).trim();
+    password = String(password).trim();
+    
+    // ユーザーシートからユーザー情報を取得（高速化）
+    let userSheet;
+    try {
+      userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ユーザー');
+    } catch (sheetError) {
+      console.error('[authenticateUser] スプレッドシート取得エラー:', sheetError);
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザーデータベースに接続できません',
+        processTime: Date.now() - startTime
+      };
+    }
+    
     if (!userSheet) {
       return {
         success: false,
         userInfo: null,
-        message: 'ユーザーシートが見つかりません'
+        message: 'ユーザーシートが見つかりません',
+        processTime: Date.now() - startTime
       };
     }
     
-    const data = userSheet.getDataRange().getValues();
-    const headers = data[0];
+    // データ取得（範囲最適化）
+    const lastRow = userSheet.getLastRow();
+    if (lastRow <= 1) {
+      return {
+        success: false,
+        userInfo: null,
+        message: 'ユーザーデータが登録されていません',
+        processTime: Date.now() - startTime
+      };
+    }
+    
+    // ヘッダー取得（1行目のみ）
+    const headers = userSheet.getRange(1, 1, 1, userSheet.getLastColumn()).getValues()[0];
     
     // ヘッダーのインデックスを取得（複数パターンに対応）
     const usernameIndex = headers.indexOf('ユーザー名');
@@ -62,38 +103,66 @@ function authenticateUser(username, password) {
       return {
         success: false,
         userInfo: null,
-        message: '必要な列が見つかりません（ユーザー名、パスワード、スプレッドシートリンク）'
+        message: '必要な列が見つかりません（ユーザー名、パスワード、スプレッドシートリンク）',
+        processTime: Date.now() - startTime
       };
     }
     
-    // ユーザーを検索
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (row[usernameIndex] === username && row[passwordIndex] === password) {
+    console.log(`[authenticateUser] ヘッダー確認完了 - ${Date.now() - startTime}ms`);
+    
+    // ユーザー検索（1行ずつ処理で高速化）
+    for (let i = 2; i <= lastRow; i++) {
+      // 処理時間チェック（15秒制限）
+      if (Date.now() - startTime > 15000) {
+        console.warn('[authenticateUser] 処理時間超過');
+        return {
+          success: false,
+          userInfo: null,
+          message: '認証処理がタイムアウトしました',
+          processTime: Date.now() - startTime
+        };
+      }
+      
+      // 1行ずつ取得（メモリ効率化）
+      const row = userSheet.getRange(i, 1, 1, headers.length).getValues()[0];
+      
+      if (String(row[usernameIndex]).trim() === username && 
+          String(row[passwordIndex]).trim() === password) {
+        
+        const spreadsheetLink = String(row[spreadsheetLinkIndex]).trim();
+        const spreadsheetId = extractSpreadsheetIdFromLink(spreadsheetLink);
+        
+        console.log(`[authenticateUser] 認証成功 - ${Date.now() - startTime}ms`);
+        
         return {
           success: true,
           userInfo: {
-            username: row[usernameIndex],
-            spreadsheetLink: row[spreadsheetLinkIndex],
-            spreadsheetId: extractSpreadsheetIdFromLink(row[spreadsheetLinkIndex])
+            username: username,
+            spreadsheetLink: spreadsheetLink,
+            spreadsheetId: spreadsheetId
           },
-          message: '認証成功'
+          message: '認証成功',
+          processTime: Date.now() - startTime
         };
       }
     }
     
+    // ユーザーが見つからない場合
+    console.log(`[authenticateUser] 認証失敗 - ${Date.now() - startTime}ms`);
     return {
       success: false,
       userInfo: null,
-      message: 'ユーザー名またはパスワードが間違っています'
+      message: 'ユーザー名またはパスワードが間違っています',
+      processTime: Date.now() - startTime
     };
     
   } catch (error) {
-    console.error('認証エラー:', error);
+    console.error('[authenticateUser] 認証エラー:', error);
     return {
       success: false,
       userInfo: null,
-      message: '認証処理中にエラーが発生しました: ' + error.message
+      message: `認証処理中にエラーが発生しました: ${error.message}`,
+      processTime: Date.now() - (arguments[2] || Date.now())
     };
   }
 }
@@ -1987,67 +2056,224 @@ function getMeterReadings(propertyId, roomId) {
 // ======================================================================
 
 /**
- * CORS対応JSONレスポンス作成
+ * CORS対応JSONレスポンス作成（503エラー対策強化版）
  */
 function createCorsJsonResponse(data) {
-  console.log('[createCorsJsonResponse] APIバージョン:', API_VERSION);
-  // setHeaders は使用しません - ContentService標準のみ
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const startTime = Date.now();
+    console.log('[createCorsJsonResponse] レスポンス作成開始:', new Date().toISOString());
+    
+    // データの安全化（高速化）
+    const safeData = data || { 
+      success: false, 
+      message: 'No data provided',
+      timestamp: new Date().toISOString()
+    };
+    
+    // 応答時間情報を追加
+    if (!safeData.timestamp) {
+      safeData.timestamp = new Date().toISOString();
+    }
+    
+    // JSONに変換（エラー対策強化）
+    let jsonString;
+    try {
+      jsonString = JSON.stringify(safeData);
+      console.log(`[createCorsJsonResponse] JSON作成完了 - ${jsonString.length}文字, ${Date.now() - startTime}ms`);
+    } catch (jsonError) {
+      console.error('[createCorsJsonResponse] JSON変換エラー:', jsonError);
+      
+      // フォールバック用の最小限データ
+      const fallbackData = {
+        success: false,
+        message: 'Response serialization error',
+        error: jsonError.toString(),
+        timestamp: new Date().toISOString(),
+        fallback: true
+      };
+      
+      jsonString = JSON.stringify(fallbackData);
+    }
+    
+    // レスポンス長制限（GAS制限対策）
+    if (jsonString.length > 50000) {
+      console.warn(`[createCorsJsonResponse] レスポンスサイズ大：${jsonString.length}文字`);
+      
+      // 大きすぎる場合は要約版を作成
+      const summaryData = {
+        success: safeData.success || false,
+        message: safeData.message || 'Large response truncated',
+        dataSize: jsonString.length,
+        timestamp: new Date().toISOString(),
+        truncated: true
+      };
+      
+      jsonString = JSON.stringify(summaryData);
+    }
+    
+    // ContentServiceでレスポンス作成（高速化）
+    const output = ContentService
+      .createTextOutput(jsonString)
+      .setMimeType(ContentService.MimeType.JSON);
+    
+    console.log(`[createCorsJsonResponse] レスポンス作成完了 - 総時間: ${Date.now() - startTime}ms`);
+    return output;
+    
+  } catch (error) {
+    console.error('[createCorsJsonResponse] 致命的エラー:', error);
+    
+    // 最小限のエラーレスポンス（絶対失敗しない版）
+    const emergencyResponse = `{"success":false,"message":"Internal server error","timestamp":"${new Date().toISOString()}","emergency":true}`;
+    
+    try {
+      return ContentService
+        .createTextOutput(emergencyResponse)
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (finalError) {
+      // 最後の手段：プレーンテキスト
+      console.error('[createCorsJsonResponse] 最終エラー:', finalError);
+      return ContentService.createTextOutput(emergencyResponse);
+    }
+  }
 }
 
 /**
- * GETリクエスト処理
+ * GETリクエスト処理（強化エラーハンドリング・503対策版）
  */
 function doGet(e) {
   try {
-    const action = e?.parameter?.action;
+    // リクエスト処理開始時間を記録（タイムアウト対策）
+    const startTime = Date.now();
+    
+    // パラメータ取得（安全化）
+    const action = e?.parameter?.action || '';
+    const requestId = Date.now().toString();
+    
+    console.log(`[doGet:${requestId}] リクエスト開始 - action: ${action}, timestamp: ${new Date().toISOString()}`);
+    
+    // 処理時間制限（25秒でタイムアウト対策）
+    const timeoutMs = 25000;
+    const timeoutHandler = () => {
+      console.error(`[doGet:${requestId}] 処理時間超過警告 - ${Date.now() - startTime}ms`);
+      return createCorsJsonResponse({
+        success: false,
+        message: 'リクエスト処理がタイムアウトしました',
+        error: 'REQUEST_TIMEOUT',
+        requestId: requestId,
+        processTime: Date.now() - startTime,
+        timestamp: new Date().toISOString()
+      });
+    };
     
     if (!action) {
-      // テストページ表示（簡素版）
+      // テストページ表示（軽量版）
+      console.log(`[doGet:${requestId}] テストページ表示`);
       return HtmlService.createHtmlOutput(`
         <html>
-          <head><title>水道検針アプリ API</title></head>
+          <head><title>水道検針アプリ API v${API_VERSION}</title></head>
           <body>
             <h1>🚰 水道検針アプリ API</h1>
             <p>現在時刻: ${new Date().toISOString()}</p>
+            <p>リクエストID: ${requestId}</p>
+            <p>サーバー状態: <span style="color: green;">✅ 正常動作中</span></p>
             <ul>
+              <li><a href="?action=test">APIテスト</a></li>
               <li><a href="?action=getProperties">物件一覧を取得</a></li>
-              <li>部屋一覧: ?action=getRooms&propertyId=物件ID</li>
-              <li>検針データ: ?action=getMeterReadings&propertyId=物件ID&roomId=部屋ID</li>
+              <li>部屋一覧: ?action=getRooms&propertyId=P001</li>
+              <li>認証テスト: ?action=authenticate&username=test_user&password=test_password</li>
             </ul>
           </body>
         </html>
       `).setTitle('水道検針アプリ API');
     }
-    
-    // API処理
+
+    // 処理時間チェック
+    if (Date.now() - startTime > timeoutMs) {
+      return timeoutHandler();
+    }
+
+    // API処理（高速化版）
     switch (action) {
       case 'test':
+        console.log(`[doGet:${requestId}] テストAPI実行`);
         return createCorsJsonResponse({
           success: true,
           message: 'API正常動作',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          requestId: requestId,
+          version: API_VERSION,
+          processTime: Date.now() - startTime
         });
       
       case 'authenticate':
-        const username = e.parameter.username;
-        const password = e.parameter.password;
-        const authResult = authenticateUser(username, password);
-        return createCorsJsonResponse(authResult);
+        console.log(`[doGet:${requestId}] 認証API実行`);
+        try {
+          const username = e.parameter.username;
+          const password = e.parameter.password;
+          
+          if (!username || !password) {
+            return createCorsJsonResponse({
+              success: false,
+              message: 'ユーザー名とパスワードが必要です',
+              requestId: requestId,
+              processTime: Date.now() - startTime
+            });
+          }
+          
+          // 処理時間チェック（認証前）
+          if (Date.now() - startTime > timeoutMs) {
+            return timeoutHandler();
+          }
+          
+          const authResult = authenticateUser(username, password);
+          authResult.requestId = requestId;
+          authResult.processTime = Date.now() - startTime;
+          
+          console.log(`[doGet:${requestId}] 認証完了 - ${authResult.processTime}ms`);
+          return createCorsJsonResponse(authResult);
+          
+        } catch (authError) {
+          console.error(`[doGet:${requestId}] 認証エラー:`, authError);
+          return createCorsJsonResponse({
+            success: false,
+            message: '認証処理中にエラーが発生しました',
+            error: authError.message,
+            requestId: requestId,
+            processTime: Date.now() - startTime
+          });
+        }
         
       case 'getProperties':
-        const spreadsheetId = e.parameter.spreadsheetId;
-        let properties;
-        if (spreadsheetId) {
-          properties = getPropertiesFromExternal(spreadsheetId);
-        } else {
-          properties = getProperties();
+        console.log(`[doGet:${requestId}] 物件データ取得API実行`);
+        try {
+          const spreadsheetId = e.parameter.spreadsheetId;
+          let properties;
+          
+          if (spreadsheetId) {
+            console.log(`[doGet:${requestId}] 外部スプレッドシート使用: ${spreadsheetId}`);
+            properties = getPropertiesFromExternal(spreadsheetId);
+          } else {
+            console.log(`[doGet:${requestId}] デフォルトスプレッドシート使用`);
+            properties = getProperties();
+          }
+          
+          return createCorsJsonResponse({
+            success: true,
+            data: Array.isArray(properties) ? properties : [],
+            count: Array.isArray(properties) ? properties.length : 0,
+            requestId: requestId,
+            timestamp: new Date().toISOString()
+          });
+          
+        } catch (propError) {
+          console.error(`[doGet:${requestId}] 物件データ取得エラー:`, propError);
+          return createCorsJsonResponse({
+            success: false,
+            message: '物件データの取得に失敗しました',
+            error: propError.message,
+            requestId: requestId
+          });
         }
-        return createCorsJsonResponse({
-          success: true,
-          data: Array.isArray(properties) ? properties : [],
           count: Array.isArray(properties) ? properties.length : 0
         });
         
@@ -2180,80 +2406,23 @@ function doGet(e) {
         }
         
       default:
-        // 新しいデバッグ用API処理を追加
-        if (action === 'getSpreadsheetInfo') {
-          console.log('[doGet] 📊 スプレッドシート情報取得要求');
-          try {
-            const ss = SpreadsheetApp.getActiveSpreadsheet();
-            const sheets = ss.getSheets().map(sheet => ({
-              name: sheet.getName(),
-              rowCount: sheet.getLastRow(),
-              columnCount: sheet.getLastColumn()
-            }));
-            
-            return createCorsJsonResponse({
-              success: true,
-              message: 'スプレッドシート情報取得成功',
-              data: {
-                spreadsheetId: ss.getId(),
-                spreadsheetName: ss.getName(),
-                sheets: sheets
-              },
-              timestamp: new Date().toISOString()
-            });
-          } catch (error) {
-            return createCorsJsonResponse({
-              success: false,
-              error: `スプレッドシート情報取得エラー: ${error.message}`,
-              timestamp: new Date().toISOString()
-            });
-          }
-        }
-        
-        if (action === 'getPropertyMaster') {
-          console.log('[doGet] 🏠 物件マスタデータ取得要求');
-          try {
-            const ss = SpreadsheetApp.getActiveSpreadsheet();
-            const propertySheet = ss.getSheetByName('物件マスタ');
-            
-            if (!propertySheet) {
-              throw new Error('物件マスタシートが見つかりません');
-            }
-            
-            const data = propertySheet.getDataRange().getValues();
-            const headers = data[0];
-            const rows = data.slice(1);
-            
-            return createCorsJsonResponse({
-              success: true,
-              message: '物件マスタデータ取得成功',
-              data: {
-                headers: headers,
-                rowCount: rows.length,
-                sampleRows: rows.slice(0, 5) // 最初の5行のみ返す
-              },
-              timestamp: new Date().toISOString()
-            });
-          } catch (error) {
-            return createCorsJsonResponse({
-              success: false,
-              error: `物件マスタデータ取得エラー: ${error.message}`,
-              timestamp: new Date().toISOString()
-            });
-          }
-        }
-        
-        console.log(`[doGet] ❌ 未知のアクション: ${action}`);
+        console.log(`[doGet:${requestId}] 未知のアクション: ${action}`);
         return createCorsJsonResponse({ 
           success: false,
-          error: `未知のアクション: ${action}`
+          message: `未知のアクション: ${action}`,
+          availableActions: ['test', 'authenticate', 'getProperties', 'getRooms', 'getMeterReadings'],
+          requestId: requestId
         });
     }
     
   } catch (error) {
+    console.error(`[doGet] 致命的エラー:`, error);
     return createCorsJsonResponse({ 
       success: false,
-      error: `サーバーエラー: ${error.message}`
+      message: `サーバーエラーが発生しました`,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      apiVersion: API_VERSION
     });
   }
 }
