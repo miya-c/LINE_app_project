@@ -520,7 +520,8 @@
             const userInfo = localStorage.getItem('userInfo');
             const userSpreadsheetId = localStorage.getItem('userSpreadsheetId');
             
-            let requestUrl;
+            // requestUrlを外側のスコープで定義
+            let requestUrl = '';
             if (userInfo && userSpreadsheetId) {
               // 外部スプレッドシートから取得
               console.log('[ReactApp] 外部スプレッドシートからデータ取得:', userSpreadsheetId);
@@ -531,24 +532,59 @@
               requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
             }
             
-            // キャッシュバスティング付きAPI呼び出し
+            // キャッシュバスティング付きAPI呼び出し（再試行ロジック付き）
             console.log('[ReactApp] Fetching properties from:', requestUrl);
             console.log('[ReactApp] Request URL breakdown:', {
               baseUrl: gasWebAppUrl,
               parameters: requestUrl.split('?')[1],
               fullUrl: requestUrl
             });
+
+            // 503エラー対応の再試行ロジック
+            let retryCount = 0;
+            const maxRetries = 3;
+            let response;
             
-            const response = await fetch(requestUrl, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-              },
-              mode: 'cors',
-              credentials: 'omit',
-              redirect: 'follow' // リダイレクトを追跡
-            });
+            while (retryCount <= maxRetries) {
+              try {
+                console.log(`[ReactApp] API呼び出し試行 ${retryCount + 1}/${maxRetries + 1}`);
+                
+                response = await fetch(requestUrl, {
+                  method: 'GET',
+                  headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                  },
+                  mode: 'cors',
+                  credentials: 'omit',
+                  redirect: 'follow' // リダイレクトを追跡
+                });
+
+                // レスポンスステータスをチェック
+                if (response.status === 503) {
+                  throw new Error(`503 Service Unavailable - GAS server overload (attempt ${retryCount + 1})`);
+                }
+
+                // 成功時はループを抜ける
+                break;
+
+              } catch (fetchError) {
+                console.log(`[ReactApp] 試行 ${retryCount + 1} でエラー:`, fetchError.message);
+                
+                if (retryCount >= maxRetries) {
+                  // 最大再試行回数に達した場合は例外を再スロー
+                  throw fetchError;
+                }
+                
+                // 503エラーの場合は指数バックオフで再試行
+                const waitTime = Math.pow(2, retryCount) * 1000; // 1秒, 2秒, 4秒
+                console.log(`[ReactApp] ${waitTime}ms待機後に再試行します...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                
+                retryCount++;
+              }
+            }
+            
             console.log('[ReactApp] Response status:', response.status);
             console.log('[ReactApp] Response headers:', Object.fromEntries(response.headers.entries()));
             console.log('[ReactApp] Response URL:', response.url);
@@ -670,7 +706,18 @@
             } else if (fetchError.message.includes('CORS')) {
               errorMessage = 'セキュリティエラー: CORS設定の問題です。管理者に連絡してください。';
             } else if (fetchError.message.includes('503')) {
-              errorMessage = 'サーバーエラー: Google Apps Scriptサーバーが一時的に利用できません。しばらく待ってから再度お試しください。';
+              errorMessage = '🔄 サーバーが一時的に混雑しています。Google Apps Scriptサーバーが過負荷状態のため、データ取得を自動で再試行しましたが、成功しませんでした。数分待ってからページを再読み込みしてください。';
+            }
+            
+            // 503エラーの場合は特別な処理
+            if (fetchError.message.includes('503')) {
+              console.log('[ReactApp] 503エラー検出 - サーバー状況表示を有効化');
+              // サーバー状況表示エリアがあれば表示
+              const serverStatusElement = document.getElementById('serverStatus');
+              if (serverStatusElement) {
+                serverStatusElement.classList.remove('hidden');
+                serverStatusElement.style.display = 'block';
+              }
             }
             
             setError(errorMessage);
@@ -792,7 +839,8 @@
           // ユーザー認証情報を取得
           const userSpreadsheetId = localStorage.getItem('userSpreadsheetId');
           
-          let requestUrl;
+          // requestUrlを外側のスコープで定義
+          let requestUrl = '';
           if (userSpreadsheetId) {
             // 外部スプレッドシートから取得
             console.log('[ReactApp] 外部スプレッドシートから部屋データ取得:', userSpreadsheetId);
@@ -809,17 +857,51 @@
             parameters: requestUrl.split('?')[1],
             fullUrl: requestUrl
           });
+
+          // 503エラー対応の再試行ロジック（部屋データ）
+          let retryCount = 0;
+          const maxRetries = 3;
+          let roomResponse;
           
-          const roomResponse = await fetch(requestUrl, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'Cache-Control': 'no-cache'
-            },
-            mode: 'cors',
-            credentials: 'omit',
-            redirect: 'follow' // リダイレクトを追跡
-          });
+          while (retryCount <= maxRetries) {
+            try {
+              console.log(`[ReactApp] 部屋データAPI呼び出し試行 ${retryCount + 1}/${maxRetries + 1}`);
+              
+              roomResponse = await fetch(requestUrl, {
+                method: 'GET',
+                headers: {
+                  'Accept': 'application/json',
+                  'Cache-Control': 'no-cache'
+                },
+                mode: 'cors',
+                credentials: 'omit',
+                redirect: 'follow' // リダイレクトを追跡
+              });
+
+              // レスポンスステータスをチェック
+              if (roomResponse.status === 503) {
+                throw new Error(`503 Service Unavailable - GAS server overload (attempt ${retryCount + 1})`);
+              }
+
+              // 成功時はループを抜ける
+              break;
+
+            } catch (fetchError) {
+              console.log(`[ReactApp] 部屋データ取得試行 ${retryCount + 1} でエラー:`, fetchError.message);
+              
+              if (retryCount >= maxRetries) {
+                // 最大再試行回数に達した場合は例外を再スロー
+                throw fetchError;
+              }
+              
+              // 503エラーの場合は指数バックオフで再試行
+              const waitTime = Math.pow(2, retryCount) * 1000; // 1秒, 2秒, 4秒
+              console.log(`[ReactApp] ${waitTime}ms待機後に部屋データ取得を再試行します...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              
+              retryCount++;
+            }
+          }
           
           console.log('[ReactApp] Room Response Status:', roomResponse.status);
           console.log('[ReactApp] Room Response Headers:', roomResponse.headers);
@@ -1238,7 +1320,7 @@
                     margin: '0 0 8px 0',
                     color: '#b91c1c'
                   }}>
-                    エラー
+                    {String(error).includes('503') ? '🔄 サーバー混雑中' : 'エラー'}
                   </div>
                   <div className="MuiTypography-root" style={{
                     fontSize: '1rem',
@@ -1247,6 +1329,23 @@
                   }}>
                     {String(error || 'エラーが発生しました')}
                   </div>
+                  
+                  {/* 503エラー専用の追加説明 */}
+                  {String(error).includes('503') && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      backgroundColor: '#f0f8ff',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      color: '#1565c0'
+                    }}>
+                      <div style={{ fontWeight: 500, marginBottom: '4px' }}>💡 対処方法:</div>
+                      • ページを再読み込みしてください<br/>
+                      • 数分待ってから再度お試しください<br/>
+                      • Google Apps Scriptサーバーの自動復旧をお待ちください
+                    </div>
+                  )}
                 </div>
               )}
 
