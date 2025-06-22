@@ -50,7 +50,17 @@ function onOpen() {
     systemMenu.addItem('4. 統合作業サマリー表示', 'showIntegrationSummary');
     
     menu.addSubMenu(systemMenu);
-      // メニューを追加
+      // ユーザー管理メニュー
+    const userManagementMenu = ui.createMenu('👤 ユーザー管理');
+    userManagementMenu.addItem('1. ユーザー認証テスト', 'testUserAuthentication');
+    userManagementMenu.addItem('2. 外部スプレッドシート接続テスト', 'testExternalSpreadsheetAccess');
+    userManagementMenu.addItem('3. ユーザーマスタ表示', 'showUserMaster');
+    userManagementMenu.addSeparator();
+    userManagementMenu.addItem('4. サンプルユーザー作成', 'createSampleUser');
+    
+    menu.addSubMenu(userManagementMenu);
+    
+    // メニューを追加
     menu.addToUi();
     
     console.log('[onOpen] メニュー作成完了');
@@ -468,5 +478,153 @@ function menuValidateDataIntegrity() {
     } catch (uiError) {
       console.error('[menuValidateDataIntegrity] UI表示エラー:', uiError);
     }
+  }
+}
+
+/**
+ * ユーザー認証テスト（メニュー用）
+ */
+function testUserAuthentication() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    // テスト用ユーザー情報
+    const testUsername = 'test_user';
+    const testPassword = 'test_password';
+    
+    // 認証テスト実行
+    const result = authenticateUser(testUsername, testPassword);
+    
+    let message = '認証テスト結果:\n\n';
+    message += `成功: ${result.success}\n`;
+    message += `メッセージ: ${result.message}\n`;
+    
+    if (result.success && result.userInfo) {
+      message += `\nユーザー情報:\n`;
+      message += `ユーザー名: ${result.userInfo.username}\n`;
+      message += `スプレッドシートID: ${result.userInfo.spreadsheetId}\n`;
+      message += `スプレッドシートリンク: ${result.userInfo.spreadsheetLink}`;
+    }
+    
+    ui.alert('認証テスト', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[testUserAuthentication] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `認証テストに失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * 外部スプレッドシート接続テスト（メニュー用）
+ */
+function testExternalSpreadsheetAccess() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    // テスト用スプレッドシートIDを入力
+    const response = ui.prompt('外部スプレッドシート接続テスト', 'テスト用スプレッドシートIDを入力してください:', ui.ButtonSet.OK_CANCEL);
+    
+    if (response.getSelectedButton() === ui.Button.OK) {
+      const spreadsheetId = response.getResponseText().trim();
+      
+      if (!spreadsheetId) {
+        ui.alert('エラー', 'スプレッドシートIDが入力されていません', ui.ButtonSet.OK);
+        return;
+      }
+      
+      // 物件データ取得テスト
+      const properties = getPropertiesFromExternal(spreadsheetId);
+      
+      let message = '外部スプレッドシート接続テスト結果:\n\n';
+      message += `物件データ取得成功\n`;
+      message += `取得件数: ${properties.length}件\n`;
+      
+      if (properties.length > 0) {
+        message += `\nサンプル物件:\n`;
+        const sample = properties[0];
+        Object.keys(sample).forEach(key => {
+          message += `${key}: ${sample[key]}\n`;
+        });
+      }
+      
+      ui.alert('接続テスト', message, ui.ButtonSet.OK);
+    }
+    
+  } catch (error) {
+    console.error('[testExternalSpreadsheetAccess] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `外部スプレッドシート接続テストに失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * ユーザーマスタ表示（メニュー用）
+ */
+function showUserMaster() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ユーザー');
+    
+    if (!userSheet) {
+      ui.alert('エラー', 'ユーザーシートが見つかりません', ui.ButtonSet.OK);
+      return;
+    }
+    
+    const data = userSheet.getDataRange().getValues();
+    const headers = data[0];
+    const users = data.slice(1);
+    
+    let message = 'ユーザーマスタ情報:\n\n';
+    message += `ヘッダー: ${headers.join(', ')}\n`;
+    message += `ユーザー数: ${users.length}人\n\n`;
+    
+    if (users.length > 0) {
+      message += 'ユーザー一覧:\n';
+      users.forEach((user, index) => {
+        message += `${index + 1}. ${user[0]} (${user[2] ? 'リンク設定済み' : 'リンク未設定'})\n`;
+      });
+    }
+    
+    ui.alert('ユーザーマスタ', message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[showUserMaster] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `ユーザーマスタ表示に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * サンプルユーザー作成（メニュー用）
+ */
+function createSampleUser() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    let userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ユーザー');
+    
+    // ユーザーシートが存在しない場合は作成
+    if (!userSheet) {
+      userSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('ユーザー');
+      const headers = ['ユーザー名', 'パスワード', 'スプレッドシートリンク'];
+      userSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+    
+    // サンプルユーザーを追加
+    const sampleUsers = [
+      ['test_user', 'test_password', 'https://docs.google.com/spreadsheets/d/1234567890abcdef/edit'],
+      ['admin', 'admin123', 'https://docs.google.com/spreadsheets/d/abcdef1234567890/edit'],
+      ['user1', 'password1', 'https://docs.google.com/spreadsheets/d/fedcba0987654321/edit']
+    ];
+    
+    const lastRow = userSheet.getLastRow();
+    userSheet.getRange(lastRow + 1, 1, sampleUsers.length, sampleUsers[0].length).setValues(sampleUsers);
+    
+    ui.alert('完了', `サンプルユーザー${sampleUsers.length}人を作成しました`, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[createSampleUser] エラー:', error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('エラー', `サンプルユーザー作成に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
   }
 }

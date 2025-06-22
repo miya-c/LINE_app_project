@@ -516,12 +516,26 @@
           console.log('[ReactApp] 📊 状態設定完了:', { loading: true, error: null, isFetched: false });
           
           try {
+            // ユーザー認証情報を取得
+            const userInfo = localStorage.getItem('userInfo');
+            const userSpreadsheetId = localStorage.getItem('userSpreadsheetId');
+            
+            let requestUrl;
+            if (userInfo && userSpreadsheetId) {
+              // 外部スプレッドシートから取得
+              console.log('[ReactApp] 外部スプレッドシートからデータ取得:', userSpreadsheetId);
+              requestUrl = `${gasWebAppUrl}?action=getProperties&spreadsheetId=${encodeURIComponent(userSpreadsheetId)}&cache=${Date.now()}`;
+            } else {
+              // デフォルトスプレッドシートから取得
+              console.log('[ReactApp] デフォルトスプレッドシートからデータ取得');
+              requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
+            }
+            
             // キャッシュバスティング付きAPI呼び出し
-            const requestUrl = `${gasWebAppUrl}?action=getProperties&cache=${Date.now()}`;
             console.log('[ReactApp] Fetching properties from:', requestUrl);
             console.log('[ReactApp] Request URL breakdown:', {
               baseUrl: gasWebAppUrl,
-              parameters: `action=getProperties&cache=${Date.now()}`,
+              parameters: requestUrl.split('?')[1],
               fullUrl: requestUrl
             });
             
@@ -745,11 +759,24 @@
         setNavigationMessage('');
         
         try {
-          const requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
+          // ユーザー認証情報を取得
+          const userSpreadsheetId = localStorage.getItem('userSpreadsheetId');
+          
+          let requestUrl;
+          if (userSpreadsheetId) {
+            // 外部スプレッドシートから取得
+            console.log('[ReactApp] 外部スプレッドシートから部屋データ取得:', userSpreadsheetId);
+            requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&spreadsheetId=${encodeURIComponent(userSpreadsheetId)}&cache=${Date.now()}`;
+          } else {
+            // デフォルトスプレッドシートから取得
+            console.log('[ReactApp] デフォルトスプレッドシートから部屋データ取得');
+            requestUrl = `${gasWebAppUrl}?action=getRooms&propertyId=${property.id}&cache=${Date.now()}`;
+          }
+          
           console.log(`[ReactApp] Fetching rooms for propertyId: ${property.id}`);
           console.log('[ReactApp] Room request URL breakdown:', {
             baseUrl: gasWebAppUrl,
-            parameters: `action=getRooms&propertyId=${property.id}`,
+            parameters: requestUrl.split('?')[1],
             fullUrl: requestUrl
           });
           
