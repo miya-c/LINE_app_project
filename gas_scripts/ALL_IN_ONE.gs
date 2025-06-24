@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ===================================================================
  * 🔧 ALL_IN_ONE.gs - Google Apps Script 完全統合ファイル
  * ===================================================================
@@ -29,17 +29,10 @@
 // 🔧 グローバル設定・定数（設定.gs完全版）
 // ======================================================================
 
-// スプレッドシートIDの設定
-const CONFIG_SPREADSHEET_ID = '1FLXQSL-kH_wEACzk2OO28eouGp-JFRg7QEUNz5t2fg0';
+// スプレッドシートIDの設定は削除されました。代わりにアクティブなスプレッドシートが使用されます。
+// シート名やその他の設定は `Config.gs` ファイルで管理されます。
 
-// Web App API設定
-const API_VERSION = "v2.8.0-simple-completion";
 const LAST_UPDATED = "2025-06-21 15:15:00 JST";
-
-// シート名定数
-const PROPERTY_MASTER_SHEET_NAME = '物件マスタ';
-const ROOM_MASTER_SHEET_NAME = '部屋マスタ';
-const INSPECTION_DATA_SHEET_NAME = 'inspection_data';
 
 // 検針データヘッダー定義
 const INSPECTION_DATA_HEADERS = [
@@ -49,11 +42,18 @@ const INSPECTION_DATA_HEADERS = [
 ];
 
 /**
- * 設定されたスプレッドシートIDを取得する関数
- * @return {string} スプレッドシートID
+ * @private
+ * ヘルパー関数：アクティブなスプレッドシートを取得します。
+ * ライブラリとして利用されることを想定し、スクリプトがスプレッドシートに紐付いていることを確認します。
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet} アクティブなスプレッドシートオブジェクト
+ * @throws {Error} スプレッドシートコンテキストで実行されていない場合にエラーをスローします。
  */
-function getConfigSpreadsheetId() {
-  return CONFIG_SPREADSHEET_ID;
+function _getActiveSpreadsheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error('アクティブなスプレッドシートが見つかりません。このスクリプトはスプレッドシートにバインドされている必要があります。');
+  }
+  return ss;
 }
 
 /**
@@ -126,189 +126,41 @@ function safeAlert(title, message) {
 
 function getProperties() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('物件マスタ');
-    
+    const ss = _getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PROPERTY_MASTER);
     if (!sheet) {
-      throw new Error('物件マスタシートが見つかりません');
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) {
+      console.error(`シートが見つかりません: ${CONFIG.SHEET_NAMES.PROPERTY_MASTER}`);
       return [];
     }
-    
-    const headers = data[0];
-    return data.slice(1).map(row => {
-      const property = {};
-      headers.forEach((header, colIndex) => {
-        property[header] = row[colIndex];
-      });
-      return property;
-    });
-    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2);
+    const values = dataRange.getValues();
+    return values
+      .map(row => ({ id: row[0], name: row[1] }))
+      .filter(p => p.id && p.name);
   } catch (error) {
-    throw error;
+    console.error(`[getProperties] Error: ${error.message}`);
+    return [];
   }
 }
 
 function getRooms(propertyId) {
   try {
-    Logger.log(`[getRooms] 開始 - propertyId: ${propertyId}`);
-    
-    if (!propertyId) {
-      throw new Error('物件IDが指定されていません');
+    const ss = _getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ROOM_MASTER);
+    if (!sheet) {
+      console.error(`シートが見つかりません: ${CONFIG.SHEET_NAMES.ROOM_MASTER}`);
+      return [];
     }
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const propertySheet = ss.getSheetByName('物件マスタ');
-    const roomSheet = ss.getSheetByName('部屋マスタ');
-    
-    if (!propertySheet) {
-      throw new Error('物件マスタシートが見つかりません');
-    }
-    
-    if (!roomSheet) {
-      throw new Error('部屋マスタシートが見つかりません');
-    }
-    
-    Logger.log('[getRooms] シート取得完了');
-    const propertyData = propertySheet.getDataRange().getValues();
-    if (propertyData.length <= 1) {
-      throw new Error('物件マスタにデータがありません');
-    }
-    
-    const propertyHeaders = propertyData[0];
-    const propertyIdIndex = propertyHeaders.indexOf('物件ID');
-    const propertyNameIndex = propertyHeaders.indexOf('物件名');
-    
-    if (propertyIdIndex === -1) {
-      throw new Error('物件マスタに「物件ID」列が見つかりません');
-    }
-    
-    if (propertyNameIndex === -1) {
-      throw new Error('物件マスタに「物件名」列が見つかりません');
-    }
-    
-    const propertyRow = propertyData.slice(1).find(row => 
-      String(row[propertyIdIndex]).trim() === String(propertyId).trim()
-    );
-    
-    if (!propertyRow) {
-      throw new Error(`指定された物件ID「${propertyId}」が物件マスタに見つかりません`);
-    }
-    
-    const propertyInfo = {
-      id: String(propertyRow[propertyIdIndex]).trim(),
-      name: String(propertyRow[propertyNameIndex] || '物件名不明').trim()
-    };
-    
-    Logger.log(`[getRooms] 物件情報取得完了: ${JSON.stringify(propertyInfo)}`);
-    const roomData = roomSheet.getDataRange().getValues();
-    if (roomData.length <= 1) {
-      Logger.log('[getRooms] 部屋マスタにデータなし - 空配列を返却');
-      return {
-        property: propertyInfo,
-        rooms: []
-      };
-    }
-    
-    const roomHeaders = roomData[0];
-    const roomPropertyIdIndex = roomHeaders.indexOf('物件ID');
-    const roomIdIndex = roomHeaders.indexOf('部屋ID');
-    const roomNameIndex = roomHeaders.indexOf('部屋名');
-    
-    if (roomPropertyIdIndex === -1 || roomIdIndex === -1 || roomNameIndex === -1) {
-      throw new Error('部屋マスタに必要な列（物件ID、部屋ID、部屋名）が見つかりません');
-    }
-    
-    Logger.log(`[getRooms] 部屋マスタ列構成確認: 物件ID列:${roomPropertyIdIndex}, 部屋ID列:${roomIdIndex}, 部屋名列:${roomNameIndex}`);
-    
-    const rooms = roomData.slice(1)
-      .filter(row => String(row[roomPropertyIdIndex]).trim() === String(propertyId).trim())
-      .map(row => ({
-        id: String(row[roomIdIndex] || '').trim(),
-        name: String(row[roomNameIndex] || '').trim(),
-        readingStatus: 'not-completed',
-        isCompleted: false,
-        readingDateFormatted: null
-      }));
-    
-    Logger.log(`[getRooms] 対象部屋数: ${rooms.length}件`);
-    const inspectionSheet = ss.getSheetByName('inspection_data');
-    if (inspectionSheet) {
-      try {
-        const inspectionData = inspectionSheet.getDataRange().getValues();
-        
-        if (inspectionData.length > 1) {
-          const inspHeaders = inspectionData[0];
-          const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');
-          const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');
-          const inspValueIndex = inspHeaders.indexOf('今回の指示数');
-          const inspDateIndex = inspHeaders.indexOf('検針日時');
-          
-          Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}, 検針日時列:${inspDateIndex}`);
-          
-          if (inspPropertyIdIndex !== -1 && inspRoomIdIndex !== -1 && inspValueIndex !== -1) {
-            const readingMap = new Map();
-            inspectionData.slice(1).forEach(row => {
-              if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim() &&
-                  row[inspValueIndex] !== null && 
-                  row[inspValueIndex] !== undefined && 
-                  String(row[inspValueIndex]).trim() !== '') {
-                
-                const roomId = String(row[inspRoomIdIndex]).trim();
-                let readingDateFormatted = null;
-                if (inspDateIndex !== -1 && row[inspDateIndex]) {
-                  try {
-                    const dateStr = String(row[inspDateIndex]).trim();
-                    if (dateStr) {
-                      const date = new Date(dateStr);
-                      if (!isNaN(date.getTime())) {
-                        readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
-                      }
-                    }
-                  } catch (e) {
-                    Logger.log(`[getRooms] 日付変換エラー: ${e.message}`);
-                  }
-                }
-                if (!readingDateFormatted) {
-                  const today = new Date();
-                  readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
-                }
-                readingMap.set(roomId, readingDateFormatted);
-              }
-            });
-            rooms.forEach(room => {
-              if (readingMap.has(room.id)) {
-                room.readingStatus = 'completed';
-                room.isCompleted = true;
-                room.readingDateFormatted = readingMap.get(room.id);
-              }
-            });
-            Logger.log(`[getRooms] 検針完了部屋数: ${readingMap.size}件`);
-          } else {
-            Logger.log('[getRooms] inspection_dataの必要な列が見つかりません');
-          }
-        }
-      } catch (inspectionError) {
-        Logger.log(`[getRooms] inspection_data読み込みエラー（部屋一覧は継続）: ${inspectionError.message}`);
-      }
-    } else {
-      Logger.log('[getRooms] inspection_dataシートが見つかりません（部屋一覧は継続）');
-    }
-    
-    const result = {
-      property: propertyInfo,
-      rooms: rooms
-    };
-    
-    Logger.log(`[getRooms] 完了 - 結果サマリー: 物件名=${propertyInfo.name}, 部屋数=${rooms.length}件, 検針完了=${rooms.filter(r => r.isCompleted).length}件`);
-    return result;
-    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    const rooms = values
+      .slice(1)
+      .filter(row => row[0] == propertyId)
+      .map(row => ({ id: row[1], name: row[2] }));
+    return rooms;
   } catch (error) {
-    Logger.log(`getRooms エラー: ${error.message}`);
-    throw error;
+    console.error(`[getRooms] Error for propertyId ${propertyId}: ${error.message}`);
+    return [];
   }
 }
 
@@ -320,10 +172,10 @@ function getRooms(propertyId) {
 
 function populateInspectionDataFromMasters() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const propertySheet = ss.getSheetByName('物件マスタ');
-    const roomSheet = ss.getSheetByName('部屋マスタ');
-    const inspectionSheet = ss.getSheetByName('inspection_data');
+    const ss = _getActiveSpreadsheet();
+    const propertySheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PROPERTY_MASTER);
+    const roomSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ROOM_MASTER);
+    const inspectionSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.INSPECTION_DATA);
     
     if (!propertySheet) {
       throw new Error('物件マスタシートが見つかりません');
@@ -455,10 +307,10 @@ function populateInspectionDataFromMasters() {
 
 function createInitialInspectionData() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const propertySheet = ss.getSheetByName('物件マスタ');
-    const roomSheet = ss.getSheetByName('部屋マスタ');
-    const inspectionSheet = ss.getSheetByName('inspection_data');
+    const ss = _getActiveSpreadsheet();
+    const propertySheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PROPERTY_MASTER);
+    const roomSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ROOM_MASTER);
+    const inspectionSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.INSPECTION_DATA);
     
     if (!propertySheet) {
       throw new Error('物件マスタシートが見つかりません');
@@ -561,8 +413,8 @@ function createInitialInspectionData() {
 
 function processInspectionDataMonthly() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const inspectionSheet = ss.getSheetByName('inspection_data');
+    const ss = _getActiveSpreadsheet();
+    const inspectionSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.INSPECTION_DATA);
     
     if (!inspectionSheet) {
       throw new Error('inspection_dataシートが見つかりません');
@@ -662,8 +514,8 @@ function processInspectionDataMonthly() {
 
 function validateInspectionDataIntegrity() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const inspectionSheet = ss.getSheetByName('inspection_data');
+    const ss = _getActiveSpreadsheet();
+    const inspectionSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.INSPECTION_DATA);
     
     if (!inspectionSheet) {
       throw new Error('inspection_dataシートが見つかりません');
@@ -777,17 +629,16 @@ function validateInspectionDataIntegrity() {
  * 物件マスタの物件IDフォーマット変更
  */
 function formatPropertyIdsInPropertyMaster() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = _getActiveSpreadsheet();
   if (!ss) {
-    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
-    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    console.error("アクティブなスプレッドシートが見つかりません。");
     return;
   }
   
-  const sheet = ss.getSheetByName('物件マスタ');
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PROPERTY_MASTER);
 
   if (!sheet) {
-    safeAlert('エラー', '物件マスタシートが見つかりません。');
+    console.error(`シートが見つかりません: ${CONFIG.SHEET_NAMES.PROPERTY_MASTER}`);
     return;
   }
 
@@ -829,17 +680,16 @@ function formatPropertyIdsInPropertyMaster() {
  * 部屋マスタの物件IDフォーマット変更
  */
 function formatPropertyIdsInRoomMaster() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = _getActiveSpreadsheet();
   if (!ss) {
-    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
-    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
+    console.error("アクティブなスプレッドシートが見つかりません。");
     return;
   }
   
-  const sheet = ss.getSheetByName('部屋マスタ');
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ROOM_MASTER);
 
   if (!sheet) {
-    safeAlert('エラー', '部屋マスタシートが見つかりません。');
+    console.error(`シートが見つかりません: ${CONFIG.SHEET_NAMES.ROOM_MASTER}`);
     return;
   }
 
@@ -1368,8 +1218,8 @@ function showSearchGuide() {
  * 古いcreateDataIndexes関数（後方互換性）
  */
 function createDataIndexes() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('inspection_data');
+  const ss = _getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.INSPECTION_DATA);
   if (!sheet) return null;
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return null;
@@ -2202,7 +2052,7 @@ function verifyCompleteIntegration() {
  */
 function runCompleteIntegrationTest() {
   try {
-    console.log('🧪 完全統合テスト開始...');
+    console.log('🧪 完全統合テスト開始');
     
     const testResults = {
       基本機能: {},
