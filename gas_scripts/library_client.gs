@@ -322,6 +322,24 @@ function formatPropertyIdsInRoomMaster() {
  */
 function generateRoomIds() {
   try {
+    // デバッグ: ライブラリの状況を確認
+    console.log('=== generateRoomIds デバッグ開始 ===');
+    console.log('cmlibrary:', typeof cmlibrary);
+    
+    if (typeof cmlibrary === 'undefined') {
+      throw new Error('cmlibraryライブラリが読み込まれていません');
+    }
+    
+    console.log('cmlibrary.generateRoomIds:', typeof cmlibrary.generateRoomIds);
+    
+    // 利用可能な関数を確認
+    const availableFunctions = Object.getOwnPropertyNames(cmlibrary).filter(name => typeof cmlibrary[name] === 'function');
+    console.log('利用可能な関数一覧:', availableFunctions);
+    
+    if (typeof cmlibrary.generateRoomIds !== 'function') {
+      throw new Error(`generateRoomIds関数が見つかりません。利用可能な関数: ${availableFunctions.join(', ')}`);
+    }
+    
     return cmlibrary.generateRoomIds();
   } catch (error) {
     console.error('部屋ID自動生成エラー:', error);
