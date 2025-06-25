@@ -121,11 +121,12 @@ function getRooms(propertyId) {
         name: String(row[roomNameIndex] || '').trim(),
         readingStatus: 'not-completed', // HTMLが期待するフィールド
         isCompleted: false,             // HTMLが期待するフィールド
-        readingDateFormatted: null      // HTMLが期待するフィールド
+        readingDateFormatted: null,     // HTMLが期待するフィールド
+        isNotNeeded: false              // 検針不要フラグ（デフォルトは必要）
       }));
     
-    Logger.log(`[getRooms] 対象部屋数: ${rooms.length}件`);    // inspection_dataから検針完了状況確認
-    // inspection_data.csv: 記録ID,物件名,物件ID,部屋ID,部屋名,検針日時,警告フラグ,標準偏差値,今回使用量,今回の指示数,前回指示数,前々回指示数,前々々回指示数
+    Logger.log(`[getRooms] 対象部屋数: ${rooms.length}件`);    // inspection_dataから検針完了状況と検針不要フラグを確認
+    // inspection_data.csv: 記録ID,物件名,物件ID,部屋ID,部屋名,検針日時,警告フラグ,標準偏差値,今回使用量,今回の指示数,前回指示数,前々回指示数,前々々回指示数,検針不要
     const inspectionSheet = ss.getSheetByName('inspection_data');
     if (inspectionSheet) {
       try {
@@ -133,60 +134,94 @@ function getRooms(propertyId) {
         
         if (inspectionData.length > 1) {
           const inspHeaders = inspectionData[0];
-          const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');    // 列C (2)
-          const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');        // 列D (3)
-          const inspValueIndex = inspHeaders.indexOf('今回の指示数');   // 列J (9)
-          const inspDateIndex = inspHeaders.indexOf('検針日時');        // 列F (5)
+          const inspPropertyIdIndex = inspHeaders.indexOf('物件ID');      // 列C (2)
+          const inspRoomIdIndex = inspHeaders.indexOf('部屋ID');          // 列D (3)
+          const inspValueIndex = inspHeaders.indexOf('今回の指示数');     // 列J (9)
+          const inspDateIndex = inspHeaders.indexOf('検針日時');          // 列F (5)
+          const inspNotNeededIndex = inspHeaders.indexOf('検針不要');     // 列N (13)
           
-          Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}, 検針日時列:${inspDateIndex}`);
+          Logger.log(`[getRooms] inspection_data列構成 - 物件ID列:${inspPropertyIdIndex}, 部屋ID列:${inspRoomIdIndex}, 今回の指示数列:${inspValueIndex}, 検針日時列:${inspDateIndex}, 検針不要列:${inspNotNeededIndex}`);
           
           if (inspPropertyIdIndex !== -1 && inspRoomIdIndex !== -1 && inspValueIndex !== -1) {
             const readingMap = new Map(); // 部屋IDと検針日のマップ
-              // 検針完了データを検索
+            const notNeededMap = new Map(); // 部屋IDと検針不要フラグのマップ
+            
+            // inspection_dataの各行を検索
             inspectionData.slice(1).forEach(row => {
-              // 物件IDが一致し、検針値が入力されている場合
-              if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim() &&
-                  row[inspValueIndex] !== null && 
-                  row[inspValueIndex] !== undefined && 
-                  String(row[inspValueIndex]).trim() !== '') {
-                
+              // 物件IDが一致する場合
+              if (String(row[inspPropertyIdIndex]).trim() === String(propertyId).trim()) {
                 const roomId = String(row[inspRoomIdIndex]).trim();
                 
-                // 検針日時をフォーマット（2025/05/31 → 5月31日）
-                let readingDateFormatted = null;
-                if (inspDateIndex !== -1 && row[inspDateIndex]) {
-                  try {
-                    const dateStr = String(row[inspDateIndex]).trim();
-                    if (dateStr) {
-                      const date = new Date(dateStr);
-                      if (!isNaN(date.getTime())) {
-                        readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
+                // 検針完了データを確認（検針値が入力されている場合）
+                if (row[inspValueIndex] !== null && 
+                    row[inspValueIndex] !== undefined && 
+                    String(row[inspValueIndex]).trim() !== '') {
+                  
+                  // 検針日時をフォーマット（2025/05/31 → 5月31日）
+                  let readingDateFormatted = null;
+                  if (inspDateIndex !== -1 && row[inspDateIndex]) {
+                    try {
+                      const dateStr = String(row[inspDateIndex]).trim();
+                      if (dateStr) {
+                        const date = new Date(dateStr);
+                        if (!isNaN(date.getTime())) {
+                          readingDateFormatted = `${date.getMonth() + 1}月${date.getDate()}日`;
+                        }
                       }
+                    } catch (e) {
+                      Logger.log(`[getRooms] 日付変換エラー: ${e.message}`);
                     }
-                  } catch (e) {
-                    Logger.log(`[getRooms] 日付変換エラー: ${e.message}`);
+                  }
+                  
+                  // 日付がない場合のフォールバック
+                  if (!readingDateFormatted) {
+                    const today = new Date();
+                    readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
+                  }
+                  
+                  readingMap.set(roomId, readingDateFormatted);
+                }
+                
+                // 検針不要フラグを確認
+                if (inspNotNeededIndex !== -1) {
+                  const notNeededValue = row[inspNotNeededIndex];
+                  if (notNeededValue !== null && notNeededValue !== undefined) {
+                    const notNeededStr = String(notNeededValue).trim().toLowerCase();
+                    // 空文字でない値が入っている場合は検針不要とする（'true', '1', 'yes', 'on'など）
+                    const isNotNeeded = notNeededStr !== '' && 
+                                       (notNeededStr === 'true' || notNeededStr === '1' || 
+                                        notNeededStr === 'yes' || notNeededStr === 'on' ||
+                                        notNeededStr === '○' || notNeededStr === 'x' || notNeededStr === '×');
+                    
+                    notNeededMap.set(roomId, isNotNeeded);
+                    Logger.log(`[getRooms] 部屋${roomId} 検針不要フラグ: ${notNeededStr} -> ${isNotNeeded}`);
                   }
                 }
-                
-                // 日付がない場合のフォールバック
-                if (!readingDateFormatted) {
-                  const today = new Date();
-                  readingDateFormatted = `${today.getMonth() + 1}月${today.getDate()}日`;
-                }
-                
-                readingMap.set(roomId, readingDateFormatted);
               }
             });
             
-            // 検針完了状況を部屋データに反映
+            // 検針完了状況と検針不要フラグを部屋データに反映
             rooms.forEach(room => {
+              // 検針完了状況の設定
               if (readingMap.has(room.id)) {
                 room.readingStatus = 'completed';
                 room.isCompleted = true;
                 room.readingDateFormatted = readingMap.get(room.id);
               }
+              
+              // 検針不要フラグの設定
+              if (notNeededMap.has(room.id)) {
+                room.isNotNeeded = notNeededMap.get(room.id);
+                // 検針不要の場合は検針状況を'not-needed'に設定
+                if (room.isNotNeeded) {
+                  room.readingStatus = 'not-needed';
+                }
+              } else {
+                room.isNotNeeded = false; // デフォルトは検針必要
+              }
             });
-              Logger.log(`[getRooms] 検針完了部屋数: ${readingMap.size}件`);
+            
+            Logger.log(`[getRooms] 検針完了部屋数: ${readingMap.size}件, 検針不要部屋数: ${Array.from(notNeededMap.values()).filter(v => v).length}件`);
           } else {
             Logger.log('[getRooms] inspection_dataの必要な列が見つかりません');
           }

@@ -307,12 +307,8 @@
             rooms.forEach((room, index) => {
                 console.log(`[room_select] 部屋[${index}]処理:`, room.name || room['部屋名'] || room.id);
                 
-                // 検針不要フラグの確認
-                const isSkipInspection = room.skipInspection || 
-                                        room['検針不要'] === true || 
-                                        room['検針不要'] === 'true' || 
-                                        room['検針不要'] === '1' || 
-                                        room['検針不要'] === 'はい';
+                // 検針不要フラグの確認（新しいisNotNeededフィールドを使用）
+                const isSkipInspection = room.isNotNeeded === true;
                 
                 // Material UI Card構造
                 const card = document.createElement('div');
