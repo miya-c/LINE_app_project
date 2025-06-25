@@ -126,8 +126,12 @@ function getProperties() {
  */
 function getRooms(propertyId) {
   try {
-    return cmlibrary.getRooms(propertyId);
+    Logger.log(`[getRooms] ライブラリ経由で部屋一覧取得開始 - propertyId: ${propertyId}`);
+    const result = cmlibrary.getRooms(propertyId);
+    Logger.log(`[getRooms] ライブラリからの取得成功 - 部屋数: ${result?.data?.rooms?.length || 0}件`);
+    return result;
   } catch (error) {
+    Logger.log(`[getRooms] ライブラリ呼び出しエラー: ${error.message}`);
     console.error('部屋一覧取得エラー:', error);
     throw error;
   }

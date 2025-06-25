@@ -16,8 +16,10 @@ function createCorsJsonResponse(data) {
 }
 
 function doGet(e) {
+  const startTime = new Date();
   try {
     const action = e?.parameter?.action;
+    Logger.log(`[doGet] API呼び出し開始 - action: ${action}, パラメータ: ${JSON.stringify(e?.parameter || {})}`);
     
     if (!action) {
       // テストページ表示（簡素版）
@@ -27,6 +29,7 @@ function doGet(e) {
           <body>
             <h1>🚰 水道検針アプリ API</h1>
             <p>現在時刻: ${new Date().toISOString()}</p>
+            <p>APIバージョン: ${API_VERSION}</p>
             <ul>
               <li><a href="?action=getProperties">物件一覧を取得</a></li>
               <li>部屋一覧: ?action=getRooms&propertyId=物件ID</li>
@@ -40,13 +43,16 @@ function doGet(e) {
     // API処理
     switch (action) {
       case 'test':
+        Logger.log('[doGet] test API呼び出し');
         return createCorsJsonResponse({
           success: true,
           message: 'API正常動作',
+          version: API_VERSION,
           timestamp: new Date().toISOString()
         });
         
       case 'getProperties':
+        Logger.log('[doGet] getProperties API呼び出し');
         const properties = getProperties();
         return createCorsJsonResponse({
           success: true,
