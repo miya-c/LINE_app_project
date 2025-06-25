@@ -123,7 +123,7 @@ function populateInspectionDataFromMasters() {
 }
 
 /**
- * inspection_dataの初期データ作成
+ * inspection_dataの初期データ作成（フォーマット設定付き）
  */
 function createInitialInspectionData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -153,9 +153,68 @@ function createInitialInspectionData() {
       const headers = [
         '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
         '検針日時', '警告フラグ', '標準偏差値', '今回使用量',
-        '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数'
+        '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数',
+        '検針不要'
       ];
       inspectionDataSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      
+      // ========================================
+      // 🎨 フォーマット設定
+      // ========================================
+      
+      // ヘッダー行にフィルタを設定
+      const headerRange = inspectionDataSheet.getRange(1, 1, 1, headers.length);
+      headerRange.createFilter();
+      
+      // ヘッダー行を中央揃え・太字に設定
+      headerRange.setHorizontalAlignment('center')
+                 .setFontWeight('bold')
+                 .setBackground('#f0f0f0');
+      
+      // 各列のインデックスを取得
+      const propertyNameIndex = headers.indexOf('物件名') + 1;      // 2列目
+      const roomNameIndex = headers.indexOf('部屋名') + 1;          // 5列目
+      const readingDateIndex = headers.indexOf('検針日時') + 1;     // 6列目
+      const warningFlagIndex = headers.indexOf('警告フラグ') + 1;   // 7列目
+      const stdDevIndex = headers.indexOf('標準偏差値') + 1;        // 8列目
+      const inspectionSkipIndex = headers.indexOf('検針不要') + 1;  // 14列目
+      
+      // 特定の列を中央揃えに設定（データ行全体）
+      const lastRow = 1000; // 十分な行数を設定
+      
+      if (propertyNameIndex > 0) {
+        inspectionDataSheet.getRange(2, propertyNameIndex, lastRow, 1).setHorizontalAlignment('center');
+      }
+      if (roomNameIndex > 0) {
+        inspectionDataSheet.getRange(2, roomNameIndex, lastRow, 1).setHorizontalAlignment('center');
+      }
+      if (readingDateIndex > 0) {
+        inspectionDataSheet.getRange(2, readingDateIndex, lastRow, 1).setHorizontalAlignment('center');
+      }
+      if (warningFlagIndex > 0) {
+        inspectionDataSheet.getRange(2, warningFlagIndex, lastRow, 1).setHorizontalAlignment('center');
+      }
+      if (stdDevIndex > 0) {
+        inspectionDataSheet.getRange(2, stdDevIndex, lastRow, 1).setHorizontalAlignment('center');
+      }
+      if (inspectionSkipIndex > 0) {
+        inspectionDataSheet.getRange(2, inspectionSkipIndex, lastRow, 1).setHorizontalAlignment('center');
+      }
+      
+      // 警告フラグ列の条件付き書式設定（「要確認」の場合オレンジ）
+      if (warningFlagIndex > 0) {
+        const warningRange = inspectionDataSheet.getRange(2, warningFlagIndex, lastRow, 1);
+        const warningRule = SpreadsheetApp.newConditionalFormatRule()
+          .whenTextEqualTo('要確認')
+          .setBackground('#FFA500') // オレンジ色
+          .setFontColor('#FFFFFF')  // 白文字
+          .setRanges([warningRange])
+          .build();
+        
+        const conditionalFormatRules = inspectionDataSheet.getConditionalFormatRules();
+        conditionalFormatRules.push(warningRule);
+        inspectionDataSheet.setConditionalFormatRules(conditionalFormatRules);
+      }
     }
 
     // 物件マスタから物件情報を取得
@@ -173,13 +232,18 @@ function createInitialInspectionData() {
     const roomData = roomMasterSheet.getDataRange().getValues().slice(1);
     const newRows = [];
 
-    roomData.forEach(row => {
+    roomData.forEach((row, index) => {
       const propertyId = String(row[0]).trim();
       const roomId = String(row[1]).trim();
       const roomName = String(row[2]).trim();
 
       if (propertyId && roomId) {
         const propertyName = propertyMap[propertyId] || '';
+        const rowNumber = inspectionDataSheet.getLastRow() + newRows.length + 1;
+        
+        // STDEV.S関数の数式を作成（標準偏差値列用）
+        const stdDevFormula = `=IF(AND(K${rowNumber}<>"",L${rowNumber}<>"",M${rowNumber}<>""),STDEV.S(K${rowNumber}:M${rowNumber}),"")`;
+        
         newRows.push([
           Utilities.getUuid(),  // 記録ID
           propertyName,         // 物件名
@@ -188,23 +252,66 @@ function createInitialInspectionData() {
           roomName,            // 部屋名
           '',                  // 検針日時
           '',                  // 警告フラグ
-          '',                  // 標準偏差値
+          stdDevFormula,       // 標準偏差値（STDEV.S関数）
           '',                  // 今回使用量
           '',                  // 今回の指示数
           '',                  // 前回指示数
           '',                  // 前々回指示数
-          ''                   // 前々々回指示数
+          '',                  // 前々々回指示数
+          ''                   // 検針不要
         ]);
       }
     });
 
     if (newRows.length > 0) {
       const nextRow = inspectionDataSheet.getLastRow() + 1;
-      inspectionDataSheet.getRange(nextRow, 1, newRows.length, 13).setValues(newRows);
+      const targetRange = inspectionDataSheet.getRange(nextRow, 1, newRows.length, 14);
+      
+      // データを設定
+      targetRange.setValues(newRows);
+      
+      // 追加されたデータ行にも中央揃えを適用
+      const headers = [
+        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
+        '検針日時', '警告フラグ', '標準偏差値', '今回使用量',
+        '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数',
+        '検針不要'
+      ];
+      
+      const propertyNameIndex = headers.indexOf('物件名') + 1;
+      const roomNameIndex = headers.indexOf('部屋名') + 1;
+      const readingDateIndex = headers.indexOf('検針日時') + 1;
+      const warningFlagIndex = headers.indexOf('警告フラグ') + 1;
+      const stdDevIndex = headers.indexOf('標準偏差値') + 1;
+      const inspectionSkipIndex = headers.indexOf('検針不要') + 1;
+      
+      // 新しく追加した行の中央揃え設定
+      for (let i = 0; i < newRows.length; i++) {
+        const currentRow = nextRow + i;
+        
+        if (propertyNameIndex > 0) {
+          inspectionDataSheet.getRange(currentRow, propertyNameIndex).setHorizontalAlignment('center');
+        }
+        if (roomNameIndex > 0) {
+          inspectionDataSheet.getRange(currentRow, roomNameIndex).setHorizontalAlignment('center');
+        }
+        if (readingDateIndex > 0) {
+          inspectionDataSheet.getRange(currentRow, readingDateIndex).setHorizontalAlignment('center');
+        }
+        if (warningFlagIndex > 0) {
+          inspectionDataSheet.getRange(currentRow, warningFlagIndex).setHorizontalAlignment('center');
+        }
+        if (stdDevIndex > 0) {
+          inspectionDataSheet.getRange(currentRow, stdDevIndex).setHorizontalAlignment('center');
+        }
+        if (inspectionSkipIndex > 0) {
+          inspectionDataSheet.getRange(currentRow, inspectionSkipIndex).setHorizontalAlignment('center');
+        }
+      }
     }
 
     Logger.log(`初期検針データ作成完了: ${newRows.length}件`);
-    safeAlert('完了', `初期検針データの作成が完了しました。\n作成件数: ${newRows.length}件`);
+    safeAlert('完了', `初期検針データの作成が完了しました。\n作成件数: ${newRows.length}件\n\n設定済み機能:\n• ヘッダーフィルタ\n• 中央揃え\n• 警告フラグ条件付き書式\n• 標準偏差値自動計算`);
 
   } catch (e) {
     Logger.log(`エラー: 初期検針データ作成中にエラーが発生しました: ${e.message}`);
@@ -213,7 +320,7 @@ function createInitialInspectionData() {
 }
 
 /**
- * 検針データの月次保存処理
+ * 検針データの月次保存処理（リセット機能付き）
  */
 function processInspectionDataMonthly() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -243,6 +350,19 @@ function processInspectionDataMonthly() {
       return;
     }
 
+    // ユーザーに確認ダイアログを表示
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      '月次処理の実行確認',
+      `以下の処理を実行します:\n\n1. 現在のデータを「${newSheetName}」にアーカイブ保存\n2. inspection_dataシートの検針値をリセット\n   - 今回指示数 → 前回指示数\n   - 前回指示数 → 前々回指示数\n   - 前々回指示数 → 前々々回指示数\n   - 今回指示数・検針日時・今回使用量をクリア\n\n処理を続行しますか？`,
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response !== ui.Button.YES) {
+      safeAlert('キャンセル', '月次処理をキャンセルしました。');
+      return;
+    }
+
     // 新しいシートを作成
     const newSheet = ss.insertSheet(newSheetName);
 
@@ -253,7 +373,7 @@ function processInspectionDataMonthly() {
     // 必要な列のインデックスを取得
     const columnsToCopy = [
       "記録ID", "物件名", "物件ID", "部屋ID", "部屋名",
-      "検針日時", "今回使用量", "今回の指示数", "前回指示数", "写真URL"
+      "検針日時", "今回使用量", "今回の指示数", "前回指示数", "検針不要"
     ];
     const columnIndicesToCopy = columnsToCopy.map(header => sourceHeaders.indexOf(header));
 
@@ -276,12 +396,83 @@ function processInspectionDataMonthly() {
       newSheet.getRange(1, 1, dataToCopyToNewSheet.length, columnsToCopy.length).setValues(dataToCopyToNewSheet);
     }
 
-    Logger.log(`月次検針データ保存完了: ${newSheetName}`);
-    safeAlert('完了', `月次検針データの保存が完了しました。\nシート名: ${newSheetName}`);
+    // ========================================
+    // 🔄 リセット処理を実行
+    // ========================================
+    
+    // 各列のインデックスを取得
+    const currentReadingIndex = sourceHeaders.indexOf('今回の指示数');
+    const previousReading1Index = sourceHeaders.indexOf('前回指示数');
+    const previousReading2Index = sourceHeaders.indexOf('前々回指示数');
+    const previousReading3Index = sourceHeaders.indexOf('前々々回指示数');
+    const readingDateIndex = sourceHeaders.indexOf('検針日時');
+    const currentUsageIndex = sourceHeaders.indexOf('今回使用量');
+    const inspectionSkipIndex = sourceHeaders.indexOf('検針不要');
+
+    if (currentReadingIndex === -1 || previousReading1Index === -1 || 
+        previousReading2Index === -1 || previousReading3Index === -1) {
+      safeAlert('エラー', '検針値の列が見つかりません。リセット処理をスキップします。');
+      Logger.log(`月次検針データ保存完了（リセットなし）: ${newSheetName}`);
+      safeAlert('完了', `月次検針データの保存が完了しました。\nシート名: ${newSheetName}\n※リセット処理はスキップされました。`);
+      return;
+    }
+
+    // データ行を更新（ヘッダー行は除く）
+    let resetCount = 0;
+    for (let rowIndex = 1; rowIndex < sourceValues.length; rowIndex++) {
+      const row = sourceValues[rowIndex];
+      
+      // 「検針不要」がTRUEの場合はスキップ
+      const skipInspection = inspectionSkipIndex !== -1 && 
+                            (String(row[inspectionSkipIndex]).toLowerCase() === 'true' || 
+                             String(row[inspectionSkipIndex]) === '1' ||
+                             String(row[inspectionSkipIndex]) === 'はい');
+      
+      if (skipInspection) {
+        Logger.log(`行${rowIndex + 1}: 検針不要のためリセット処理をスキップ`);
+        continue;
+      }
+
+      // 検針値のシフト処理
+      const currentReading = row[currentReadingIndex];
+      const previousReading1 = row[previousReading1Index];
+      const previousReading2 = row[previousReading2Index];
+      
+      // 今回指示数が空でない場合のみリセット処理を実行
+      if (currentReading && String(currentReading).trim() !== '') {
+        // 値をシフト: 今回 → 前回 → 前々回 → 前々々回
+        sourceSheet.getRange(rowIndex + 1, previousReading3Index + 1).setValue(previousReading2); // 前々々回
+        sourceSheet.getRange(rowIndex + 1, previousReading2Index + 1).setValue(previousReading1); // 前々回
+        sourceSheet.getRange(rowIndex + 1, previousReading1Index + 1).setValue(currentReading);   // 前回
+        
+        // 今回の値をクリア
+        sourceSheet.getRange(rowIndex + 1, currentReadingIndex + 1).setValue('');
+        
+        // 検針日時をクリア
+        if (readingDateIndex !== -1) {
+          sourceSheet.getRange(rowIndex + 1, readingDateIndex + 1).setValue('');
+        }
+        
+        // 今回使用量をクリア
+        if (currentUsageIndex !== -1) {
+          sourceSheet.getRange(rowIndex + 1, currentUsageIndex + 1).setValue('');
+        }
+        
+        resetCount++;
+      }
+    }
+
+    Logger.log(`月次検針データ保存・リセット完了: ${newSheetName}, リセット件数: ${resetCount}`);
+    safeAlert('完了', 
+      `月次処理が完了しました。\n\n` +
+      `📂 アーカイブ: ${newSheetName}\n` +
+      `🔄 リセット件数: ${resetCount}件\n\n` +
+      `検針値が前月に移行され、新しい月の検針準備が整いました。`
+    );
 
   } catch (e) {
-    Logger.log(`エラー: 月次検針データ保存中にエラーが発生: ${e.message}`);
-    safeAlert('エラー', `月次検針データ保存中にエラーが発生しました:\n${e.message}`);
+    Logger.log(`エラー: 月次検針データ保存・リセット中にエラーが発生: ${e.message}`);
+    safeAlert('エラー', `月次検針データ保存・リセット中にエラーが発生しました:\n${e.message}`);
   }
 }
 
