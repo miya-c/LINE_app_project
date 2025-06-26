@@ -34,14 +34,14 @@ function onOpen() {
     
     // データ管理メニュー
     const dataManagementMenu = ui.createMenu('📊 データ管理');
-    dataManagementMenu.addItem('1. 物件マスタの物件IDフォーマット', 'formatPropertyIdsInPropertyMaster');
-    dataManagementMenu.addItem('2. 部屋マスタの物件IDフォーマット', 'formatPropertyIdsInRoomMaster');
-    dataManagementMenu.addItem('3. 部屋マスタの孤立データ削除', 'cleanUpOrphanedRooms');
+    dataManagementMenu.addItem('1. 物件IDフォーマット整理', 'formatPropertyIdsInPropertyMaster');
+    dataManagementMenu.addItem('2. 部屋マスタの物件IDフォーマット整理', 'formatPropertyIdsInRoomMaster');
+    dataManagementMenu.addItem('3. 部屋ID連番自動生成', 'generateRoomIds');
+    dataManagementMenu.addItem('4. 孤立データ削除', 'cleanUpOrphanedRooms');
     dataManagementMenu.addSeparator();
-    dataManagementMenu.addItem('4. 初期検針データ作成', 'createInitialInspectionData');
-    dataManagementMenu.addItem('5. マスタから検針データへ新規部屋反映', 'populateInspectionDataFromMasters');
-    dataManagementMenu.addSeparator();
-    dataManagementMenu.addItem('6. 月次検針データ保存とリセット', 'processInspectionDataMonthly');
+    dataManagementMenu.addItem('5. 初期検針データ作成', 'createInitialInspectionData');
+    dataManagementMenu.addItem('6. 新規部屋反映', 'populateInspectionDataFromMasters');
+    dataManagementMenu.addItem('7. 月次処理実行', 'processInspectionDataMonthly');
     
     menu.addSubMenu(dataManagementMenu);      // データ品質管理メニュー
     const dataQualityMenu = ui.createMenu('🔍 データ品質管理');
@@ -422,162 +422,415 @@ const rooms = fastSearch('propertyRooms', 'P001');
   }
 }
 
+// =================================================================
+// データ管理用プロキシ関数群（メニューから呼び出される）
+// =================================================================
+
 /**
- * 重複データクリーンアップ（メニュー用プロキシ関数）
- * data_cleanup.gsの関数を呼び出し
+ * 物件IDフォーマット整理（メニュー用プロキシ関数）
  */
-function menuCleanupDuplicateData() {
+function formatPropertyIdsInPropertyMaster() {
   try {
-    console.log('[menuCleanupDuplicateData] data_cleanup.gsの関数を呼び出し');
-    const result = optimizedCleanupDuplicateInspectionData();
+    console.log('[formatPropertyIdsInPropertyMaster] 物件マスタの物件IDフォーマット整理を開始');
     
-    const ui = SpreadsheetApp.getUi();
-    let message = '重複データクリーンアップが完了しました。\n\n';
-    if (result && result.summary) {
-      Object.keys(result.summary).forEach(key => {
-        message += `${key}: ${result.summary[key]}\n`;
-      });
-    }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('物件マスタ');
     
-    ui.alert('クリーンアップ完了', message, ui.ButtonSet.OK);
-    
-  } catch (error) {
-    console.error('[menuCleanupDuplicateData] エラー:', error);
-    
-    try {
+    if (!sheet) {
       const ui = SpreadsheetApp.getUi();
-      ui.alert('エラー', `クリーンアップ処理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
-    } catch (uiError) {
-      console.error('[menuCleanupDuplicateData] UI表示エラー:', uiError);
-    }
-  }
-}
-
-/**
- * データ整合性チェック（メニュー用プロキシ関数）
- * data_validation.gsの関数を呼び出し
- */
-function menuValidateDataIntegrity() {
-  try {
-    console.log('[menuValidateDataIntegrity] data_validation.gsの関数を呼び出し');
-    const result = validateInspectionDataIntegrity();
-    
-    const ui = SpreadsheetApp.getUi();
-    let message = 'データ整合性チェックが完了しました。\n\n';
-    if (result && result.summary) {
-      Object.keys(result.summary).forEach(key => {
-        message += `${key}: ${result.summary[key]}\n`;
-      });
+      ui.alert('エラー', '物件マスタシートが見つかりません。', ui.ButtonSet.OK);
+      return;
     }
     
-    ui.alert('整合性チェック完了', message, ui.ButtonSet.OK);
-    
-  } catch (error) {
-    console.error('[menuValidateDataIntegrity] エラー:', error);
-    
-    try {
-      const ui = SpreadsheetApp.getUi();
-      ui.alert('エラー', `整合性チェックに失敗しました:\n${error.message}`, ui.ButtonSet.OK);
-    } catch (uiError) {
-      console.error('[menuValidateDataIntegrity] UI表示エラー:', uiError);
-    }
-  }
-}
-
-/**
- * 部屋マスタの部屋IDを物件別に連番で自動生成
- * 物件ID別にR001, R002, R003... の形式で部屋IDを割り当てる
- */
-function generateRoomIds() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) {
-    Logger.log('エラー: アクティブなスプレッドシートが見つかりません');
-    safeAlert('エラー', 'アクティブなスプレッドシートが見つかりません');
-    return;
-  }
-  
-  const sheet = ss.getSheetByName('部屋マスタ');
-
-  if (!sheet) {
-    safeAlert('エラー', '部屋マスタシートが見つかりません。');
-    return;
-  }
-
-  const dataRange = sheet.getDataRange();
-  const values = dataRange.getValues();
-  
-  if (values.length <= 1) {
-    safeAlert('情報', '部屋マスタシートにデータがありません。');
-    return;
-  }
-
-  // ヘッダー行の確認
-  const headers = values[0];
-  const propertyIdIndex = headers.indexOf('物件ID');
-  const roomIdIndex = headers.indexOf('部屋ID');
-  
-  if (propertyIdIndex === -1) {
-    safeAlert('エラー', '部屋マスタシートに「物件ID」列が見つかりません。');
-    return;
-  }
-  
-  if (roomIdIndex === -1) {
-    safeAlert('エラー', '部屋マスタシートに「部屋ID」列が見つかりません。');
-    return;
-  }
-
-  try {
-    // 物件IDごとに部屋をグループ化
-    const propertyGroups = new Map();
-    
-    for (let i = 1; i < values.length; i++) {
-      const propertyId = String(values[i][propertyIdIndex] || '').trim();
-      
-      if (propertyId) {
-        if (!propertyGroups.has(propertyId)) {
-          propertyGroups.set(propertyId, []);
-        }
-        propertyGroups.get(propertyId).push(i);
-      }
-    }
-
+    const data = sheet.getDataRange().getValues();
     let updatedCount = 0;
     
-    // 各物件に対して部屋IDを連番で生成
-    propertyGroups.forEach((rowIndexes, propertyId) => {
-      // 部屋データを部屋名でソート（もしあれば）
-      const roomNameIndex = headers.indexOf('部屋名');
-      if (roomNameIndex !== -1) {
-        rowIndexes.sort((a, b) => {
-          const nameA = String(values[a][roomNameIndex] || '').trim();
-          const nameB = String(values[b][roomNameIndex] || '').trim();
-          return nameA.localeCompare(nameB);
-        });
+    for (let i = 1; i < data.length; i++) {
+      const propertyId = String(data[i][0]).trim();
+      if (propertyId && !/^P\d{6}$/.test(propertyId)) {
+        const formattedId = `P${propertyId.replace(/\D/g, '').padStart(6, '0')}`;
+        sheet.getRange(i + 1, 1).setValue(formattedId);
+        updatedCount++;
       }
-      
-      // 連番で部屋IDを生成
-      rowIndexes.forEach((rowIndex, counter) => {
-        const newRoomId = `R${String(counter + 1).padStart(3, '0')}`;
-        const currentRoomId = String(values[rowIndex][roomIdIndex] || '').trim();
-        
-        if (currentRoomId !== newRoomId) {
-          values[rowIndex][roomIdIndex] = newRoomId;
-          updatedCount++;
-          Logger.log(`物件 ${propertyId} - 行 ${rowIndex + 1}: 部屋ID を "${newRoomId}" に設定`);
-        }
-      });
-    });
-
-    if (updatedCount > 0) {
-      dataRange.setValues(values);
-      Logger.log(`部屋ID自動生成完了: ${updatedCount}件`);
-      safeAlert('完了', `部屋IDの自動生成が完了しました。\n更新件数: ${updatedCount}件\n\n物件別にR001, R002, R003...の形式で部屋IDを割り当てました。`);
-    } else {
-      safeAlert('情報', 'すべての部屋IDが既に正しい形式で設定されています。');
     }
     
-  } catch (e) {
-    Logger.log(`エラー: 部屋ID自動生成中にエラーが発生: ${e.message}`);
-    safeAlert('エラー', `部屋ID自動生成中にエラーが発生しました:\n${e.message}`);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('完了', `物件IDフォーマット整理が完了しました。\n更新件数: ${updatedCount}件`, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[formatPropertyIdsInPropertyMaster] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `物件IDフォーマット整理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[formatPropertyIdsInPropertyMaster] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 部屋マスタの物件IDフォーマット整理（メニュー用プロキシ関数）
+ */
+function formatPropertyIdsInRoomMaster() {
+  try {
+    console.log('[formatPropertyIdsInRoomMaster] 部屋マスタの物件IDフォーマット整理を開始');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('部屋マスタ');
+    
+    if (!sheet) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', '部屋マスタシートが見つかりません。', ui.ButtonSet.OK);
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    let updatedCount = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const propertyId = String(data[i][0]).trim();
+      if (propertyId && !/^P\d{6}$/.test(propertyId)) {
+        const formattedId = `P${propertyId.replace(/\D/g, '').padStart(6, '0')}`;
+        sheet.getRange(i + 1, 1).setValue(formattedId);
+        updatedCount++;
+      }
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('完了', `部屋マスタの物件IDフォーマット整理が完了しました。\n更新件数: ${updatedCount}件`, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[formatPropertyIdsInRoomMaster] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `部屋マスタの物件IDフォーマット整理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[formatPropertyIdsInRoomMaster] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 部屋ID連番自動生成（メニュー用プロキシ関数）
+ */
+function generateRoomIds() {
+  try {
+    console.log('[generateRoomIds] 部屋ID連番自動生成を開始');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('部屋マスタ');
+    
+    if (!sheet) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', '部屋マスタシートが見つかりません。', ui.ButtonSet.OK);
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const propertyGroups = {};
+    
+    // 物件ごとにグループ化
+    for (let i = 1; i < data.length; i++) {
+      const propertyId = String(data[i][0]).trim();
+      if (propertyId) {
+        if (!propertyGroups[propertyId]) {
+          propertyGroups[propertyId] = [];
+        }
+        propertyGroups[propertyId].push(i);
+      }
+    }
+    
+    let updatedCount = 0;
+    
+    // 各物件内で部屋IDを連番生成
+    for (const propertyId in propertyGroups) {
+      const rows = propertyGroups[propertyId];
+      
+      rows.forEach((rowIndex, index) => {
+        const roomId = `R${String(index + 1).padStart(6, '0')}`;
+        sheet.getRange(rowIndex + 1, 2).setValue(roomId);
+        updatedCount++;
+      });
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('完了', `部屋ID連番自動生成が完了しました。\n更新件数: ${updatedCount}件`, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[generateRoomIds] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `部屋ID連番自動生成に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[generateRoomIds] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 孤立データ削除（メニュー用プロキシ関数）
+ */
+function cleanUpOrphanedRooms() {
+  try {
+    console.log('[cleanUpOrphanedRooms] 孤立データ削除を開始');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertyMasterSheet = ss.getSheetByName('物件マスタ');
+    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+    
+    if (!propertyMasterSheet || !roomMasterSheet) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', '物件マスタまたは部屋マスタシートが見つかりません。', ui.ButtonSet.OK);
+      return;
+    }
+    
+    // 物件マスタから有効な物件IDを取得
+    const propertyData = propertyMasterSheet.getDataRange().getValues().slice(1);
+    const validPropertyIds = new Set();
+    
+    propertyData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      if (propertyId) {
+        validPropertyIds.add(propertyId);
+      }
+    });
+    
+    // 部屋マスタから孤立データを検出・削除
+    const roomData = roomMasterSheet.getDataRange().getValues();
+    const rowsToDelete = [];
+    
+    for (let i = roomData.length - 1; i >= 1; i--) {
+      const propertyId = String(roomData[i][0]).trim();
+      if (propertyId && !validPropertyIds.has(propertyId)) {
+        rowsToDelete.push(i + 1);
+      }
+    }
+    
+    // 逆順で行を削除
+    rowsToDelete.forEach(rowIndex => {
+      roomMasterSheet.deleteRow(rowIndex);
+    });
+    
+    const ui = SpreadsheetApp.getUi();
+    if (rowsToDelete.length > 0) {
+      ui.alert('完了', `孤立データ削除が完了しました。\n削除件数: ${rowsToDelete.length}件`, ui.ButtonSet.OK);
+    } else {
+      ui.alert('情報', '削除対象の孤立データはありませんでした。', ui.ButtonSet.OK);
+    }
+    
+  } catch (error) {
+    console.error('[cleanUpOrphanedRooms] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `孤立データ削除処理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[cleanUpOrphanedRooms] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 初期検針データ作成（メニュー用プロキシ関数）
+ */
+function createInitialInspectionData() {
+  try {
+    console.log('[createInitialInspectionData] 初期検針データ作成を開始');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertyMasterSheet = ss.getSheetByName('物件マスタ');
+    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+    let inspectionDataSheet = ss.getSheetByName('inspection_data');
+    
+    if (!propertyMasterSheet || !roomMasterSheet) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', '物件マスタまたは部屋マスタシートが見つかりません。', ui.ButtonSet.OK);
+      return;
+    }
+    
+    // inspection_dataシートが存在しない場合は作成
+    if (!inspectionDataSheet) {
+      inspectionDataSheet = ss.insertSheet('inspection_data');
+      const headers = [
+        '記録ID', '物件名', '物件ID', '部屋ID', '部屋名',
+        '検針日時', '警告フラグ', '標準偏差値', '今回使用量',
+        '今回の指示数', '前回指示数', '前々回指示数', '前々々回指示数',
+        '検針不要'
+      ];
+      inspectionDataSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('完了', '初期検針データの作成処理を開始しました。', ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[createInitialInspectionData] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `初期検針データ作成に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[createInitialInspectionData] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 新規部屋反映（メニュー用プロキシ関数）
+ */
+function populateInspectionDataFromMasters() {
+  try {
+    console.log('[populateInspectionDataFromMasters] 新規部屋反映を開始');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const propertyMasterSheet = ss.getSheetByName('物件マスタ');
+    const roomMasterSheet = ss.getSheetByName('部屋マスタ');
+    const inspectionDataSheet = ss.getSheetByName('inspection_data');
+    
+    if (!propertyMasterSheet || !roomMasterSheet || !inspectionDataSheet) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', '必要なシート（物件マスタ、部屋マスタ、inspection_data）が見つかりません。', ui.ButtonSet.OK);
+      return;
+    }
+    
+    // 物件マスタから物件情報を取得
+    const propertyData = propertyMasterSheet.getDataRange().getValues().slice(1);
+    const propertyMap = {};
+    propertyData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      const propertyName = String(row[1]).trim();
+      if (propertyId && propertyName) {
+        propertyMap[propertyId] = propertyName;
+      }
+    });
+    
+    // 部屋マスタから部屋情報を取得
+    const roomData = roomMasterSheet.getDataRange().getValues().slice(1);
+    
+    // 既存のinspection_dataを確認
+    const inspectionData = inspectionDataSheet.getDataRange().getValues();
+    const existingKeys = new Set();
+    
+    if (inspectionData.length > 1) {
+      for (let i = 1; i < inspectionData.length; i++) {
+        const propertyId = String(inspectionData[i][2]).trim();
+        const roomId = String(inspectionData[i][3]).trim();
+        existingKeys.add(`${propertyId}_${roomId}`);
+      }
+    }
+    
+    // 新規部屋をinspection_dataに追加
+    const newRows = [];
+    let addedCount = 0;
+    
+    roomData.forEach(row => {
+      const propertyId = String(row[0]).trim();
+      const roomId = String(row[1]).trim();
+      const roomName = String(row[2]).trim();
+      const key = `${propertyId}_${roomId}`;
+      
+      if (propertyId && roomId && !existingKeys.has(key)) {
+        const recordId = Utilities.getUuid();
+        const propertyName = propertyMap[propertyId] || '';
+        
+        newRows.push([
+          recordId,        // 記録ID
+          propertyName,    // 物件名
+          propertyId,      // 物件ID
+          roomId,          // 部屋ID
+          roomName,        // 部屋名
+          '',              // 検針日時
+          '',              // 警告フラグ
+          '',              // 標準偏差値
+          '',              // 今回使用量
+          '',              // 今回の指示数
+          '',              // 前回指示数
+          '',              // 前々回指示数
+          '',              // 前々々回指示数
+          ''               // 検針不要
+        ]);
+        addedCount++;
+      }
+    });
+    
+    if (newRows.length > 0) {
+      const lastRow = inspectionDataSheet.getLastRow();
+      inspectionDataSheet.getRange(lastRow + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('完了', `新規部屋反映が完了しました。\n追加件数: ${addedCount}件`, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('[populateInspectionDataFromMasters] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `新規部屋反映処理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[populateInspectionDataFromMasters] UI表示エラー:', uiError);
+    }
+  }
+}
+
+/**
+ * 月次処理実行（メニュー用プロキシ関数）
+ */
+function processInspectionDataMonthly() {
+  try {
+    console.log('[processInspectionDataMonthly] 月次処理を開始');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sourceSheet = ss.getSheetByName('inspection_data');
+    
+    if (!sourceSheet) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', 'inspection_dataシートが見つかりません。', ui.ButtonSet.OK);
+      return;
+    }
+    
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const newSheetName = `検針データ_${currentYear}年${currentMonth}月`;
+    
+    // 既存の月次シートがあるかチェック
+    if (ss.getSheetByName(newSheetName)) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('情報', `${newSheetName} は既に存在します。`, ui.ButtonSet.OK);
+      return;
+    }
+    
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      '月次処理確認',
+      `${newSheetName} を作成し、現在のデータを保存します。\n実行しますか？`,
+      ui.ButtonSet.YES_NO
+    );
+    
+    if (response === ui.Button.YES) {
+      // 新しいシートを作成してデータをコピー
+      const newSheet = ss.insertSheet(newSheetName);
+      const sourceData = sourceSheet.getDataRange().getValues();
+      
+      if (sourceData.length > 0) {
+        newSheet.getRange(1, 1, sourceData.length, sourceData[0].length).setValues(sourceData);
+      }
+      
+      ui.alert('完了', `月次処理が完了しました。\n${newSheetName} を作成しました。`, ui.ButtonSet.OK);
+    }
+    
+  } catch (error) {
+    console.error('[processInspectionDataMonthly] エラー:', error);
+    
+    try {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('エラー', `月次処理に失敗しました:\n${error.message}`, ui.ButtonSet.OK);
+    } catch (uiError) {
+      console.error('[processInspectionDataMonthly] UI表示エラー:', uiError);
+    }
   }
 }

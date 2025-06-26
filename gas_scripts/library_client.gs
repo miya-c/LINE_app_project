@@ -52,7 +52,7 @@ function createWaterMeterMenu() {
     // データ管理サブメニュー
     const dataMenu = ui.createMenu('📊 データ管理');
     dataMenu.addItem('1. 物件IDフォーマット整理', 'formatPropertyIdsInPropertyMaster');
-    dataMenu.addItem('2. 部屋IDフォーマット整理', 'formatPropertyIdsInRoomMaster');
+    dataMenu.addItem('2. 部屋マスタの物件IDフォーマット整理', 'formatPropertyIdsInRoomMaster');
     dataMenu.addItem('3. 部屋ID連番自動生成', 'generateRoomIds');
     dataMenu.addItem('4. 孤立データ削除', 'cleanUpOrphanedRooms');
     dataMenu.addSeparator();
